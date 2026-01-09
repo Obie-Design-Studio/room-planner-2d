@@ -13,3 +13,12 @@ export interface FurnitureItem {
   rotation: number; // in degrees, default 0
   color?: string; // optional hex code
 }
+
+export interface WallObject {
+  id: string;
+  type: 'window' | 'door';
+  wall: 'top' | 'bottom' | 'left' | 'right';
+  pos: number; // distance from the start of that wall in cm
+  width: number; // in cm
+  openDirection?: 'in' | 'out'; // optional, for doors later
+}
