@@ -9,14 +9,14 @@ interface ColorPickerProps {
 const ColorPicker: React.FC<ColorPickerProps> = ({ label, value, onChange }) => {
   return (
     <div className="mb-6">
-      <label className="block text-xs font-semibold text-[#666666] mb-1">
+      <label className="block text-xs font-medium text-[var(--text-secondary)] mb-2">
         {label}
       </label>
       
       <div className="flex items-center gap-2.5">
         {/* The Color Swatch */}
         <div 
-          className="relative w-10 h-10 rounded-lg border border-[#E5E5E0] cursor-pointer overflow-hidden"
+          className="relative w-10 h-10 rounded-lg border border-[var(--border)] cursor-pointer overflow-hidden"
           style={{ backgroundColor: value }}
         >
           {/* The Hidden Input - Force it to cover everything */}
@@ -29,7 +29,7 @@ const ColorPicker: React.FC<ColorPickerProps> = ({ label, value, onChange }) => 
         </div>
 
         {/* Hex Value Text */}
-        <div className="font-mono text-xs text-[#2D2D2D] bg-[#F5F5F0] px-2 py-1 rounded border border-[#E5E5E0]">
+        <div className="font-mono text-xs text-[var(--text-primary)] bg-[var(--bg-secondary)] px-2 py-1 rounded-lg border border-[var(--border)]">
           {value.toUpperCase()}
         </div>
       </div>

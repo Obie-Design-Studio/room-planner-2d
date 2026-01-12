@@ -8,12 +8,12 @@ const Input: React.FC<InputProps> = ({ label, className, ...props }) => {
   return (
     <div className="mb-6">
       {label && (
-        <label className="block text-xs font-semibold text-[#666666] mb-1">
+        <label className="block text-xs font-medium text-[var(--text-secondary)] mb-2">
           {label}
         </label>
       )}
       <input
-        className={`block w-full px-3 py-2 text-sm rounded-md border border-[#E5E5E0] bg-[#FAFAF8] text-[#2D2D2D] box-border focus:outline-none focus:border-[#D97706] focus:ring-1 focus:ring-[#D97706] ${className || ''}`}
+        className={`block w-full px-3 py-2 text-sm rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] text-[var(--text-primary)] box-border focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] ${className || ''}`}
         {...props}
       />
     </div>

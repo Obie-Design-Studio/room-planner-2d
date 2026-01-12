@@ -1,16 +1,36 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --bg-main: #F5F5F0;
-    --bg-sidebar: #FFFFFF;
-    --bg-canvas: #FAFAF8;
-    --text-primary: #2D2D2D;
-    --text-secondary: #666666;
-    --border: #E5E5E0;
-    --accent: #D97706;
-    --accent-hover: #B45309;
+    --font-display: 'Space Grotesk', system-ui, sans-serif;
+    --font-body: 'DM Sans', system-ui, sans-serif;
+    
+    --bg-primary: #FAFAFA;
+    --bg-secondary: #F5F5F5;
+    --bg-elevated: #FFFFFF;
+    --text-primary: #171717;
+    --text-secondary: #737373;
+    --text-muted: #A3A3A3;
+    --accent: #0EA5E9;
+    --accent-hover: #0284C7;
+    --border: #E5E5E5;
+  }
+
+  body {
+    font-family: var(--font-body);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+  }
+}
+
+@layer utilities {
+  .hover-bg-secondary:hover {
+    background-color: var(--bg-secondary);
   }
 }

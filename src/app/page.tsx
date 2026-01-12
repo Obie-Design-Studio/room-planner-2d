@@ -124,21 +124,21 @@ export default function Home() {
   const selectedItem = items.find((item) => item.id === selectedId);
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-[#F5F5F0]">
+    <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
       {/* Header */}
-      <header className="h-16 border-b border-[#E5E5E0] bg-[#FFFFFF] flex items-center justify-between px-8">
+      <header className="h-16 border-b flex items-center justify-between px-8" style={{ backgroundColor: 'var(--bg-elevated)', borderColor: 'var(--border)' }}>
         {/* Left: Title */}
-        <h1 className="text-2xl font-bold text-[#2D2D2D]">Room Planner</h1>
+        <h1 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>Room Planner</h1>
         
         {/* Center: Room name (read-only) */}
         <div className="flex-1 flex justify-center px-8">
-          <span className="text-base text-[#2D2D2D]">
+          <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             {roomName}
           </span>
         </div>
         
         {/* Right: Dimensions */}
-        <span className="text-xs text-[#666666]">
+        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
           {roomConfig.width} × {roomConfig.height} cm
         </span>
       </header>
@@ -146,18 +146,21 @@ export default function Home() {
       {/* Main Body */}
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar */}
-        <aside className="w-80 flex flex-col font-sans bg-[#FFFFFF] border-r border-[#E5E5E0] p-8 space-y-6">
+        <aside className="w-80 flex flex-col p-6 space-y-6 border-r" style={{ backgroundColor: 'var(--bg-elevated)', borderColor: 'var(--border)' }}>
           {/* Room Settings Section */}
           <div>
             <button
               onClick={() => setIsRoomSettingsOpen(!isRoomSettingsOpen)}
-              className="w-full flex items-center justify-between py-3 px-0 hover:bg-[#F5F5F0] transition-colors rounded-md"
+              className="w-full flex items-center justify-between py-2 px-3 rounded-lg transition-colors"
+              style={{ border: 'none', color: 'var(--text-secondary)' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
             >
-              <p className="text-sm font-semibold text-[#666666]">Room settings</p>
+              <p className="text-sm font-medium">Room settings</p>
               {isRoomSettingsOpen ? (
-                <ChevronUp className="w-4 h-4 text-[#666666]" />
+                <ChevronUp className="w-4 h-4" />
               ) : (
-                <ChevronDown className="w-4 h-4 text-[#666666]" />
+                <ChevronDown className="w-4 h-4" />
               )}
             </button>
             {isRoomSettingsOpen && (
@@ -189,18 +192,24 @@ export default function Home() {
 
                 {/* Windows & Doors Subsection */}
                 <div className="mt-6">
-                  <p className="text-sm font-semibold text-[#666666] mb-3">Windows & doors</p>
+                  <p className="text-sm font-medium mb-3" style={{ color: 'var(--text-secondary)' }}>Windows & doors</p>
                   <div className="flex flex-col space-y-3 mb-4">
                     <button
                       onClick={() => handleAddWindowOrDoor('Window', 'top')}
-                      className="flex items-center justify-start gap-2 py-2.5 px-3 w-full bg-transparent hover:bg-[#F5F5F0] transition-colors rounded-md text-sm font-medium text-[#2D2D2D]"
+                      className="flex items-center justify-start gap-2 py-2.5 px-3 w-full bg-transparent rounded-lg text-sm font-normal transition-colors"
+                      style={{ border: 'none', color: 'var(--text-primary)' }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                     >
                       <RectangleHorizontal className="w-4 h-4" />
                       + Add Window
                     </button>
                     <button
                       onClick={() => handleAddWindowOrDoor('Door', 'top')}
-                      className="flex items-center justify-start gap-2 py-2.5 px-3 w-full bg-transparent hover:bg-[#F5F5F0] transition-colors rounded-md text-sm font-medium text-[#2D2D2D]"
+                      className="flex items-center justify-start gap-2 py-2.5 px-3 w-full bg-transparent rounded-lg text-sm font-normal transition-colors"
+                      style={{ border: 'none', color: 'var(--text-primary)' }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                     >
                       <DoorOpen className="w-4 h-4" />
                       + Add Door
@@ -213,11 +222,12 @@ export default function Home() {
                         .map((item) => (
                           <div
                             key={item.id}
-                            className="flex items-center justify-between px-3 py-2 bg-[#FAFAF8] border border-[#E5E5E0] rounded text-sm text-[#2D2D2D]"
+                            className="flex items-center justify-between px-3 py-2 rounded-lg text-sm border"
+                            style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
                           >
                             <div className="flex items-center gap-2">
                               <span className="font-medium capitalize">{item.type}</span>
-                              <span className="text-[#666666]">
+                              <span style={{ color: 'var(--text-secondary)' }}>
                                 {item.width} × {item.height} cm
                               </span>
                             </div>
@@ -239,25 +249,34 @@ export default function Home() {
 
           {/* ADD FURNITURE Section */}
           <div>
-            <p className="text-sm font-semibold text-[#666666] mb-3">Add furniture</p>
+            <p className="text-sm font-medium mb-3" style={{ color: 'var(--text-secondary)' }}>Add furniture</p>
             <div className="flex flex-col space-y-3">
               <button 
                 onClick={() => handleAddItem('Chair', 50, 50, '#3b82f6')}
-                className="flex items-center justify-start gap-2 py-2.5 px-3 w-full bg-transparent hover:bg-[#F5F5F0] transition-colors rounded-md text-sm font-medium text-[#2D2D2D]"
+                className="flex items-center justify-start gap-2 py-2.5 px-3 w-full bg-transparent rounded-lg text-sm font-normal transition-colors"
+                style={{ border: 'none', color: 'var(--text-primary)' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
               >
                 <Armchair className="w-4 h-4" />
                 Chair
               </button>
               <button 
                 onClick={() => handleAddItem('Table', 120, 80, '#d97706')}
-                className="flex items-center justify-start gap-2 py-2.5 px-3 w-full bg-transparent hover:bg-[#F5F5F0] transition-colors rounded-md text-sm font-medium text-[#2D2D2D]"
+                className="flex items-center justify-start gap-2 py-2.5 px-3 w-full bg-transparent rounded-lg text-sm font-normal transition-colors"
+                style={{ border: 'none', color: 'var(--text-primary)' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
               >
                 <Table className="w-4 h-4" />
                 Table
               </button>
               <button 
                 onClick={() => handleAddItem('Bed', 160, 200, '#10b981')}
-                className="flex items-center justify-start gap-2 py-2.5 px-3 w-full bg-transparent hover:bg-[#F5F5F0] transition-colors rounded-md text-sm font-medium text-[#2D2D2D]"
+                className="flex items-center justify-start gap-2 py-2.5 px-3 w-full bg-transparent rounded-lg text-sm font-normal transition-colors"
+                style={{ border: 'none', color: 'var(--text-primary)' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
               >
                 <Bed className="w-4 h-4" />
                 Bed
@@ -268,7 +287,7 @@ export default function Home() {
           <div className="flex-1">
             {selectedItem ? (
               <div>
-                <h2 className="text-xl font-semibold mb-8 text-[#2D2D2D]">Edit Item</h2>
+                <h2 className="text-xl font-semibold mb-8" style={{ color: 'var(--text-primary)' }}>Edit Item</h2>
 
                 {/* Label Input */}
                 <Input
@@ -296,7 +315,7 @@ export default function Home() {
 
                 {/* Rotation Input */}
                 <div className="mb-6">
-                  <label className="block text-xs font-semibold text-[#666666] mb-1">
+                  <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
                     Rotation ({selectedItem.rotation || 0}°)
                   </label>
                   <input
@@ -327,7 +346,7 @@ export default function Home() {
                 </div>
               </div>
             ) : (
-              <div className="h-full flex items-center justify-center text-[#666666]">
+              <div className="h-full flex items-center justify-center" style={{ color: 'var(--text-secondary)' }}>
                 <p>Select an item to edit</p>
               </div>
             )}
@@ -336,7 +355,8 @@ export default function Home() {
 
         {/* Canvas Area */}
         <div
-          className="flex-1 relative bg-[#FAFAF8]"
+          className="flex-1 relative"
+          style={{ backgroundColor: 'var(--bg-primary)' }}
           onClick={(e) => {
             if (e.target === e.currentTarget) setSelectedId(null);
           }}
