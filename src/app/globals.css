@@ -1,3 +1,16 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-main: #F5F5F0;
+    --bg-sidebar: #FFFFFF;
+    --bg-canvas: #FAFAF8;
+    --text-primary: #2D2D2D;
+    --text-secondary: #666666;
+    --border: #E5E5E0;
+    --accent: #D97706;
+    --accent-hover: #B45309;
+  }
+}

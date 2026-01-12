@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import type { RoomConfig, FurnitureItem } from "@/types";
 import ColorPicker from "@/components/ui/ColorPicker";
 import Input from '@/components/ui/Input';
+import { Armchair, Table, Bed, ChevronDown, ChevronUp, RectangleHorizontal, DoorOpen, Trash2 } from "lucide-react";
 
 const RoomCanvas = dynamic(
   () => import("@/components/canvas/RoomCanvas"),
@@ -21,6 +22,9 @@ export default function Home() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showAllMeasurements, setShowAllMeasurements] = useState(false);
   const [viewport, setViewport] = useState({ width: 800, height: 600 });
+  const [ceilingHeight, setCeilingHeight] = useState(250);
+  const [roomName, setRoomName] = useState('Untitled Room');
+  const [isRoomSettingsOpen, setIsRoomSettingsOpen] = useState(false);
 
   useEffect(() => {
     const handleResize = () => {
@@ -35,12 +39,23 @@ export default function Home() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const handleAddItem = (type: string = 'Chair', w: number = 50, h: number = 50, c: string = '#3b82f6') => {
+  const handleAddItem = (type: string = 'Chair', w: number = 50, h: number = 50, c: string = '#3b82f6', wall?: 'top' | 'left') => {
+    let x = 10; // Default start position
+    let y = 10;
+    
+    if (wall === 'top') {
+      x = 50; // 50cm from left
+      y = -5; // Center in wall (10px wall = 5cm, so -5cm centers 10cm object)
+    } else if (wall === 'left') {
+      x = -5; // Center in wall (10px wall = 5cm, so -5cm centers 10cm object)
+      y = 50; // 50cm from top
+    }
+
     const newItem: FurnitureItem = {
       id: crypto.randomUUID(),
       type: type,
-      x: 10, // Default start position
-      y: 10,
+      x: x,
+      y: y,
       width: w,
       height: h,
       rotation: 0,
@@ -80,6 +95,21 @@ export default function Home() {
     }
   };
 
+  const handleDeleteItemById = (id: string) => {
+    setItems((prevItems) => prevItems.filter((item) => item.id !== id));
+    if (selectedId === id) {
+      setSelectedId(null);
+    }
+  };
+
+  const handleAddWindowOrDoor = (type: 'Window' | 'Door', wall: 'top' | 'left') => {
+    if (type === 'Window') {
+      handleAddItem('Window', 100, 10, '#e0f7fa', wall);
+    } else if (type === 'Door') {
+      handleAddItem('Door', 90, 10, '#8d6e63', wall);
+    }
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId !== null) {
@@ -94,123 +124,143 @@ export default function Home() {
   const selectedItem = items.find((item) => item.id === selectedId);
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-gray-50">
+    <div className="h-screen flex flex-col overflow-hidden bg-[#F5F5F0]">
       {/* Header */}
-      <header className="h-16 border-b bg-white flex items-center px-4 gap-4">
-        <h1 className="text-xl font-semibold">Room Planner</h1>
-        <div className="flex items-center gap-4">
-          <label className="flex items-center gap-2">
-            Width (cm):
-            <input
-              type="number"
-              className="border rounded px-2 py-1 w-20"
-              value={roomConfig.width}
-              onChange={(e) =>
-                setRoomConfig({ ...roomConfig, width: Number(e.target.value) })
-              }
-            />
-          </label>
-          <label className="flex items-center gap-2">
-            Height (cm):
-            <input
-              type="number"
-              className="border rounded px-2 py-1 w-20"
-              value={roomConfig.height}
-              onChange={(e) =>
-                setRoomConfig({
-                  ...roomConfig,
-                  height: Number(e.target.value),
-                })
-              }
-            />
-          </label>
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={showAllMeasurements}
-              onChange={(e) => setShowAllMeasurements(e.target.checked)}
-            />
-            Blueprint Mode (Show All)
-          </label>
+      <header className="h-16 border-b border-[#E5E5E0] bg-[#FFFFFF] flex items-center justify-between px-8">
+        {/* Left: Title */}
+        <h1 className="text-2xl font-bold text-[#2D2D2D]">Room Planner</h1>
+        
+        {/* Center: Room name (read-only) */}
+        <div className="flex-1 flex justify-center px-8">
+          <span className="text-base text-[#2D2D2D]">
+            {roomName}
+          </span>
         </div>
+        
+        {/* Right: Dimensions */}
+        <span className="text-xs text-[#666666]">
+          {roomConfig.width} × {roomConfig.height} cm
+        </span>
       </header>
 
       {/* Main Body */}
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar */}
-        <aside className="w-80 flex flex-col font-sans" style={{ background: '#fff', borderRight: '1px solid #ddd', padding: '20px' }}>
-          <div style={{ paddingBottom: '20px', borderBottom: '1px solid #eee', marginBottom: '20px' }}>
-            <p style={{ fontSize: '12px', fontWeight: 'bold', color: '#666', marginBottom: '10px' }}>ADD OBJECTS</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+        <aside className="w-80 flex flex-col font-sans bg-[#FFFFFF] border-r border-[#E5E5E0] p-8 space-y-6">
+          {/* Room Settings Section */}
+          <div>
+            <button
+              onClick={() => setIsRoomSettingsOpen(!isRoomSettingsOpen)}
+              className="w-full flex items-center justify-between py-3 px-0 hover:bg-[#F5F5F0] transition-colors rounded-md"
+            >
+              <p className="text-sm font-semibold text-[#666666]">Room settings</p>
+              {isRoomSettingsOpen ? (
+                <ChevronUp className="w-4 h-4 text-[#666666]" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-[#666666]" />
+              )}
+            </button>
+            {isRoomSettingsOpen && (
+              <div className="space-y-0 mt-3">
+                <Input
+                  label="Room name"
+                  type="text"
+                  value={roomName}
+                  onChange={(e) => setRoomName(e.target.value)}
+                />
+                <Input
+                  label="Room Width (cm)"
+                  type="number"
+                  value={roomConfig.width}
+                  onChange={(e) => setRoomConfig({ ...roomConfig, width: Number(e.target.value) })}
+                />
+                <Input
+                  label="Room Height (cm)"
+                  type="number"
+                  value={roomConfig.height}
+                  onChange={(e) => setRoomConfig({ ...roomConfig, height: Number(e.target.value) })}
+                />
+                <Input
+                  label="Ceiling Height (cm)"
+                  type="number"
+                  value={ceilingHeight}
+                  onChange={(e) => setCeilingHeight(Number(e.target.value))}
+                />
+
+                {/* Windows & Doors Subsection */}
+                <div className="mt-6">
+                  <p className="text-sm font-semibold text-[#666666] mb-3">Windows & doors</p>
+                  <div className="flex flex-col space-y-3 mb-4">
+                    <button
+                      onClick={() => handleAddWindowOrDoor('Window', 'top')}
+                      className="flex items-center justify-start gap-2 py-2.5 px-3 w-full bg-transparent hover:bg-[#F5F5F0] transition-colors rounded-md text-sm font-medium text-[#2D2D2D]"
+                    >
+                      <RectangleHorizontal className="w-4 h-4" />
+                      + Add Window
+                    </button>
+                    <button
+                      onClick={() => handleAddWindowOrDoor('Door', 'top')}
+                      className="flex items-center justify-start gap-2 py-2.5 px-3 w-full bg-transparent hover:bg-[#F5F5F0] transition-colors rounded-md text-sm font-medium text-[#2D2D2D]"
+                    >
+                      <DoorOpen className="w-4 h-4" />
+                      + Add Door
+                    </button>
+                  </div>
+                  {items.filter(item => item.type.toLowerCase() === 'window' || item.type.toLowerCase() === 'door').length > 0 && (
+                    <div className="space-y-2">
+                      {items
+                        .filter(item => item.type.toLowerCase() === 'window' || item.type.toLowerCase() === 'door')
+                        .map((item) => (
+                          <div
+                            key={item.id}
+                            className="flex items-center justify-between px-3 py-2 bg-[#FAFAF8] border border-[#E5E5E0] rounded text-sm text-[#2D2D2D]"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium capitalize">{item.type}</span>
+                              <span className="text-[#666666]">
+                                {item.width} × {item.height} cm
+                              </span>
+                            </div>
+                            <button
+                              onClick={() => handleDeleteItemById(item.id)}
+                              className="p-1.5 hover:bg-red-50 text-red-600 rounded transition-colors"
+                              aria-label={`Delete ${item.type}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ADD FURNITURE Section */}
+          <div>
+            <p className="text-sm font-semibold text-[#666666] mb-3">Add furniture</p>
+            <div className="flex flex-col space-y-3">
               <button 
                 onClick={() => handleAddItem('Chair', 50, 50, '#3b82f6')}
-                style={{
-                  padding: '10px',
-                  backgroundColor: '#2563eb',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer'
-                }}
+                className="flex items-center justify-start gap-2 py-2.5 px-3 w-full bg-transparent hover:bg-[#F5F5F0] transition-colors rounded-md text-sm font-medium text-[#2D2D2D]"
               >
+                <Armchair className="w-4 h-4" />
                 Chair
               </button>
               <button 
                 onClick={() => handleAddItem('Table', 120, 80, '#d97706')}
-                style={{
-                  padding: '10px',
-                  backgroundColor: '#2563eb',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer'
-                }}
+                className="flex items-center justify-start gap-2 py-2.5 px-3 w-full bg-transparent hover:bg-[#F5F5F0] transition-colors rounded-md text-sm font-medium text-[#2D2D2D]"
               >
+                <Table className="w-4 h-4" />
                 Table
               </button>
               <button 
                 onClick={() => handleAddItem('Bed', 160, 200, '#10b981')}
-                style={{
-                  padding: '10px',
-                  backgroundColor: '#2563eb',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer'
-                }}
+                className="flex items-center justify-start gap-2 py-2.5 px-3 w-full bg-transparent hover:bg-[#F5F5F0] transition-colors rounded-md text-sm font-medium text-[#2D2D2D]"
               >
+                <Bed className="w-4 h-4" />
                 Bed
-              </button>
-              <button 
-                onClick={() => handleAddItem('Window', 100, 15, '#e0f7fa')}
-                style={{
-                  padding: '10px',
-                  backgroundColor: '#2563eb',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer'
-                }}
-              >
-                Window
-              </button>
-              <button 
-                onClick={() => handleAddItem('Door', 90, 90, '#8d6e63')}
-                style={{
-                  padding: '10px',
-                  backgroundColor: '#2563eb',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer'
-                }}
-              >
-                Door
               </button>
             </div>
           </div>
@@ -218,7 +268,7 @@ export default function Home() {
           <div className="flex-1">
             {selectedItem ? (
               <div>
-                <h2 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '15px' }}>Edit Item</h2>
+                <h2 className="text-xl font-semibold mb-8 text-[#2D2D2D]">Edit Item</h2>
 
                 {/* Label Input */}
                 <Input
@@ -228,27 +278,25 @@ export default function Home() {
                   onChange={(e) => handleUpdateItem(selectedItem.id, { type: e.target.value })}
                 />
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  {/* Width Input */}
-                  <Input
-                    label="Width (cm)"
-                    type="number"
-                    value={selectedItem.width}
-                    onChange={(e) => handleUpdateItem(selectedItem.id, { width: Number(e.target.value) })}
-                  />
+                {/* Width Input */}
+                <Input
+                  label="Width (cm)"
+                  type="number"
+                  value={selectedItem.width}
+                  onChange={(e) => handleUpdateItem(selectedItem.id, { width: Number(e.target.value) })}
+                />
 
-                  {/* Height Input */}
-                  <Input
-                    label="Height (cm)"
-                    type="number"
-                    value={selectedItem.height}
-                    onChange={(e) => handleUpdateItem(selectedItem.id, { height: Number(e.target.value) })}
-                  />
-                </div>
+                {/* Height Input */}
+                <Input
+                  label="Height (cm)"
+                  type="number"
+                  value={selectedItem.height}
+                  onChange={(e) => handleUpdateItem(selectedItem.id, { height: Number(e.target.value) })}
+                />
 
                 {/* Rotation Input */}
-                <div style={{ marginBottom: '15px' }}>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', color: '#666', marginBottom: '4px' }}>
+                <div className="mb-6">
+                  <label className="block text-xs font-semibold text-[#666666] mb-1">
                     Rotation ({selectedItem.rotation || 0}°)
                   </label>
                   <input
@@ -257,38 +305,29 @@ export default function Home() {
                     max="360"
                     value={selectedItem.rotation || 0}
                     onChange={(e) => handleUpdateItem(selectedItem.id, { rotation: Number(e.target.value) })}
-                    style={{ width: '100%' }}
+                    className="w-full"
                   />
                 </div>
 
                 {/* Color Picker */}
                 <ColorPicker 
-                  label="COLOR" 
+                  label="Color" 
                   value={selectedItem.color || '#e0e0e0'} 
                   onChange={(color) => handleUpdateItem(selectedItem.id, { color })} 
                 />
 
                 {/* Delete Button */}
-                <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #eee' }}>
+                <div className="mt-8 pt-8">
                   <button
                     onClick={handleDeleteItem}
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      backgroundColor: '#fee2e2', // Light Red
-                      color: '#dc2626', // Dark Red
-                      border: '1px solid #fecaca',
-                      borderRadius: '6px',
-                      fontWeight: 'bold',
-                      cursor: 'pointer'
-                    }}
+                    className="w-full px-4 py-2.5 bg-red-50 text-red-600 border border-red-200 rounded-md font-bold cursor-pointer hover:bg-red-100 transition-colors"
                   >
                     Delete Item
                   </button>
                 </div>
               </div>
             ) : (
-              <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>
+              <div className="h-full flex items-center justify-center text-[#666666]">
                 <p>Select an item to edit</p>
               </div>
             )}
@@ -297,7 +336,7 @@ export default function Home() {
 
         {/* Canvas Area */}
         <div
-          className="flex-1 relative bg-gray-100"
+          className="flex-1 relative bg-[#FAFAF8]"
           onClick={(e) => {
             if (e.target === e.currentTarget) setSelectedId(null);
           }}

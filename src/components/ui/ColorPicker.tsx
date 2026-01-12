@@ -8,60 +8,28 @@ interface ColorPickerProps {
 
 const ColorPicker: React.FC<ColorPickerProps> = ({ label, value, onChange }) => {
   return (
-    <div style={{ marginBottom: '15px' }}>
-      <label style={{ 
-        display: 'block', 
-        fontSize: '11px', 
-        fontWeight: 'bold', 
-        textTransform: 'uppercase', 
-        color: '#666', 
-        marginBottom: '4px' 
-      }}>
+    <div className="mb-6">
+      <label className="block text-xs font-semibold text-[#666666] mb-1">
         {label}
       </label>
       
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <div className="flex items-center gap-2.5">
         {/* The Color Swatch */}
-        <div style={{ 
-          position: 'relative', 
-          width: '40px', 
-          height: '40px', 
-          borderRadius: '8px', 
-          border: '1px solid #ccc',
-          backgroundColor: value,
-          cursor: 'pointer',
-          overflow: 'hidden'
-        }}>
+        <div 
+          className="relative w-10 h-10 rounded-lg border border-[#E5E5E0] cursor-pointer overflow-hidden"
+          style={{ backgroundColor: value }}
+        >
           {/* The Hidden Input - Force it to cover everything */}
           <input
             type="color"
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            style={{ 
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-              opacity: 0,
-              cursor: 'pointer',
-              padding: 0,
-              margin: 0,
-              border: 'none'
-            }}
+            className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer p-0 m-0 border-0"
           />
         </div>
 
         {/* Hex Value Text */}
-        <div style={{ 
-          fontFamily: 'monospace', 
-          fontSize: '12px', 
-          color: '#333', 
-          backgroundColor: '#f5f5f5', 
-          padding: '4px 8px', 
-          borderRadius: '4px',
-          border: '1px solid #ddd'
-        }}>
+        <div className="font-mono text-xs text-[#2D2D2D] bg-[#F5F5F0] px-2 py-1 rounded border border-[#E5E5E0]">
           {value.toUpperCase()}
         </div>
       </div>

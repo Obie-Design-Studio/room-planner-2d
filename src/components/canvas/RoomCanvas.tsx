@@ -1,6 +1,6 @@
 import React from "react";
 import { Stage, Layer, Rect, Group } from "react-konva";
-import { PIXELS_PER_CM } from "@/lib/constants";
+import { PIXELS_PER_CM, WALL_THICKNESS_PX } from "@/lib/constants";
 import { RoomConfig, FurnitureItem } from "@/types";
 import FurnitureShape from "./FurnitureShape";
 import MeasurementOverlay from "./MeasurementOverlay";
@@ -49,7 +49,7 @@ export default function RoomCanvas({
             height={roomConfig.height * PIXELS_PER_CM}
             fill="white"
             stroke="black"
-            strokeWidth={5}
+            strokeWidth={WALL_THICKNESS_PX}
           />
           <GridBackground width={roomConfig.width} height={roomConfig.height} />
           {items.map((item) => (
@@ -64,11 +64,15 @@ export default function RoomCanvas({
           ))}
           {items.map((item) => {
             if (item.id === selectedId || showAllMeasurements) {
+              // Filter out the current item so we don't measure distance to itself
+              const neighbors = items.filter((other) => other.id !== item.id);
+              
               return (
                 <MeasurementOverlay
                   key={`measurement-${item.id}`}
                   item={item}
                   room={roomConfig}
+                  otherItems={neighbors}
                 />
               );
             }

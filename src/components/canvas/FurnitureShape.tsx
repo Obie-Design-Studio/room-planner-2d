@@ -2,15 +2,13 @@ import React, { useRef, useEffect } from 'react';
 import { Rect, Group, Text, Transformer, Arc } from 'react-konva';
 import { FurnitureItem, RoomConfig } from '@/types';
 import { PIXELS_PER_CM } from '@/lib/constants';
+import { ToiletSymbol, SinkSymbol, BedSymbol, SofaSymbol, ChairSymbol, TableSymbol } from './furnitureSymbols';
 
 function getContrastColor(hexColor: string) {
-  // Convert hex to RGB
   const r = parseInt(hexColor.substring(1, 3), 16);
   const g = parseInt(hexColor.substring(3, 5), 16);
   const b = parseInt(hexColor.substring(5, 7), 16);
-  // Calculate brightness (YIQ formula)
   const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
-  // Return black for bright colors, white for dark colors
   return yiq >= 128 ? '#000000' : '#ffffff';
 }
 
@@ -32,7 +30,6 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
   const shapeRef = useRef<any>(null);
   const trRef = useRef<any>(null);
 
-  // Calculate dimensions in pixels
   const widthPx = item.width * PIXELS_PER_CM;
   const heightPx = item.height * PIXELS_PER_CM;
 
@@ -47,7 +44,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
     }
   }, [isSelected]);
 
-  // Common group props for all shapes
+
   const groupProps = {
     ref: shapeRef,
     x,
@@ -67,98 +64,146 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
       onSelect(item.id);
     },
     onDragMove: (e: any) => {
-      // 1. Get new Visual Position (Center)
-      const newCenterX = e.target.x();
-      const newCenterY = e.target.y();
-
-      // 2. Convert to Data Position (Top-Left)
-      // TopLeft = Center - HalfSize
-      let newTopLeftX = newCenterX - (widthPx / 2);
-      let newTopLeftY = newCenterY - (heightPx / 2);
-
-      // 3. Wall Snapping for Doors and Windows
-      const isWallObject = item.type.toLowerCase() === 'window' || item.type.toLowerCase() === 'door';
+      const roomWidthPx = roomConfig.width * PIXELS_PER_CM;
+      const roomHeightPx = roomConfig.height * PIXELS_PER_CM;
       
+      // 1. Get current mouse position (Visual Center)
+      const currentCenterX = e.target.x();
+      const currentCenterY = e.target.y();
+
+      const isWallObject = item.type.toLowerCase() === 'window' || item.type.toLowerCase() === 'door';
+
+      let finalXCm = 0;
+      let finalYCm = 0;
+      let finalRotation = item.rotation;
+
       if (isWallObject) {
-        const roomWidthPx = roomConfig.width * PIXELS_PER_CM;
-        const roomHeightPx = roomConfig.height * PIXELS_PER_CM;
+        // --- STRICT WALL LOCKING ---
+        // We calculate which wall is closest and FORCE the item onto it.
+        
+        const distLeft = currentCenterX;
+        const distRight = Math.abs(roomWidthPx - currentCenterX);
+        const distTop = currentCenterY;
+        const distBottom = Math.abs(roomHeightPx - currentCenterY);
 
-        // Calculate distance to each wall (in pixels)
-        const distLeft = Math.abs(newTopLeftX);
-        const distRight = Math.abs(roomWidthPx - (newTopLeftX + widthPx));
-        const distTop = Math.abs(newTopLeftY);
-        const distBottom = Math.abs(roomHeightPx - (newTopLeftY + heightPx));
-
-        // Find min distance
         const minDist = Math.min(distLeft, distRight, distTop, distBottom);
 
-        // Snap to closest wall
+        // Wall Thickness Offset (to center item ON the wall line)
+        // Assuming walls are effectively 0-width lines for calculation, or we want them centered on the border
+        // If we want them inside the wall, we might need a small offset, but let's stick to the line for now.
+
         if (minDist === distTop) {
-          newTopLeftY = 0;
-        } else if (minDist === distBottom) {
-          newTopLeftY = roomHeightPx - heightPx;
-        } else if (minDist === distLeft) {
-          newTopLeftX = 0;
-        } else if (minDist === distRight) {
-          newTopLeftX = roomWidthPx - widthPx;
+          // LOCK TO TOP WALL
+          finalRotation = 0;
+          // Center the window/door in the wall thickness
+          // Wall is 10px thick (5cm), object is 10cm (20px) tall
+          // Position object center at -5cm to center it in the wall
+          finalYCm = -5; // Centered in wall thickness
+          
+          // Allow X movement, but clamp to room width
+          const visualLeftX = currentCenterX - widthPx / 2;
+          const clampedX = Math.max(0, Math.min(visualLeftX, roomWidthPx - widthPx));
+          finalXCm = Math.round(clampedX / PIXELS_PER_CM);
+          
+          // Override the visual position immediately to prevent "loose" feeling
+          e.target.y(-5 * PIXELS_PER_CM + heightPx / 2); // Center in wall
+          e.target.rotation(0);
+        } 
+        else if (minDist === distBottom) {
+          // LOCK TO BOTTOM WALL
+          finalRotation = 0;
+          // Center the window/door in the wall thickness
+          // Position object so its center is at roomHeight + 5cm (wall center)
+          finalYCm = Math.round((roomHeightPx + 5 * PIXELS_PER_CM - heightPx / 2) / PIXELS_PER_CM);
+          
+          const visualLeftX = currentCenterX - widthPx / 2;
+          const clampedX = Math.max(0, Math.min(visualLeftX, roomWidthPx - widthPx));
+          finalXCm = Math.round(clampedX / PIXELS_PER_CM);
+
+          e.target.y(roomHeightPx + 5 * PIXELS_PER_CM - heightPx / 2);
+          e.target.rotation(0);
+        } 
+        else if (minDist === distLeft) {
+          // LOCK TO LEFT WALL
+          finalRotation = 90;
+          // Center the window/door in the wall thickness
+          // Position object center at -5cm (wall center)
+          finalXCm = Math.round((-5 * PIXELS_PER_CM + heightPx / 2 - widthPx / 2) / PIXELS_PER_CM);
+          
+          // Allow Y movement
+          // Visual Center Y tracks mouse
+          // Clamp Visual Top Y
+          const visualTopY = currentCenterY - widthPx / 2; // Visual height is widthPx
+          const clampedY = Math.max(0, Math.min(visualTopY, roomHeightPx - widthPx));
+          finalYCm = Math.round((clampedY + widthPx/2 - heightPx/2) / PIXELS_PER_CM);
+
+          e.target.x(-5 * PIXELS_PER_CM + heightPx / 2); // Lock Visual X to wall center
+          e.target.rotation(90);
+        } 
+        else if (minDist === distRight) {
+          // LOCK TO RIGHT WALL
+          finalRotation = 90;
+          // Center the window/door in the wall thickness
+          // Position object center at roomWidth + 5cm (wall center)
+          finalXCm = Math.round((roomWidthPx + 5 * PIXELS_PER_CM + heightPx / 2 - widthPx / 2) / PIXELS_PER_CM);
+          
+          const visualTopY = currentCenterY - widthPx / 2;
+          const clampedY = Math.max(0, Math.min(visualTopY, roomHeightPx - widthPx));
+          finalYCm = Math.round((clampedY + widthPx/2 - heightPx/2) / PIXELS_PER_CM);
+
+          e.target.x(roomWidthPx + 5 * PIXELS_PER_CM - heightPx / 2); // Lock Visual X to wall center
+          e.target.rotation(90);
         }
+      } else {
+        // Standard Drag for Furniture
+        const topLeftX = currentCenterX - widthPx / 2;
+        const topLeftY = currentCenterY - heightPx / 2;
+        finalXCm = Math.round(topLeftX / PIXELS_PER_CM);
+        finalYCm = Math.round(topLeftY / PIXELS_PER_CM);
       }
 
-      // 4. Convert Pixels to CM
-      const finalX = Math.round(newTopLeftX / PIXELS_PER_CM);
-      const finalY = Math.round(newTopLeftY / PIXELS_PER_CM);
-
-      onChange(item.id, { x: finalX, y: finalY });
+      // Sync State
+      onChange(item.id, { 
+        x: finalXCm, 
+        y: finalYCm,
+        rotation: finalRotation
+      });
     },
     onTransformEnd: (e: any) => {
       const node = shapeRef.current;
       const scaleX = node.scaleX();
       const scaleY = node.scaleY();
-
-      // Reset scale back to 1 so we work with "clean" dimensions next time
       node.scaleX(1);
       node.scaleY(1);
-
+      
       const newWidthCm = Math.round((widthPx * scaleX) / PIXELS_PER_CM);
       const newHeightCm = Math.round((heightPx * scaleY) / PIXELS_PER_CM);
-      
-      // Rotation is easy
       const newRotation = Math.round(node.rotation());
-
-      // Position changes when we rotate/resize around center
-      // We need to recalculate Top-Left from the new Center
+      
       const newCenterX = node.x();
       const newCenterY = node.y();
       const newWidthPx = newWidthCm * PIXELS_PER_CM;
       const newHeightPx = newHeightCm * PIXELS_PER_CM;
-
       const newTopLeftX = newCenterX - (newWidthPx / 2);
       const newTopLeftY = newCenterY - (newHeightPx / 2);
-
-      const newXCm = Math.round(newTopLeftX / PIXELS_PER_CM);
-      const newYCm = Math.round(newTopLeftY / PIXELS_PER_CM);
-
-      // We need to update ALL properties because transform affects them all
+      
       onChange(item.id, {
-        x: newXCm, 
-        y: newYCm, 
-        width: newWidthCm, 
-        height: newHeightCm, 
-        rotation: newRotation 
+        x: Math.round(newTopLeftX / PIXELS_PER_CM),
+        y: Math.round(newTopLeftY / PIXELS_PER_CM),
+        width: newWidthCm,
+        height: newHeightCm,
+        rotation: newRotation
       });
     },
   };
 
-  // Special rendering for Doors
+  // RENDER: DOOR
   if (item.type.toLowerCase() === 'door') {
     return (
       <>
         <Group {...groupProps}>
-          {/* Door Frame/Threshold */}
           <Rect width={widthPx} height={5} fill="#8d6e63" y={heightPx - 5} />
-          {/* The Door Panel (Open 90 degrees) */}
           <Rect width={5} height={widthPx} fill="#a1887f" x={0} y={heightPx - widthPx} />
-          {/* Swing Arc (Simplified as a quarter circle line) */}
           <Arc 
             innerRadius={widthPx} 
             outerRadius={widthPx} 
@@ -169,16 +214,13 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
             x={0}
             y={heightPx}
           />
-          {/* Interaction Layer (Invisible rect to catch clicks) */}
-          <Rect width={widthPx} height={heightPx} opacity={0} />
+          <Rect width={widthPx} height={widthPx} opacity={0} />
         </Group>
         {isSelected && (
           <Transformer
             ref={trRef}
             boundBoxFunc={(oldBox, newBox) => {
-              if (Math.abs(newBox.width) < 5 || Math.abs(newBox.height) < 5) {
-                return oldBox;
-              }
+              if (Math.abs(newBox.width) < 5 || Math.abs(newBox.height) < 5) return oldBox;
               return newBox;
             }}
             flipEnabled={false}
@@ -188,22 +230,19 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
     );
   }
 
-  // Special rendering for Windows
+  // RENDER: WINDOW
   if (item.type.toLowerCase() === 'window') {
     return (
       <>
         <Group {...groupProps}>
           <Rect width={widthPx} height={heightPx} fill="#e0f7fa" stroke="black" strokeWidth={1} />
-          {/* Center Line (Glass pane) */}
           <Rect x={0} y={heightPx / 2 - 2} width={widthPx} height={4} fill="#81d4fa" />
         </Group>
         {isSelected && (
           <Transformer
             ref={trRef}
             boundBoxFunc={(oldBox, newBox) => {
-              if (Math.abs(newBox.width) < 5 || Math.abs(newBox.height) < 5) {
-                return oldBox;
-              }
+              if (Math.abs(newBox.width) < 5 || Math.abs(newBox.height) < 5) return oldBox;
               return newBox;
             }}
             flipEnabled={false}
@@ -213,114 +252,48 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
     );
   }
 
-  // Standard furniture rendering
+  // RENDER: STANDARD ITEM (using architectural symbols)
+  const renderSymbol = () => {
+    const typeLower = item.type.toLowerCase();
+    switch (typeLower) {
+      case 'toilet':
+        return <ToiletSymbol widthCm={item.width} heightCm={item.height} />;
+      case 'sink':
+        return <SinkSymbol widthCm={item.width} heightCm={item.height} />;
+      case 'bed':
+        return <BedSymbol widthCm={item.width} heightCm={item.height} />;
+      case 'sofa':
+        return <SofaSymbol widthCm={item.width} heightCm={item.height} />;
+      case 'chair':
+        return <ChairSymbol widthCm={item.width} heightCm={item.height} />;
+      case 'table':
+        return <TableSymbol widthCm={item.width} heightCm={item.height} />;
+      default:
+        // Fallback: simple rectangle
+        return (
+          <Rect
+            width={widthPx}
+            height={heightPx}
+            x={-widthPx / 2}
+            y={-heightPx / 2}
+            fill="#F5F5F5"
+            stroke="#333333"
+            strokeWidth={2}
+          />
+        );
+    }
+  };
+
   return (
     <>
-      <Group
-        ref={shapeRef}
-        x={x}
-        y={y}
-        width={widthPx}
-        height={heightPx}
-        draggable
-        rotation={item.rotation}
-        offsetX={widthPx / 2}
-        offsetY={heightPx / 2}
-        onClick={(e) => {
-          e.cancelBubble = true;
-          onSelect(item.id);
-        }}
-        onTap={(e) => {
-          e.cancelBubble = true;
-          onSelect(item.id);
-        }}
-        onDragMove={(e) => {
-          // 1. Get new Visual Position (Center)
-          const newCenterX = e.target.x();
-          const newCenterY = e.target.y();
-
-          // 2. Convert to Data Position (Top-Left)
-          // TopLeft = Center - HalfSize
-          const newTopLeftX = newCenterX - (widthPx / 2);
-          const newTopLeftY = newCenterY - (heightPx / 2);
-
-          // 3. Convert Pixels to CM
-          const finalX = Math.round(newTopLeftX / PIXELS_PER_CM);
-          const finalY = Math.round(newTopLeftY / PIXELS_PER_CM);
-
-          onChange(item.id, { x: finalX, y: finalY });
-        }}
-        onTransformEnd={(e) => {
-          const node = shapeRef.current;
-          const scaleX = node.scaleX();
-          const scaleY = node.scaleY();
-
-          // Reset scale back to 1 so we work with "clean" dimensions next time
-          node.scaleX(1);
-          node.scaleY(1);
-
-          const newWidthCm = Math.round((widthPx * scaleX) / PIXELS_PER_CM);
-          const newHeightCm = Math.round((heightPx * scaleY) / PIXELS_PER_CM);
-          
-          // Rotation is easy
-          const newRotation = Math.round(node.rotation());
-
-          // Position changes when we rotate/resize around center
-          // We need to recalculate Top-Left from the new Center
-          const newCenterX = node.x();
-          const newCenterY = node.y();
-          const newWidthPx = newWidthCm * PIXELS_PER_CM;
-          const newHeightPx = newHeightCm * PIXELS_PER_CM;
-
-          const newTopLeftX = newCenterX - (newWidthPx / 2);
-          const newTopLeftY = newCenterY - (newHeightPx / 2);
-
-          const newXCm = Math.round(newTopLeftX / PIXELS_PER_CM);
-          const newYCm = Math.round(newTopLeftY / PIXELS_PER_CM);
-
-          // We need to update ALL properties because transform affects them all
-          onChange(item.id, {
-            x: newXCm, 
-            y: newYCm, 
-            width: newWidthCm, 
-            height: newHeightCm, 
-            rotation: newRotation 
-          });
-        }}
-      >
-        <Rect
-          width={widthPx}
-          height={heightPx}
-          fill={item.color || '#e0e0e0'}
-          stroke={isSelected ? '#3b82f6' : '#94a3b8'} // Blue if selected, Gray if not
-          strokeWidth={isSelected ? 2 : 1}
-          cornerRadius={4}
-        />
-        <Text
-          text={item.type}
-          width={widthPx}
-          height={heightPx}
-          x={widthPx / 2}
-          y={heightPx / 2}
-          offsetX={widthPx / 2}
-          offsetY={heightPx / 2}
-          rotation={-item.rotation}
-          align="center"
-          verticalAlign="middle"
-          fontSize={10}
-          fontFamily="sans-serif"
-          fill={getContrastColor(item.color || '#e0e0e0')}
-          listening={false}
-        />
+      <Group {...groupProps}>
+        {renderSymbol()}
       </Group>
       {isSelected && (
         <Transformer
           ref={trRef}
           boundBoxFunc={(oldBox, newBox) => {
-            // Prevent resizing to less than 5px
-            if (Math.abs(newBox.width) < 5 || Math.abs(newBox.height) < 5) {
-              return oldBox;
-            }
+            if (Math.abs(newBox.width) < 5 || Math.abs(newBox.height) < 5) return oldBox;
             return newBox;
           }}
           flipEnabled={false}

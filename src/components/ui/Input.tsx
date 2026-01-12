@@ -4,33 +4,18 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
 }
 
-const Input: React.FC<InputProps> = ({ label, style, ...props }) => {
-  const baseStyle: React.CSSProperties = {
-    display: 'block',
-    width: '100%',
-    padding: '8px 12px',
-    fontSize: '14px',
-    borderRadius: '6px',
-    border: '1px solid #ccc',
-    backgroundColor: 'white',
-    boxSizing: 'border-box',
-    marginBottom: '10px',
-    ...style,
-  };
-
-  const labelStyle: React.CSSProperties = {
-    display: 'block',
-    fontSize: '11px',
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
-    color: '#666',
-    marginBottom: '4px',
-  };
-
+const Input: React.FC<InputProps> = ({ label, className, ...props }) => {
   return (
-    <div style={{ marginBottom: '15px' }}>
-      {label && <label style={labelStyle}>{label}</label>}
-      <input style={baseStyle} {...props} />
+    <div className="mb-6">
+      {label && (
+        <label className="block text-xs font-semibold text-[#666666] mb-1">
+          {label}
+        </label>
+      )}
+      <input
+        className={`block w-full px-3 py-2 text-sm rounded-md border border-[#E5E5E0] bg-[#FAFAF8] text-[#2D2D2D] box-border focus:outline-none focus:border-[#D97706] focus:ring-1 focus:ring-[#D97706] ${className || ''}`}
+        {...props}
+      />
     </div>
   );
 };
