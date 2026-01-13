@@ -1,0 +1,87 @@
+---
+description: Canvas interaction standards - Figma/Miro-like pan/zoom/select, snapping, feedback
+globs:
+  - "src/components/canvas/**"
+  - "src/components/**/*.tsx"
+  - "src/app/**/*.tsx"
+alwaysApply: false
+---
+
+# Goal
+
+The canvas must feel like a **professional tool**: predictable, fast, and learnable (Figma/Miro-inspired).
+
+# Pan & Zoom (Core)
+
+**Zoom:**
+- Mouse wheel / trackpad scroll zooms in/out
+- Zoom should be **anchored on the cursor position** (the point under the cursor stays under the cursor)
+- Use sensible zoom limits (prevent infinite zoom in/out)
+- Provide a **Reset view** action (fit or 100%)
+
+**Pan:**
+- Space + drag pans (primary “pro tool” behavior)
+- Trackpad two-finger drag pans when not zooming (Mac/trackpads)
+- Middle-mouse drag pans (optional but nice)
+
+**Interaction priority:**
+- When space is held, dragging must pan (even if starting on an object)
+- Selection/dragging should not fight panning; one clear mode at a time
+
+# Selection & Manipulation
+
+**Selection:**
+- Click selects an item
+- Shift+click toggles selection (multi-select)
+- Click empty space clears selection
+- Drag marquee selection (optional, but recommended)
+
+**Dragging:**
+- Dragging an item moves it smoothly with visible feedback
+- Movement should remain stable at any zoom level (no “jitter”)
+
+**Resize/rotate (if supported):**
+- Handles must be visible on selection
+- Hover states communicate what will happen (cursor changes, highlight)
+
+# Snapping & Precision
+
+Rules:
+- Provide snapping to grid and/or other objects (as the app supports)
+- Make snapping feel intentional:
+  - show subtle snap guides or a small “snap” highlight
+  - avoid aggressive snapping that prevents precise placement
+- Modifier keys:
+  - Hold **Shift** to temporarily disable snapping (common pro pattern)
+  - Hold **Alt/Option** for “duplicate while dragging” (optional, but very useful)
+
+# Keyboard Shortcuts (Tooling Feel)
+
+Rules:
+- Support basic shortcuts when feasible:
+  - Delete/Backspace deletes selected item (with safe handling)
+  - Cmd/Ctrl+Z undo (if/when undo exists)
+  - Cmd/Ctrl+0 reset view (or fit to view)
+  - +/- zoom in/out (optional)
+- Shortcuts must not break text inputs (never hijack keys when typing)
+
+# Feedback & States (Never Silent)
+
+Rules:
+- Hover shows affordance (cursor, highlight)
+- Dragging shows active state
+- On invalid action, show a clear message (toast or inline hint)
+- Any “mode” (pan vs select) should be visually discoverable (cursor change is enough)
+
+# Accessibility & Reduced Motion
+
+Rules:
+- Respect `prefers-reduced-motion` (no big camera animations)
+- Ensure keyboard focus isn’t trapped by canvas interactions
+
+# Performance Rules (Non-Negotiable)
+
+Rules:
+- Keep pointer interactions responsive (no heavy work on every mousemove)
+- Avoid re-rendering the whole app on drag/zoom; isolate canvas state
+- If computation is heavy, throttle/debounce appropriately

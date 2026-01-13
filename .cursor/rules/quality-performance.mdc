@@ -1,0 +1,96 @@
+---
+description: Quality rules - testing, performance, reliability, observability, maintenance
+globs:
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.js"
+  - "**/*.jsx"
+  - "**/*.css"
+  - "**/app/**"
+  - "**/components/**"
+  - "**/lib/**"
+  - "**/next.config.*"
+  - "**/package.json"
+  - "**/eslint.config.*"
+  - "**/tsconfig.json"
+alwaysApply: false
+---
+
+# Definition of Done (for any meaningful change)
+
+Before a feature is “done”:
+□ No new TypeScript errors
+□ No new linter errors
+□ Happy-path tested (the main user flow works)
+□ Error-path considered (what happens when it fails)
+□ UX states present (loading/success/error/disabled where relevant)
+
+# Testing Expectations (Pragmatic)
+
+Rules:
+- For small UI changes: manual happy-path test + check console (no errors)
+- For business logic: add unit tests when logic is non-trivial or easy to break
+- For critical flows: add an integration-level check (even if minimal)
+
+When proposing tests, always include:
+- What to test (scenario)
+- Where it should live (file path)
+- The smallest test that gives confidence
+
+# Performance Budgets (Perceived Speed)
+
+Rules:
+- Prefer the simplest implementation that stays fast
+- Avoid unnecessary re-renders (memoize only when measured/obvious)
+- Keep client bundle lean: avoid heavy dependencies for small needs
+- Use optimized images and avoid shipping huge assets to the client
+- Don’t block the whole UI for small async work; load progressively
+
+“Feels fast” checklist:
+□ Button feedback < 100ms
+□ Transitions feel responsive (< 300ms)
+□ If > 1s, show progress + explain what’s happening
+
+# Reliability & Failure Modes
+
+Rules:
+- Never blank-screen on common errors; show a recovery path
+- Prefer retry + fallback UI over crashing
+- Preserve user input on failure
+- Handle empty/zero-data states intentionally
+
+# Observability (Debuggability)
+
+Rules:
+- Add small, descriptive logs while building/debugging
+- Remove or gate noisy logs before calling a feature “done”
+- When something breaks: check console + network first (per MCP rules)
+
+If a bug report is vague (“it doesn’t work”), capture:
+- What the user did
+- What they expected
+- What happened instead
+- Any console/network errors
+
+# Accessibility Quality Gate
+
+Rules:
+- Keyboard-only pass for any new interactive UI
+- Focus states must be visible
+- Form errors must be announced (`role="alert"`) where appropriate
+
+# Dependency Hygiene
+
+Rules:
+- Add a dependency only if it clearly reduces complexity or adds real capability
+- Avoid overlapping libs (pick one tool per job)
+- Keep changes minimal and reversible
+
+# “Quality Done” Checklist
+
+Before calling a feature done:
+□ Happy path verified
+□ Failure path has feedback + recovery
+□ Console has no new errors
+□ Performance feels responsive
+□ Accessibility basics checked (keyboard + focus)

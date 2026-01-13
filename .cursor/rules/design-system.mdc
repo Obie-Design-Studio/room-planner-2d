@@ -1,0 +1,217 @@
+---
+description: Visual design system - fonts, colors, style recipes, anti-patterns
+globs:
+  - "**/*.css"
+  - "**/*.scss"
+  - "**/*.tsx"
+  - "**/*.jsx"
+  - "**/globals.css"
+  - "**/tailwind.config.*"
+alwaysApply: false
+---
+
+# Design Philosophy
+
+This app must look visually distinctive, intentional, and human-designed — never like generic AI-generated UI.
+
+Visual quality is a first-class requirement, equal to correctness.
+
+**The Template Test:** "Could this be a Tailwind UI template?" → If yes, redesign.
+**The AI Test:** "Could this be mistaken for generic AI output?" → If yes, add personality.
+
+# Design Target (Room Planner North Star)
+
+Build a **precision-first canvas tool** with **Swiss grid discipline** (Notion Calendar) in the UI chrome, **developer-chic clarity** (Linear/Raycast) in interaction patterns and shortcuts, and a **light tactile layering** (Things/Craft) so panels feel intentionally “made,” not generic cards. The interface should be calm and focused: restrained palette, crisp typography hierarchy, and micro-interactions that reinforce state (selection, snapping, zoom/pan) rather than decorative motion. Everything should feel fast: immediate feedback, clear loading/error states, and a keyboard-friendly workflow that rewards power users without confusing beginners.
+
+**We are doing:**
+- Grid-aligned layouts and alignment-first spacing
+- Tight typography hierarchy and disciplined line-length
+- Subtle depth/layering for panels (tactile, not flashy)
+- Tool-like efficiency, keyboard-friendly patterns
+- Canvas interactions that feel like Figma/Miro
+
+**We are not doing:**
+- Playful bouncy motion (Amie)
+- Heavy translucency/pastel gradients everywhere (Arc)
+- Default SaaS template look (zinc cards + blue accent with no signature)
+- Heavy skeuomorphism (paper shadows everywhere)
+
+# Signature Requirement (Avoid “Generic Template”)
+
+For any **new screen or major UI surface**, include at least **one** deliberate “signature” choice so the app stays distinctive:
+- Typography signature (clear display/body pairing, intentional heading style)
+- Layout signature (asymmetry, editorial spacing, distinctive panel composition)
+- Material signature (tactile layering for panels, intentional borders/elevation)
+- Accent signature (how/where accent color is used; consistent highlight language)
+
+Rule:
+- If a design could be mistaken for a generic Tailwind/shadcn template, **add a signature** (don’t just “ship it”).
+
+# Design Tokens (Consistency Lock)
+
+Rules:
+- Define and use **tokens** for spacing, radius, shadows, borders, and motion (not ad-hoc values)
+- Prefer:
+  - CSS variables for theme tokens (colors, easing)
+  - Tailwind theme extension (or utility conventions) for spacing/radius/shadows
+- Avoid “random” values like `13px`, `27px`, `0.17` opacity unless it’s a deliberate token
+
+## Token Source of Truth (Where Tokens Live)
+
+Source of truth files:
+- `src/app/globals.css`: CSS variables for color + easing + any theme primitives
+- `tailwind.config.ts`: mapping tokens into Tailwind (spacing, radius, shadows, colors)
+
+Rules:
+- Do not invent new one-off values inside components when a token should exist
+- If you need a new spacing/radius/shadow, add it as a **token** (then use it everywhere)
+- Prefer Tailwind utilities that reference tokens over inline styles
+
+Minimum token set to keep UI coherent:
+- Spacing scale (e.g. 4/8/12/16/24/32/48)
+- Radius scale (e.g. 6/10/14)
+- Shadow/elevation scale (e.g. subtle / medium / strong)
+- Border styles (hairline + standard)
+- Motion durations + easing (already defined below)
+
+# Font Blacklist (NEVER USE)
+
+- Inter
+- Roboto
+- Poppins
+- Open Sans
+- Lato
+- Montserrat
+- Arial
+- system-ui (as primary font)
+- SF Pro (unless building for Apple)
+
+# Approved Font Pairings (Google Fonts)
+
+Pick ONE pairing per project (these are available on Google Fonts):
+
+**Serif + Sans (Editorial, Sophisticated):**
+- Playfair Display + DM Sans
+- Instrument Serif + Outfit
+- Fraunces + Space Grotesk
+- Libre Baskerville + Work Sans
+- DM Serif Display + Manrope
+
+**Sans + Sans (Modern, Clean):**
+- Outfit + Plus Jakarta Sans
+- Space Grotesk + DM Sans
+- Sora + Plus Jakarta Sans
+
+**Monospace (Technical):**
+- JetBrains Mono
+- Space Mono
+- IBM Plex Mono
+- Fira Code
+
+# Color Palettes
+
+Never use Tailwind defaults. Choose one per project:
+
+**Warm Editorial:**
+--bg-primary: #FAF8F5; --bg-secondary: #F0EBE3; --bg-elevated: #FFFFFF;
+--text-primary: #1A1917; --text-secondary: #6B6560; --text-muted: #9C9690;
+--accent: #B45309; --accent-hover: #D97706; --border: rgba(0,0,0,0.08);
+
+**Dark Technical:**
+--bg-primary: #0C0C0C; --bg-secondary: #161616; --bg-elevated: #1E1E1E;
+--text-primary: #FAFAFA; --text-secondary: #A1A1A1; --text-muted: #666666;
+--accent: #10B981; --accent-hover: #34D399; --border: rgba(255,255,255,0.08);
+
+**Soft Pastel:**
+--bg-primary: #FDF6F0; --bg-secondary: #FFF5F5; --bg-elevated: #FFFFFF;
+--text-primary: #2D2A32; --text-secondary: #7D7A85;
+--accent: #E07A5F; --accent-hover: #C96A52; --border: rgba(0,0,0,0.06);
+
+**Monochrome Luxury:**
+--bg-primary: #0A0A0A; --bg-secondary: #141414; --bg-elevated: #1A1A1A;
+--text-primary: #EDEDED; --text-secondary: #888888;
+--accent: #FFFFFF; --border: rgba(255,255,255,0.1);
+
+**Ink & Paper (High Contrast):**
+--bg-primary: #FFFEF9; --bg-secondary: #F5F4EF;
+--text-primary: #0C0A09; --text-secondary: #44403C;
+--accent: #DC2626; --border: #0C0A09;
+
+# Typography Rules
+
+**Display/Headings:**
+- Use --font-display (serif or distinctive sans)
+- Letter-spacing: -0.03em to -0.05em
+- Line-height: 0.9 to 1.1
+- Hero size: clamp(2.5rem, 8vw, 5rem)
+
+**Body Text:**
+- Use --font-body
+- Normal letter-spacing
+- Line-height: 1.5 to 1.7
+- Size: 1rem to 1.125rem
+
+# Motion & Animation
+
+Every interactive element must have hover/focus states.
+
+**Custom Easing (never use 'ease' or 'linear'):**
+--ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+--ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+--ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+**Transitions:** 200ms var(--ease-out) for interactions
+
+# Style Recipes
+
+Pick ONE and commit:
+
+**1. Editorial Magazine**
+Fonts: Playfair Display + DM Sans | Colors: Warm Editorial
+Layout: Asymmetric, large type, generous whitespace
+Vibe: Sophisticated, literary, calm
+
+**2. Dark Technical**
+Fonts: JetBrains Mono + Space Grotesk | Colors: Dark Technical
+Layout: Dense, information-rich, precise
+Vibe: Developer-focused, serious, powerful
+
+**3. Soft Premium**
+Fonts: Outfit + Instrument Serif | Colors: Soft Pastel
+Layout: Centered, generous padding
+Vibe: Approachable, friendly, premium
+
+**4. Brutalist Bold**
+Fonts: Space Grotesk + IBM Plex Mono | Colors: Ink & Paper
+Layout: Broken grid, no border-radius, stark
+Vibe: Edgy, unconventional, memorable
+
+**5. Minimal Luxury**
+Fonts: Instrument Serif + Outfit | Colors: Monochrome Luxury
+Layout: Lots of whitespace, restrained
+Vibe: High-end, refined, exclusive
+
+# Anti-Patterns (NEVER DO)
+
+❌ Purple/blue gradients on white backgrounds
+❌ Generic hero sections with centered text
+❌ "Get Started" buttons in blue/purple gradient
+❌ Perfectly symmetrical layouts
+❌ Gray text on white (#6b7280 on #ffffff)
+❌ Tailwind's default color palette
+❌ Rounded cards with subtle shadows and no personality
+❌ Sans-serif everything
+
+# UI Pre-Flight Checklist
+
+Before ANY UI code:
+□ Font pairing chosen (not blacklisted)
+□ Color palette defined with CSS variables
+□ Style recipe selected
+□ Design intent confirmed
+
+Before completing ANY component:
+□ Hover states on interactive elements
+□ Focus states for accessibility
+□ Custom easing (not 'ease' or 'linear')
+□ Does NOT look like a Tailwind template

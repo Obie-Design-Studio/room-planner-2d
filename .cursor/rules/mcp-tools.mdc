@@ -1,0 +1,142 @@
+---
+description: MCP tool usage - always use connected tools before asking user
+globs:
+alwaysApply: true
+---
+
+# Rule Zero: USE YOUR TOOLS FIRST
+
+You have direct access to MCP servers. USE THEM before asking me anything.
+
+**The principle:** If you can get the information yourself, get it yourself.
+
+# Currently Connected MCPs
+
+| MCP Server | What It Does |
+|------------|--------------|
+| **user-filesystem** | Read/write files, inspect project structure |
+| **user-chrome-devtools** | Console logs, network requests, screenshots, run JS |
+| **user-comet** | Browser automation and inspection |
+| **user-context7** | Library docs + long-term context across conversations |
+
+# Future MCP Connections
+
+New MCP servers may be added at any time. When you detect a connected MCP:
+
+1. **Discover its capabilities** — Check what tools/functions it provides
+2. **Use it proactively** — If it can answer a question or get information, use it
+3. **Don't ask me about it** — If the MCP can do it, do it yourself
+
+**General rule for ANY MCP:**
+> If an MCP tool can retrieve information, inspect state, read files, check logs, query data, or automate an action — use it automatically before asking me.
+
+# Self-Check Before Every Question
+
+Before asking me ANYTHING:
+
+> "Can ANY of my connected MCP tools get this information?"
+
+If yes → Use the tool. Do not ask me.
+
+If uncertain → Try the MCP first. Ask me only if it fails.
+
+# Filesystem MCP
+
+**Use this for:**
+- Reading any file in the codebase
+- Checking file structure
+- Inspecting package.json, configs, any code
+
+**NEVER ask me to:**
+- "Paste the contents of..."
+- "Share what's in..."
+- "What does [file] contain?"
+- "Show me the code for..."
+
+**ALWAYS:**
+→ Read the file yourself. Then continue.
+
+# Chrome DevTools MCP
+
+**Tools available:**
+- `list_console_messages` — Console errors, warnings, logs
+- `list_network_requests` — API calls, failed requests
+- `take_screenshot` — Current visual state
+- `evaluate_script` — Run JavaScript to inspect state
+
+**NEVER ask me to:**
+- "Open the console..."
+- "Check for errors..."
+- "What does the console say?"
+- "Press F12..."
+- "Try refreshing and let me know..."
+
+**ALWAYS:**
+→ Check the console yourself. Then tell me what you found.
+
+# Comet MCP
+
+**Use this for:**
+- Browser automation
+- Inspecting web pages
+- Visual reference extraction
+
+# Context7 MCP
+
+**Use this for:**
+- Recalling past decisions we made
+- Checking what we discussed before
+- Long-term project context
+
+**NEVER ask me:**
+- "What did we decide about...?"
+- "Do you remember when we...?"
+
+**ALWAYS:**
+→ Query context7 for past conversation context.
+
+# Auto-Debug Protocol
+
+When something isn't working, DO THIS AUTOMATICALLY:
+
+| Symptom | Your Action (don't ask me) |
+|---------|----------------------------|
+| "It's not working" | `list_console_messages` immediately |
+| "Nothing happens" | `list_console_messages` + `list_network_requests` |
+| "It looks wrong" | `take_screenshot` |
+| "The data isn't showing" | `list_network_requests` + `list_console_messages` |
+| "I see an error" | `list_console_messages` to see it yourself |
+| Need to see a file | Read it via filesystem MCP |
+| Need past context | Query context7 |
+| Any other inspection | Check if an MCP can do it |
+
+# After Implementing a Fix
+
+1. Check console via `list_console_messages`
+2. Check network via `list_network_requests` if relevant
+3. Take screenshot via `take_screenshot` if visual
+4. **Report what you found**, then ask for confirmation
+
+✅ "Fix applied. I checked the console — no errors. Network request to /api/users now returns 200. Can you confirm it looks right?"
+
+❌ "Try refreshing and let me know if it works."
+
+# What You MAY Ask Me For
+
+Only these things (because you truly cannot access them):
+- Terminal output from commands I run locally
+- Error messages from Cursor UI modals
+- Clarification on what I want to build
+- My preference between options
+- Confirmation that something looks/works correctly
+
+# The Golden Rule
+
+**If you're about to ask me for information → STOP → Check if ANY MCP tool can get it → Use the tool → Continue.**
+
+This applies to:
+- All currently connected MCPs
+- Any MCP added in the future
+- Any tool that can inspect, read, query, or automate
+
+Never ask. Just do.

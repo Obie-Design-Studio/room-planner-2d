@@ -1,0 +1,198 @@
+---
+description: UX principles - states, feedback, accessibility, forms, errors
+globs:
+  - "**/*.tsx"
+  - "**/*.jsx"
+  - "**/components/**"
+  - "**/app/**"
+alwaysApply: false
+---
+
+# Core Principle
+
+Every action needs visible feedback. Users should never wonder "did that work?"
+
+# Required States for Interactive Elements
+
+Every component must handle:
+□ Default — Normal appearance
+□ Hover — Visual change on mouse over
+□ Active/Pressed — Feedback during click
+□ Loading — Show something is happening
+□ Success — Confirm the action worked
+□ Error — Explain what went wrong
+□ Disabled — Clearly unavailable
+
+# Loading States
+
+- Show loading immediately (within 100ms)
+- Use skeleton loaders for content
+- Use spinners for actions
+- Never block the entire UI
+- Optimistic updates where safe (show success, rollback on failure)
+
+# Feedback Patterns (Consistency Lock)
+
+Use consistent feedback patterns so the app feels “designed,” not stitched together:
+
+**Toasts / snackbars (non-blocking):**
+- Use for background actions and transient events (save success/failure, network hiccups)
+- Message must include: what happened + why (if known) + what to do next
+- Do not use toasts for form validation (use inline errors)
+
+**Inline form errors:**
+- Put the error next to the field
+- Preserve user input
+- Announce errors for screen readers (`role="alert"`) when appropriate
+
+**Banners (persistent):**
+- Use for system-wide issues that impact many actions (offline mode, service outage)
+- Must include a recovery path (retry, status link, or guidance)
+
+**Modals (blocking):**
+- Reserve for destructive actions or critical decisions
+- Must provide a safe cancel path and clear button labels
+
+# Empty States
+
+Every empty state must include:
+1. What this area is for (context)
+2. Why it's empty (explanation)
+3. What to do next (clear CTA)
+
+Formula: Icon + Explanation + CTA
+
+❌ Bad: "No items"
+✅ Good: Icon + "No messages yet" + "When you receive messages, they'll appear here." + [Send first message] button
+
+# Error Handling
+
+**Error Message Formula:** What happened + Why + How to fix
+
+❌ "Error 500"
+✅ "Couldn't save your changes. The server is temporarily unavailable. Try again in a few minutes."
+
+❌ "Invalid input"
+✅ "Email address needs an @ symbol. Example: name@email.com"
+
+**Error Placement:**
+- Form errors: Inline, next to the field
+- Action errors: Toast/snackbar (non-blocking)
+- Critical errors: Modal with recovery path
+
+**Rules:**
+- Never use technical jargon
+- Always provide a way forward
+- Preserve user input on errors
+- Log details to console for debugging
+
+# Forms
+
+**Checklist:**
+□ Labels above inputs (not placeholder-only)
+□ Logical tab order
+□ Validate on blur (not on every keystroke)
+□ Re-validate on change if already invalid
+□ Clear required vs optional indicators
+□ Appropriate input types (email, tel, number)
+□ Submit button disabled until valid
+□ Success feedback after submission
+
+**Password Fields:**
+- Show/hide toggle
+- Strength indicator for new passwords
+- Confirm field for critical changes
+
+# Accessibility (NON-NEGOTIABLE)
+
+**Minimum Requirements:**
+□ Color contrast 4.5:1 for text
+□ All interactive elements keyboard accessible
+□ Focus states visible (never outline: none without replacement)
+□ Images have alt text
+□ Form inputs have labels
+□ Errors announced to screen readers (role="alert")
+□ Touch targets 44x44px minimum
+□ No information conveyed by color alone
+
+**Focus Styles:**
+Use :focus-visible for keyboard users, remove outline only for mouse users with :focus:not(:focus-visible)
+
+# Responsive & Mobile
+
+**Touch Targets:**
+- Minimum 44x44px
+- 8px minimum gap between targets
+
+**Mobile Patterns:**
+- Bottom nav for primary actions (thumb zone)
+- Hamburger for secondary nav
+- Pull-to-refresh for feeds
+- Test on real devices
+
+**Breakpoints:**
+- Mobile first
+- 768px for tablet
+- 1024px for desktop
+
+# Performance Perception
+
+**Response Time Feel:**
+- < 100ms = instant (button feedback)
+- < 300ms = fast (transitions)
+- < 1s = show progress indicator
+- > 1s = explain what's happening
+
+**Techniques:**
+- Skeleton loaders over spinners
+- Optimistic updates
+- Progressive loading
+- Preload likely next actions
+
+# Cognitive Load
+
+□ One primary action per screen
+□ Progressive disclosure (show more only when needed)
+□ Sensible defaults
+□ Group related items (max 5-7 per group)
+□ Recognition over recall
+
+# Destructive Actions
+
+**When to Confirm:**
+- Deleting data
+- Canceling in-progress work
+- Sending/publishing
+- Irreversible changes
+
+**Rules:**
+- Button says what it does ("Delete Project" not "Yes")
+- Include the name of what's being deleted
+- Cancel should be more prominent than destructive action
+- Prefer Undo over Confirm when possible
+
+# UX Pre-Flight Checklist
+
+Before completing ANY feature:
+
+**Feedback & States:**
+□ Loading states for async actions
+□ Error states with helpful messages
+□ Success confirmation
+□ Empty states that guide users
+
+**Forms:**
+□ Labels on all inputs
+□ Validation on blur
+□ Errors inline and specific
+□ Submit shows loading
+
+**Accessibility:**
+□ Keyboard navigable
+□ Focus states visible
+□ Contrast sufficient
+□ Touch targets 44px
+
+**Protection:**
+□ Destructive actions require confirmation or undo
+□ Form data preserved on errors

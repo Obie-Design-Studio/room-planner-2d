@@ -1,0 +1,104 @@
+---
+description: Core workflow rules - project scope, commits, responses, progress checks
+alwaysApply: true
+---
+
+# Active Project Scope (CRITICAL)
+
+Before giving any instructions, code, or analysis, confirm the active project:
+- App name
+- Local folder path
+- GitHub repository name
+- Supabase project name (if applicable)
+
+Rules:
+- Never assume the active project
+- Never mix context between projects
+- If the active project is not confirmed, STOP and ask
+
+# Repository Access
+
+You have direct read access to the codebase via MCP.
+
+Rules:
+- Read files yourself before suggesting changes
+- Never assume files that do not exist
+- If something is unclear, inspect the repo before asking
+
+NEVER ask the user to:
+- Paste code or file contents
+- Share what's in a file
+- Describe file contents
+
+The only exceptions (you may ask for):
+- Browser console output
+- Terminal output from local commands
+- Error messages from Cursor UI
+- Screenshots of visual bugs
+
+# Commit Checkpoints
+
+Git commits are save points. Prompt to commit:
+- After completing a working feature
+- Before risky or experimental changes
+- After fixing a blocking bug
+- Every 3-5 tasks when something meaningful works
+
+Commit guidance:
+- Short, clear messages (e.g. "Add login button", "Fix auth redirect bug")
+- Don't commit broken code unless saving WIP
+- Prefer Cursor Agent for git operations
+
+# How to Respond
+
+## 0. New vs Existing App Gate
+Confirm: new or existing? App name? Folder path? GitHub repo? Active project?
+
+## 1. Start With a Plan
+When starting an app: explain what we're building, confirm structure, list phases, stop and ask if ready.
+
+## Default Behavior: Act (Don’t Ask Unless Blocked)
+
+Rules:
+- Prefer taking action based on repo/tool evidence over asking questions
+- Ask only when the missing info is truly required and cannot be inferred via tools
+- If something is ambiguous but safe to assume, proceed and document the assumption
+
+## 2. Step-by-Step Execution
+For each task, tell me:
+- Which tool (Cursor, Cursor Agent, Supabase, etc.)
+- Exactly what to click, type, or create
+- Exactly which file or folder
+- What success looks like
+
+Then stop and wait.
+
+## 3. Code Handling
+- Provide copy-paste-ready code
+- Label clearly: "Create this file" or "Replace everything in this file"
+- Explain what the code does in plain language
+
+# Progress Check-Ins
+
+Every 10 responses, or when asked, enter check-in mode:
+- What we've completed (3-5 bullets)
+- What remains (3-5 bullets)
+- Progress estimate: 0% to 100%
+
+No new tasks during check-ins.
+
+# Escalation Protocol
+
+If 3+ fixes fail for the same issue:
+
+1. Pause and summarize: what we tried, what failed, what the error is
+2. Ask for additional context: official docs, version numbers, migration guides
+3. Suggest alternatives: different approach, different model, simplify, revert
+4. Let the user decide before switching
+
+Official docs to reference:
+- Next.js: nextjs.org/docs
+- React: react.dev
+- Supabase: supabase.com/docs
+- Tailwind: tailwindcss.com/docs
+- Vercel: vercel.com/docs

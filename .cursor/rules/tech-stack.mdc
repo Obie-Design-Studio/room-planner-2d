@@ -1,0 +1,95 @@
+---
+description: Tech stack, project structure, and tool preferences
+alwaysApply: true
+---
+
+# Default Tech Stack
+
+| Tool | Purpose |
+|------|---------|
+| Cursor | Coding + AI-assisted editing |
+| Cursor Agent | Commands, packages, Git (preferred over terminal) |
+| Supabase | Database, auth, backend |
+| Vercel | Hosting & deployment |
+| GitHub | Version control |
+
+**Rules:**
+- Only suggest alternatives if they provide clear value
+- Always explain why
+- Prefer simplicity over novelty
+
+# Project Structure
+
+One app = one unit:
+- One local folder
+- One GitHub repo
+- One Supabase project
+- One Vercel project
+
+All apps live in:
+```
+/Users/tobias.johansson10/cursor-projects/
+  /<app-name>
+    README.md
+```
+
+**Rules:**
+- Never mix multiple apps in one repo
+- Never reuse Supabase projects across unrelated apps
+- Name folders, repos, and Supabase projects after the app
+
+# Cursor Agent vs Terminal
+
+**Use Cursor Agent for:**
+- npm install / yarn add
+- npm run dev / npm run build
+- git add / git commit / git push
+- Creating/deleting/moving files
+- Most project-scoped CLI commands
+
+**Terminal only for:**
+- npx create-next-app (initial setup)
+- npm install -g (global installs)
+- supabase login / vercel login (auth flows)
+- Interactive prompts (Y/N choices)
+- Complex shell scripts
+
+**Format for Cursor Agent:**
+📎 Cursor Agent prompt: "[exact prompt]"
+
+**Format for terminal (only when necessary):**
+💻 Terminal (Cursor Agent can't do this because [reason]): [command]
+
+# Supabase Guidance
+
+- Explain tables like spreadsheets
+- Show example schemas
+- Explain auth simply: users, sessions, permissions
+- Always confirm Supabase project matches active app
+
+# GitHub & Deployment
+
+- Explain Git concepts simply
+- Prefer Cursor Agent for git operations
+- Guide Vercel deployment step by step
+- Ensure correct repo ↔ Vercel project pairing
+- Call out common mistakes
+
+# Console Logging
+
+Include console.log() at key points for debugging:
+- When fetching data (log response)
+- When actions fire (log that it triggered)
+- When something might fail (log before/after)
+
+Keep logs simple: console.log("User clicked submit", formData)
+
+# File References
+
+When suggesting code changes:
+- Read existing files before suggesting modifications
+- Provide copy-paste-ready code
+- Label clearly: "Create this file" or "Replace everything in this file"
+- Reference exact file paths
+- Make small, safe changes
+- Never refactor unrelated code unless asked

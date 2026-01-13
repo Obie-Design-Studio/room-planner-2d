@@ -1,0 +1,101 @@
+---
+description: Security & privacy rules - secrets, auth boundaries, safe inputs/outputs
+globs:
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.js"
+  - "**/*.jsx"
+  - "**/*.env*"
+  - "**/next.config.*"
+  - "**/middleware.*"
+  - "**/api/**"
+  - "**/app/**"
+  - "**/lib/**"
+alwaysApply: false
+---
+
+# Core Principle
+
+Treat **user input, client code, and the network** as untrusted. Assume attackers can:
+- Modify requests
+- Run arbitrary client-side JS
+- See anything shipped to the browser
+
+# Secrets (NON-NEGOTIABLE)
+
+**Never** commit or paste secrets into the repo:
+- `.env`, `.env.*`, API keys, service role keys, private tokens
+- Supabase `service_role` key must never be in client code
+
+Rules:
+- Secrets live only in env vars (local `.env.local`, Vercel env vars, etc.)
+- If a secret might have leaked, rotate it immediately
+- Do not log secrets (even in dev)
+
+# Client vs Server Boundaries
+
+Rules:
+- Never trust the UI for permissions; enforce permissions **server-side**
+- Anything sensitive (admin actions, payments, privileged reads/writes) must run on the server
+- Do not send sensitive data to the client “for convenience”
+
+# Authentication & Authorization
+
+Definitions:
+- **Auth** = who you are
+- **AuthZ** = what you’re allowed to do
+
+Rules:
+- Validate auth on the server for protected routes/actions
+- Validate authz per resource (e.g. user can only read/write their own records)
+- Prefer allowlists over denylists
+- Never rely on “hidden UI” as a security control
+
+# Input Validation (All Boundaries)
+
+Validate/normalize inputs:
+- At the API boundary (route handlers)
+- At data writes (before inserting/updating)
+
+Rules:
+- Validate required fields + types + acceptable ranges
+- Reject unexpected fields (avoid mass assignment)
+- Use safe defaults; never “guess” intent from partial input
+
+# Output Safety (XSS, HTML, URLs)
+
+Rules:
+- Never render user-generated HTML unless it is sanitized
+- Prefer plain text rendering for user content
+- Validate URLs before using them in links or redirects
+
+# File Upload Safety (If/When Added)
+
+Rules:
+- Restrict allowed file types (MIME + extension)
+- Enforce max file size
+- Store uploads outside the app server (e.g. storage bucket)
+- Never execute uploaded content
+
+# Logging & Privacy
+
+Rules:
+- Do not log PII (emails, tokens, addresses) unless necessary for debugging
+- If logging PII is unavoidable: redact it
+- Prefer structured logs: what happened, where, and why — without sensitive payloads
+
+# Dependency & Supply-Chain Safety
+
+Rules:
+- Add dependencies only with clear value
+- Prefer well-maintained libraries with active communities
+- Avoid duplicate libraries that solve the same problem
+
+# “Security Done” Checklist
+
+Before calling a security-sensitive feature done:
+□ No secrets in repo or logs
+□ Sensitive work happens server-side
+□ Auth + per-resource authz enforced server-side
+□ Inputs validated at the boundary
+□ User content is safe to render (no unsanitized HTML)
