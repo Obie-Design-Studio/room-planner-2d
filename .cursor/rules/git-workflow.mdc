@@ -1,3 +1,8 @@
+---
+description: Git workflow guidelines - commit strategy, version tags, README maintenance
+alwaysApply: true
+---
+
 # Git Commit Guidelines
 
 ## When to Prompt for Commits
