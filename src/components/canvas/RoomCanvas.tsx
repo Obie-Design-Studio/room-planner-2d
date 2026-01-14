@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import { Stage, Layer, Rect, Group } from "react-konva";
 import { PIXELS_PER_CM, WALL_THICKNESS_PX } from "@/lib/constants";
 import { RoomConfig, FurnitureItem } from "@/types";
@@ -10,8 +10,10 @@ interface RoomCanvasProps {
   roomConfig: RoomConfig;
   items: FurnitureItem[];
   onItemChange: (id: string, updates: Partial<FurnitureItem>) => void;
+  onItemDelete: (id: string) => void;
   selectedId: string | null;
   onSelect: (id: string) => void;
+  onEdit: (id: string) => void;
   showAllMeasurements: boolean;
   viewportWidth: number;
   viewportHeight: number;
@@ -21,12 +23,16 @@ export default function RoomCanvas({
   roomConfig,
   items,
   onItemChange,
+  onItemDelete,
   selectedId,
   onSelect,
+  onEdit,
   showAllMeasurements,
   viewportWidth,
   viewportHeight,
 }: RoomCanvasProps) {
+  const stageRef = useRef<any>(null);
+
   // Calculate optimal scale and position
   const roomPxWidth = roomConfig.width * PIXELS_PER_CM;
   const roomPxHeight = roomConfig.height * PIXELS_PER_CM;
@@ -38,15 +44,48 @@ export default function RoomCanvas({
   const offsetX = (viewportWidth - roomPxWidth * scale) / 2;
   const offsetY = (viewportHeight - roomPxHeight * scale) / 2;
 
+  // Native double-click handler for canvas
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    const handleNativeDoubleClick = (e: MouseEvent) => {
+      const pointerPos = stage.getPointerPosition();
+      if (!pointerPos) return;
+
+      // Get the shape at the click position
+      const shape = stage.getIntersection(pointerPos);
+      if (!shape) return;
+
+      // Find the furniture group
+      let current = shape;
+      while (current) {
+        if (current.attrs?.id && items.find((item) => item.id === current.attrs.id)) {
+          onEdit(current.attrs.id);
+          return;
+        }
+        current = current.getParent();
+      }
+    };
+
+    const canvas = stage.content;
+    if (canvas) {
+      canvas.addEventListener('dblclick', handleNativeDoubleClick);
+      return () => {
+        canvas.removeEventListener('dblclick', handleNativeDoubleClick);
+      };
+    }
+  }, [items, onEdit]);
+
   return (
-    <Stage width={viewportWidth} height={viewportHeight}>
+    <Stage ref={stageRef} width={viewportWidth} height={viewportHeight}>
       <Layer scale={{ x: scale, y: scale }}>
         <Group x={offsetX / scale} y={offsetY / scale}>
           <Rect
-            x={0}
-            y={0}
-            width={roomConfig.width * PIXELS_PER_CM}
-            height={roomConfig.height * PIXELS_PER_CM}
+            x={-WALL_THICKNESS_PX / 2}
+            y={-WALL_THICKNESS_PX / 2}
+            width={roomConfig.width * PIXELS_PER_CM + WALL_THICKNESS_PX}
+            height={roomConfig.height * PIXELS_PER_CM + WALL_THICKNESS_PX}
             fill="white"
             stroke="black"
             strokeWidth={WALL_THICKNESS_PX}
@@ -57,8 +96,10 @@ export default function RoomCanvas({
               key={item.id}
               item={item}
               onChange={onItemChange}
+              onDelete={onItemDelete}
               isSelected={item.id === selectedId}
               onSelect={onSelect}
+              onEdit={onEdit}
               roomConfig={roomConfig}
             />
           ))}

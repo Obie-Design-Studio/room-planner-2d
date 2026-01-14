@@ -2,7 +2,31 @@ import React, { useRef, useEffect } from 'react';
 import { Rect, Group, Text, Transformer, Arc } from 'react-konva';
 import { FurnitureItem, RoomConfig } from '@/types';
 import { PIXELS_PER_CM } from '@/lib/constants';
-import { ToiletSymbol, SinkSymbol, BedSymbol, SofaSymbol, ChairSymbol, TableSymbol } from './furnitureSymbols';
+import { 
+  ToiletSymbol, 
+  SinkSymbol, 
+  BedSymbol, 
+  SofaSymbol, 
+  ChairSymbol, 
+  TableSymbol,
+  NightstandSymbol,
+  DresserSymbol,
+  ClosetSymbol,
+  DeskSymbol,
+  ArmchairSymbol,
+  CoffeeTableSymbol,
+  TVStandSymbol,
+  BookshelfSymbol,
+  DiningTableSymbol,
+  RefrigeratorSymbol,
+  StoveSymbol,
+  CounterSymbol,
+  FilingCabinetSymbol,
+  ShowerSymbol,
+  BathtubSymbol,
+  WallToiletSymbol,
+  TowelDryerSymbol
+} from './furnitureSymbols';
 
 function getContrastColor(hexColor: string) {
   const r = parseInt(hexColor.substring(1, 3), 16);
@@ -16,7 +40,9 @@ interface FurnitureShapeProps {
   item: FurnitureItem;
   isSelected: boolean;
   onSelect: (id: string) => void;
+  onEdit: (id: string) => void;
   onChange: (id: string, updates: Partial<FurnitureItem>) => void;
+  onDelete: (id: string) => void;
   roomConfig: RoomConfig;
 }
 
@@ -24,7 +50,9 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
   item,
   isSelected,
   onSelect,
+  onEdit,
   onChange,
+  onDelete,
   roomConfig,
 }) => {
   const shapeRef = useRef<any>(null);
@@ -45,8 +73,24 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
   }, [isSelected]);
 
 
+  const isWallObject = item.type.toLowerCase() === 'window' || item.type.toLowerCase() === 'door';
+
+  const roomWidthPx = roomConfig.width * PIXELS_PER_CM;
+  const roomHeightPx = roomConfig.height * PIXELS_PER_CM;
+
+  const isOutsideRoomPx = (bbox: { x: number; y: number; width: number; height: number }) => {
+    return (
+      // IMPORTANT: calculations are based on the inner edge of the walls (0..room width/height).
+      bbox.x < 0 ||
+      bbox.y < 0 ||
+      bbox.x + bbox.width > roomWidthPx ||
+      bbox.y + bbox.height > roomHeightPx
+    );
+  };
+
   const groupProps = {
     ref: shapeRef,
+    id: item.id, // Add ID so Stage can identify clicked items
     x,
     y,
     width: widthPx,
@@ -63,15 +107,20 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
       e.cancelBubble = true;
       onSelect(item.id);
     },
+    onDblClick: (e: any) => {
+      e.cancelBubble = true;
+      onSelect(item.id);
+      onEdit(item.id);
+    },
+    onDblTap: (e: any) => {
+      e.cancelBubble = true;
+      onSelect(item.id);
+      onEdit(item.id);
+    },
     onDragMove: (e: any) => {
-      const roomWidthPx = roomConfig.width * PIXELS_PER_CM;
-      const roomHeightPx = roomConfig.height * PIXELS_PER_CM;
-      
       // 1. Get current mouse position (Visual Center)
       const currentCenterX = e.target.x();
       const currentCenterY = e.target.y();
-
-      const isWallObject = item.type.toLowerCase() === 'window' || item.type.toLowerCase() === 'door';
 
       let finalXCm = 0;
       let finalYCm = 0;
@@ -169,6 +218,15 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
         rotation: finalRotation
       });
     },
+    onDragEnd: (e: any) => {
+      if (isWallObject) return;
+
+      const node = e.target;
+      const bbox = node.getClientRect({ skipTransform: false });
+      if (isOutsideRoomPx(bbox)) {
+        onDelete(item.id);
+      }
+    },
     onTransformEnd: (e: any) => {
       const node = shapeRef.current;
       const scaleX = node.scaleX();
@@ -187,6 +245,14 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
       const newTopLeftX = newCenterX - (newWidthPx / 2);
       const newTopLeftY = newCenterY - (newHeightPx / 2);
       
+      if (!isWallObject) {
+        const bbox = node.getClientRect({ skipTransform: false });
+        if (isOutsideRoomPx(bbox)) {
+          onDelete(item.id);
+          return;
+        }
+      }
+
       onChange(item.id, {
         x: Math.round(newTopLeftX / PIXELS_PER_CM),
         y: Math.round(newTopLeftY / PIXELS_PER_CM),
@@ -268,14 +334,48 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
         return <ChairSymbol widthCm={item.width} heightCm={item.height} />;
       case 'table':
         return <TableSymbol widthCm={item.width} heightCm={item.height} />;
+      case 'nightstand':
+        return <NightstandSymbol widthCm={item.width} heightCm={item.height} />;
+      case 'dresser':
+        return <DresserSymbol widthCm={item.width} heightCm={item.height} />;
+      case 'closet':
+        return <ClosetSymbol widthCm={item.width} heightCm={item.height} />;
+      case 'desk':
+        return <DeskSymbol widthCm={item.width} heightCm={item.height} />;
+      case 'armchair':
+        return <ArmchairSymbol widthCm={item.width} heightCm={item.height} />;
+      case 'coffee table':
+        return <CoffeeTableSymbol widthCm={item.width} heightCm={item.height} />;
+      case 'tv stand':
+        return <TVStandSymbol widthCm={item.width} heightCm={item.height} />;
+      case 'bookshelf':
+        return <BookshelfSymbol widthCm={item.width} heightCm={item.height} />;
+      case 'dining table':
+        return <DiningTableSymbol widthCm={item.width} heightCm={item.height} />;
+      case 'refrigerator':
+        return <RefrigeratorSymbol widthCm={item.width} heightCm={item.height} />;
+      case 'stove':
+        return <StoveSymbol widthCm={item.width} heightCm={item.height} />;
+      case 'counter':
+        return <CounterSymbol widthCm={item.width} heightCm={item.height} />;
+      case 'filing cabinet':
+        return <FilingCabinetSymbol widthCm={item.width} heightCm={item.height} />;
+      case 'shower':
+        return <ShowerSymbol widthCm={item.width} heightCm={item.height} />;
+      case 'bathtub':
+        return <BathtubSymbol widthCm={item.width} heightCm={item.height} />;
+      case 'wall toilet':
+        return <WallToiletSymbol widthCm={item.width} heightCm={item.height} />;
+      case 'towel dryer':
+        return <TowelDryerSymbol widthCm={item.width} heightCm={item.height} />;
       default:
         // Fallback: simple rectangle
         return (
           <Rect
             width={widthPx}
             height={heightPx}
-            x={-widthPx / 2}
-            y={-heightPx / 2}
+            x={0}
+            y={0}
             fill="#F5F5F5"
             stroke="#333333"
             strokeWidth={2}

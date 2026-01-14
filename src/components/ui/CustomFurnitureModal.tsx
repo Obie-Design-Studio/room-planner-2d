@@ -1,42 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { X } from 'lucide-react';
-import type { RoomConfig } from '@/types';
 import Input from '@/components/ui/Input';
-import { ROOM_TYPE_LABELS, type RoomType } from '@/lib/furnitureLibrary';
+import ColorPicker from '@/components/ui/ColorPicker';
 
-interface RoomSettingsModalProps {
+interface CustomFurnitureModalProps {
   isOpen: boolean;
-  roomName: string;
-  roomConfig: RoomConfig;
-  ceilingHeight: number;
   onClose: () => void;
-  onUpdate: (name: string, config: RoomConfig, ceiling: number) => void;
+  onAddCustomFurniture: (label: string, width: number, height: number, color: string) => void;
 }
 
-const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
+const CustomFurnitureModal: React.FC<CustomFurnitureModalProps> = ({
   isOpen,
-  roomName,
-  roomConfig,
-  ceilingHeight,
   onClose,
-  onUpdate,
+  onAddCustomFurniture,
 }) => {
-  const [localName, setLocalName] = useState(roomName);
-  const [localWidth, setLocalWidth] = useState(roomConfig.width);
-  const [localHeight, setLocalHeight] = useState(roomConfig.height);
-  const [localCeiling, setLocalCeiling] = useState(ceilingHeight);
-  const [localRoomType, setLocalRoomType] = useState<RoomType | undefined>(roomConfig.roomType);
-
-  // Sync local state when props change
-  useEffect(() => {
-    if (isOpen) {
-      setLocalName(roomName);
-      setLocalWidth(roomConfig.width);
-      setLocalHeight(roomConfig.height);
-      setLocalCeiling(ceilingHeight);
-      setLocalRoomType(roomConfig.roomType);
-    }
-  }, [isOpen, roomName, roomConfig, ceilingHeight]);
+  const [label, setLabel] = useState('Custom Item');
+  const [width, setWidth] = useState(100);
+  const [height, setHeight] = useState(80);
+  const [color, setColor] = useState('#3b82f6');
 
   if (!isOpen) return null;
 
@@ -46,8 +27,13 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
     }
   };
 
-  const handleApply = () => {
-    onUpdate(localName, { width: localWidth, height: localHeight, roomType: localRoomType }, localCeiling);
+  const handleAdd = () => {
+    onAddCustomFurniture(label, width, height, color);
+    // Reset form
+    setLabel('Custom Item');
+    setWidth(100);
+    setHeight(80);
+    setColor('#3b82f6');
     onClose();
   };
 
@@ -102,7 +88,7 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
               margin: 0,
             }}
           >
-            Room Settings
+            Add Custom Furniture
           </h2>
           <button
             onClick={onClose}
@@ -137,79 +123,36 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
         {/* Content */}
         <div style={{ padding: '24px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            {/* Room Type Dropdown */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <label
-                style={{
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  color: '#666666',
-                  letterSpacing: '-0.01em',
-                }}
-              >
-                Room Type
-              </label>
-              <select
-                value={localRoomType || ''}
-                onChange={(e) => setLocalRoomType(e.target.value as RoomType)}
-                style={{
-                  padding: '12px 14px',
-                  fontSize: '14px',
-                  fontWeight: 400,
-                  color: '#0A0A0A',
-                  backgroundColor: '#FAFAFA',
-                  border: '1px solid #E5E5E5',
-                  borderRadius: '10px',
-                  outline: 'none',
-                  transition: 'all 150ms',
-                  cursor: 'pointer',
-                }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = '#0A0A0A';
-                  e.currentTarget.style.backgroundColor = '#FFFFFF';
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = '#E5E5E5';
-                  e.currentTarget.style.backgroundColor = '#FAFAFA';
-                }}
-              >
-                <option value="">Select a room type...</option>
-                {Object.entries(ROOM_TYPE_LABELS).map(([key, label]) => (
-                  <option key={key} value={key}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
             <Input
-              label="Room Name"
+              label="Label"
               type="text"
-              value={localName}
-              onChange={(e) => setLocalName(e.target.value)}
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="e.g., Storage Unit"
             />
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <Input
                 label="Width (cm)"
                 type="number"
-                value={localWidth}
-                onChange={(e) => setLocalWidth(Number(e.target.value))}
+                value={width}
+                onChange={(e) => setWidth(Number(e.target.value))}
+                min={10}
               />
 
               <Input
                 label="Height (cm)"
                 type="number"
-                value={localHeight}
-                onChange={(e) => setLocalHeight(Number(e.target.value))}
+                value={height}
+                onChange={(e) => setHeight(Number(e.target.value))}
+                min={10}
               />
             </div>
 
-            <Input
-              label="Ceiling Height (cm)"
-              type="number"
-              value={localCeiling}
-              onChange={(e) => setLocalCeiling(Number(e.target.value))}
+            <ColorPicker
+              label="Color"
+              color={color}
+              onChange={setColor}
             />
           </div>
         </div>
@@ -247,7 +190,7 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
             Cancel
           </button>
           <button
-            onClick={handleApply}
+            onClick={handleAdd}
             style={{
               flex: 1,
               padding: '12px 20px',
@@ -271,7 +214,7 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
               e.currentTarget.style.boxShadow = 'none';
             }}
           >
-            Save Changes
+            Add Furniture
           </button>
         </div>
       </div>
@@ -292,4 +235,4 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
   );
 };
 
-export default RoomSettingsModal;
+export default CustomFurnitureModal;

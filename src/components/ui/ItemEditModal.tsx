@@ -1,44 +1,42 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import type { RoomConfig } from '@/types';
+import type { FurnitureItem } from '@/types';
 import Input from '@/components/ui/Input';
-import { ROOM_TYPE_LABELS, type RoomType } from '@/lib/furnitureLibrary';
+import ColorPicker from '@/components/ui/ColorPicker';
 
-interface RoomSettingsModalProps {
+interface ItemEditModalProps {
   isOpen: boolean;
-  roomName: string;
-  roomConfig: RoomConfig;
-  ceilingHeight: number;
+  item: FurnitureItem | null;
   onClose: () => void;
-  onUpdate: (name: string, config: RoomConfig, ceiling: number) => void;
+  onUpdate: (id: string, updates: Partial<FurnitureItem>) => void;
+  onDelete: (id: string) => void;
 }
 
-const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
+const ItemEditModal: React.FC<ItemEditModalProps> = ({
   isOpen,
-  roomName,
-  roomConfig,
-  ceilingHeight,
+  item,
   onClose,
   onUpdate,
+  onDelete,
 }) => {
-  const [localName, setLocalName] = useState(roomName);
-  const [localWidth, setLocalWidth] = useState(roomConfig.width);
-  const [localHeight, setLocalHeight] = useState(roomConfig.height);
-  const [localCeiling, setLocalCeiling] = useState(ceilingHeight);
-  const [localRoomType, setLocalRoomType] = useState<RoomType | undefined>(roomConfig.roomType);
+  const [localType, setLocalType] = useState('');
+  const [localWidth, setLocalWidth] = useState(0);
+  const [localHeight, setLocalHeight] = useState(0);
+  const [localRotation, setLocalRotation] = useState(0);
+  const [localColor, setLocalColor] = useState('#e0e0e0');
 
-  // Sync local state when props change
+  // Sync local state when item changes
   useEffect(() => {
-    if (isOpen) {
-      setLocalName(roomName);
-      setLocalWidth(roomConfig.width);
-      setLocalHeight(roomConfig.height);
-      setLocalCeiling(ceilingHeight);
-      setLocalRoomType(roomConfig.roomType);
+    if (item) {
+      setLocalType(item.type);
+      setLocalWidth(item.width);
+      setLocalHeight(item.height);
+      setLocalRotation(item.rotation || 0);
+      setLocalColor(item.color || '#e0e0e0');
     }
-  }, [isOpen, roomName, roomConfig, ceilingHeight]);
+  }, [item]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !item) return null;
 
   const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
@@ -47,7 +45,18 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
   };
 
   const handleApply = () => {
-    onUpdate(localName, { width: localWidth, height: localHeight, roomType: localRoomType }, localCeiling);
+    onUpdate(item.id, {
+      type: localType,
+      width: localWidth,
+      height: localHeight,
+      rotation: localRotation,
+      color: localColor,
+    });
+    onClose();
+  };
+
+  const handleDelete = () => {
+    onDelete(item.id);
     onClose();
   };
 
@@ -102,7 +111,7 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
               margin: 0,
             }}
           >
-            Room Settings
+            Edit Item
           </h2>
           <button
             onClick={onClose}
@@ -137,56 +146,11 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
         {/* Content */}
         <div style={{ padding: '24px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            {/* Room Type Dropdown */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <label
-                style={{
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  color: '#666666',
-                  letterSpacing: '-0.01em',
-                }}
-              >
-                Room Type
-              </label>
-              <select
-                value={localRoomType || ''}
-                onChange={(e) => setLocalRoomType(e.target.value as RoomType)}
-                style={{
-                  padding: '12px 14px',
-                  fontSize: '14px',
-                  fontWeight: 400,
-                  color: '#0A0A0A',
-                  backgroundColor: '#FAFAFA',
-                  border: '1px solid #E5E5E5',
-                  borderRadius: '10px',
-                  outline: 'none',
-                  transition: 'all 150ms',
-                  cursor: 'pointer',
-                }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = '#0A0A0A';
-                  e.currentTarget.style.backgroundColor = '#FFFFFF';
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = '#E5E5E5';
-                  e.currentTarget.style.backgroundColor = '#FAFAFA';
-                }}
-              >
-                <option value="">Select a room type...</option>
-                {Object.entries(ROOM_TYPE_LABELS).map(([key, label]) => (
-                  <option key={key} value={key}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
             <Input
-              label="Room Name"
+              label="Label"
               type="text"
-              value={localName}
-              onChange={(e) => setLocalName(e.target.value)}
+              value={localType}
+              onChange={(e) => setLocalType(e.target.value)}
             />
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -205,11 +169,40 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
               />
             </div>
 
-            <Input
-              label="Ceiling Height (cm)"
-              type="number"
-              value={localCeiling}
-              onChange={(e) => setLocalCeiling(Number(e.target.value))}
+            <div>
+              <label
+                style={{ 
+                  display: 'block',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  color: '#666666',
+                  marginBottom: '8px',
+                }}
+              >
+                Rotation ({localRotation}°)
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="360"
+                value={localRotation}
+                onChange={(e) => setLocalRotation(Number(e.target.value))}
+                style={{
+                  width: '100%',
+                  height: '6px',
+                  borderRadius: '3px',
+                  outline: 'none',
+                  appearance: 'none',
+                  cursor: 'pointer',
+                  background: `linear-gradient(to right, #0A0A0A 0%, #0A0A0A ${(localRotation / 360) * 100}%, #E5E5E5 ${(localRotation / 360) * 100}%, #E5E5E5 100%)`,
+                }}
+              />
+            </div>
+
+            <ColorPicker
+              label="Color"
+              value={localColor}
+              onChange={(color) => setLocalColor(color)}
             />
           </div>
         </div>
@@ -225,12 +218,12 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
           }}
         >
           <button
-            onClick={onClose}
+            onClick={handleDelete}
             style={{
               padding: '12px 20px',
               fontSize: '14px',
               fontWeight: 500,
-              color: '#666666',
+              color: '#DC2626',
               backgroundColor: '#FFFFFF',
               border: '1px solid #E5E5E5',
               borderRadius: '10px',
@@ -238,13 +231,15 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
               transition: 'all 150ms',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#F5F5F5';
+              e.currentTarget.style.backgroundColor = '#FEF2F2';
+              e.currentTarget.style.borderColor = '#FECACA';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.backgroundColor = '#FFFFFF';
+              e.currentTarget.style.borderColor = '#E5E5E5';
             }}
           >
-            Cancel
+            Delete Item
           </button>
           <button
             onClick={handleApply}
@@ -292,4 +287,4 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
   );
 };
 
-export default RoomSettingsModal;
+export default ItemEditModal;

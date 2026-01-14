@@ -1,6 +1,7 @@
 export interface RoomConfig {
   width: number; // in cm
   height: number; // in cm
+  roomType?: 'bedroom' | 'living' | 'kitchen' | 'office' | 'bathroom'; // room type
 }
 
 export interface FurnitureItem {

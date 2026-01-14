@@ -4,16 +4,49 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
 }
 
-const Input: React.FC<InputProps> = ({ label, className, ...props }) => {
+const Input: React.FC<InputProps> = ({ label, className, id, ...props }) => {
+  const inputId = id || `input-${label?.replace(/\s+/g, '-').toLowerCase()}`;
+  
   return (
-    <div className="mb-6">
+    <div style={{ marginBottom: 0 }}>
       {label && (
-        <label className="block text-xs font-medium text-text-secondary mb-2">
+        <label 
+          htmlFor={inputId}
+          style={{ 
+            display: 'block',
+            fontSize: '12px',
+            fontWeight: 500,
+            color: '#666666',
+            marginBottom: '8px',
+          }}
+        >
           {label}
         </label>
       )}
       <input
-        className={`block w-full px-3 py-2 text-sm rounded-lg border border-border bg-bg-secondary text-text-primary box-border focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent ${className || ''}`}
+        id={inputId}
+        className={className || ''}
+        style={{ 
+          display: 'block',
+          width: '100%',
+          padding: '10px 12px',
+          fontSize: '14px',
+          color: '#0A0A0A',
+          backgroundColor: '#FFFFFF',
+          border: '1px solid #E5E5E5',
+          borderRadius: '8px',
+          outline: 'none',
+          transition: 'all 150ms',
+          boxSizing: 'border-box',
+        }}
+        onFocus={(e) => {
+          e.currentTarget.style.borderColor = '#0A0A0A';
+          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0, 0, 0, 0.05)';
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.borderColor = '#E5E5E5';
+          e.currentTarget.style.boxShadow = 'none';
+        }}
         {...props}
       />
     </div>

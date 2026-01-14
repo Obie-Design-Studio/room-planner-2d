@@ -5,7 +5,13 @@ import dynamic from "next/dynamic";
 import type { RoomConfig, FurnitureItem } from "@/types";
 import ColorPicker from "@/components/ui/ColorPicker";
 import Input from '@/components/ui/Input';
-import { Armchair, Table, Bed, ChevronDown, ChevronUp, RectangleHorizontal, DoorOpen, Trash2 } from "lucide-react";
+import ItemEditModal from "@/components/ui/ItemEditModal";
+import RoomSettingsModal from "@/components/ui/RoomSettingsModal";
+import FurnitureLibraryModal from "@/components/ui/FurnitureLibraryModal";
+import CustomFurnitureModal from "@/components/ui/CustomFurnitureModal";
+import { Armchair, Table, Bed, RectangleHorizontal, DoorOpen, Trash2, Settings, ChevronDown, ChevronUp, Plus, Grid3x3 } from "lucide-react";
+import { PIXELS_PER_CM, WALL_THICKNESS_PX } from "@/lib/constants";
+import { getDefaultFurnitureForRoom, FURNITURE_LIBRARY, getFurnitureByType, type RoomType } from "@/lib/furnitureLibrary";
 
 const RoomCanvas = dynamic(
   () => import("@/components/canvas/RoomCanvas"),
@@ -24,7 +30,12 @@ export default function Home() {
   const [viewport, setViewport] = useState({ width: 800, height: 600 });
   const [ceilingHeight, setCeilingHeight] = useState(250);
   const [roomName, setRoomName] = useState('Untitled Room');
-  const [isRoomSettingsOpen, setIsRoomSettingsOpen] = useState(false);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [isRoomSettingsModalOpen, setIsRoomSettingsModalOpen] = useState(false);
+  const [isWindowsDoorsOpen, setIsWindowsDoorsOpen] = useState(true);
+  const [isFurnitureOpen, setIsFurnitureOpen] = useState(true);
+  const [isFurnitureLibraryOpen, setIsFurnitureLibraryOpen] = useState(false);
+  const [isCustomFurnitureOpen, setIsCustomFurnitureOpen] = useState(false);
 
   useEffect(() => {
     const handleResize = () => {
@@ -39,16 +50,48 @@ export default function Home() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  const handleUpdateRoomSettings = (name: string, config: RoomConfig, ceiling: number) => {
+    setRoomName(name);
+    setRoomConfig(config);
+    setCeilingHeight(ceiling);
+  };
+
+  const handleAddFurnitureFromLibrary = (furniture: any) => {
+    handleAddItem(furniture.type, furniture.width, furniture.height, furniture.color);
+  };
+
+  const handleAddCustomFurniture = (label: string, width: number, height: number, color: string) => {
+    handleAddItem(label, width, height, color);
+  };
+
   const handleAddItem = (type: string = 'Chair', w: number = 50, h: number = 50, c: string = '#3b82f6', wall?: 'top' | 'left') => {
-    let x = 10; // Default start position
-    let y = 10;
+    // Default start position (give walls breathing room)
+    let x = 20;
+    let y = 20;
     
+    const typeLower = type.toLowerCase();
+    const isWallObject = typeLower === 'window' || typeLower === 'door';
+
     if (wall === 'top') {
       x = 50; // 50cm from left
       y = -5; // Center in wall (10px wall = 5cm, so -5cm centers 10cm object)
     } else if (wall === 'left') {
       x = -5; // Center in wall (10px wall = 5cm, so -5cm centers 10cm object)
       y = 50; // 50cm from top
+    }
+
+    // Furniture must start inside the room bounds
+    if (!isWallObject) {
+      const clampedWidth = Math.min(w, roomConfig.width);
+      const clampedHeight = Math.min(h, roomConfig.height);
+      const maxX = roomConfig.width - clampedWidth;
+      const maxY = roomConfig.height - clampedHeight;
+
+      // IMPORTANT: calculations are based on the inner edge of the walls (0..room width/height).
+      x = Math.max(0, Math.min(x, maxX));
+      y = Math.max(0, Math.min(y, maxY));
+      w = clampedWidth;
+      h = clampedHeight;
     }
 
     const newItem: FurnitureItem = {
@@ -75,6 +118,15 @@ export default function Home() {
 
   const handleSelect = (id: string) => {
     setSelectedId(id);
+  };
+
+  const handleOpenEditor = (id: string) => {
+    setSelectedId(id);
+    setEditingItemId(id);
+  };
+
+  const handleCloseEditor = () => {
+    setEditingItemId(null);
   };
 
   const handleUpdateItem = (
@@ -122,221 +174,620 @@ export default function Home() {
   }, [selectedId]);
 
   const selectedItem = items.find((item) => item.id === selectedId);
+  const editingItem = items.find((item) => item.id === editingItemId) || null;
+  const furnitureItems = items.filter((item) => {
+    const type = item.type.toLowerCase();
+    return type !== "window" && type !== "door";
+  });
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-bg-primary">
+    <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
       {/* Header */}
-      <header className="h-16 border-b border-border flex items-center justify-between px-8 bg-bg-elevated">
+      <header style={{ 
+        height: '64px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0 32px',
+        backgroundColor: '#FFFFFF',
+        borderBottom: '1px solid #EFEFEF'
+      }}>
         {/* Left: Title */}
-        <h1 className="text-xl font-semibold text-text-primary font-display">Room Planner</h1>
+        <h1 style={{ 
+          fontSize: '20px',
+          fontWeight: 600,
+          color: '#0A0A0A',
+          letterSpacing: '-0.02em',
+          margin: 0
+        }}>
+          Room Planner
+        </h1>
         
-        {/* Center: Room name (read-only) */}
-        <div className="flex-1 flex justify-center px-8">
-          <span className="text-sm text-text-secondary">
+        {/* Center: Room name + dimensions */}
+        <div style={{ 
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '2px'
+        }}>
+          <span style={{ 
+            fontSize: '15px',
+            fontWeight: 500,
+            color: '#0A0A0A'
+          }}>
             {roomName}
+          </span>
+          <span style={{ 
+            fontSize: '13px',
+            color: '#999999'
+          }}>
+            {roomConfig.width} × {roomConfig.height} cm
           </span>
         </div>
         
-        {/* Right: Dimensions */}
-        <span className="text-xs text-text-muted">
-          {roomConfig.width} × {roomConfig.height} cm
-        </span>
+        {/* Right: Empty spacer for balance */}
+        <div style={{ width: '140px' }}></div>
       </header>
 
       {/* Main Body */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden min-h-0">
         {/* Sidebar */}
-        <aside className="w-80 flex flex-col p-6 space-y-6 border-r border-border bg-bg-elevated">
-          {/* Room Settings Section */}
-          <div>
+        <aside style={{ 
+          width: '320px', 
+          display: 'flex', 
+          flexDirection: 'column', 
+          borderRight: '1px solid #EFEFEF',
+          backgroundColor: '#FAFAFA'
+        }}>
+          <div style={{ 
+            flex: 1, 
+            minHeight: 0, 
+            overflowY: 'auto', 
+            padding: '20px'
+          }}>
+            {/* Room Settings Section */}
+            <div style={{ marginBottom: '24px' }}>
+              <h3 style={{ 
+                fontSize: '13px', 
+                fontWeight: 600,
+                color: '#666666',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                margin: '0 0 12px 0'
+              }}>
+                Room
+              </h3>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '16px',
+                backgroundColor: '#FFFFFF',
+                borderRadius: '12px',
+                border: '1px solid #EFEFEF',
+              }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+                  <div style={{ 
+                    fontSize: '14px', 
+                    fontWeight: 600, 
+                    color: '#0A0A0A'
+                  }}>
+                    {roomName}
+                  </div>
+                  <div style={{ 
+                    fontSize: '13px', 
+                    color: '#999999'
+                  }}>
+                    {roomConfig.width} × {roomConfig.height} cm • {ceilingHeight}cm ceiling
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsRoomSettingsModalOpen(true)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '32px',
+                    height: '32px',
+                    padding: 0,
+                    color: '#666666',
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    transition: 'all 150ms',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#F5F5F5';
+                    e.currentTarget.style.color = '#0A0A0A';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.color = '#666666';
+                  }}
+                  aria-label="Edit room settings"
+                >
+                  <Settings className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+          {/* Windows & Doors Section */}
+          <div style={{ marginBottom: '24px' }}>
             <button
-              onClick={() => setIsRoomSettingsOpen(!isRoomSettingsOpen)}
-              className="w-full flex items-center justify-between py-2 px-3 rounded-lg transition-colors border-none text-text-secondary hover:bg-bg-secondary"
+              onClick={() => setIsWindowsDoorsOpen(!isWindowsDoorsOpen)}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '8px 0',
+                backgroundColor: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                marginBottom: '12px',
+              }}
             >
-              <p className="text-sm font-medium">Room settings</p>
-              {isRoomSettingsOpen ? (
-                <ChevronUp className="w-4 h-4" />
+              <h3 style={{ 
+                fontSize: '13px', 
+                fontWeight: 600,
+                color: '#666666',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                margin: 0
+              }}>
+                Windows & Doors
+              </h3>
+              {isWindowsDoorsOpen ? (
+                <ChevronUp className="w-4 h-4" style={{ color: '#999999' }} />
               ) : (
-                <ChevronDown className="w-4 h-4" />
+                <ChevronDown className="w-4 h-4" style={{ color: '#999999' }} />
               )}
             </button>
-            {isRoomSettingsOpen && (
-              <div className="space-y-0 mt-3">
-                <Input
-                  label="Room name"
-                  type="text"
-                  value={roomName}
-                  onChange={(e) => setRoomName(e.target.value)}
-                />
-                <Input
-                  label="Room Width (cm)"
-                  type="number"
-                  value={roomConfig.width}
-                  onChange={(e) => setRoomConfig({ ...roomConfig, width: Number(e.target.value) })}
-                />
-                <Input
-                  label="Room Height (cm)"
-                  type="number"
-                  value={roomConfig.height}
-                  onChange={(e) => setRoomConfig({ ...roomConfig, height: Number(e.target.value) })}
-                />
-                <Input
-                  label="Ceiling Height (cm)"
-                  type="number"
-                  value={ceilingHeight}
-                  onChange={(e) => setCeilingHeight(Number(e.target.value))}
-                />
-
-                {/* Windows & Doors Subsection */}
-                <div className="mt-6">
-                  <p className="text-sm font-medium mb-3 text-text-secondary">Windows & doors</p>
-                  <div className="flex flex-col space-y-3 mb-4">
-                    <button
-                      onClick={() => handleAddWindowOrDoor('Window', 'top')}
-                      className="flex items-center justify-start gap-2 py-2.5 px-3 w-full bg-transparent rounded-lg text-sm font-normal transition-colors border-none text-text-primary hover:bg-bg-secondary"
-                    >
-                      <RectangleHorizontal className="w-4 h-4" />
-                      + Add Window
-                    </button>
-                    <button
-                      onClick={() => handleAddWindowOrDoor('Door', 'top')}
-                      className="flex items-center justify-start gap-2 py-2.5 px-3 w-full bg-transparent rounded-lg text-sm font-normal transition-colors border-none text-text-primary hover:bg-bg-secondary"
-                    >
-                      <DoorOpen className="w-4 h-4" />
-                      + Add Door
-                    </button>
-                  </div>
-                  {items.filter(item => item.type.toLowerCase() === 'window' || item.type.toLowerCase() === 'door').length > 0 && (
-                    <div className="space-y-2">
-                      {items
-                        .filter(item => item.type.toLowerCase() === 'window' || item.type.toLowerCase() === 'door')
-                        .map((item) => (
-                          <div
-                            key={item.id}
-                            className="flex items-center justify-between px-3 py-2 rounded-lg text-sm border border-border bg-bg-secondary text-text-primary"
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium capitalize">{item.type}</span>
-                              <span className="text-text-secondary">
-                                {item.width} × {item.height} cm
-                              </span>
-                            </div>
-                            <button
-                              onClick={() => handleDeleteItemById(item.id)}
-                              className="p-1.5 hover:bg-red-50 text-red-600 rounded transition-colors"
-                              aria-label={`Delete ${item.type}`}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* ADD FURNITURE Section */}
-          <div>
-            <p className="text-sm font-medium mb-3 text-text-secondary">Add furniture</p>
-            <div className="flex flex-col space-y-3">
-              <button 
-                onClick={() => handleAddItem('Chair', 50, 50, '#3b82f6')}
-                className="flex items-center justify-start gap-2 py-2.5 px-3 w-full bg-transparent rounded-lg text-sm font-normal transition-colors border-none text-text-primary hover:bg-bg-secondary"
-              >
-                <Armchair className="w-4 h-4" />
-                Chair
-              </button>
-              <button 
-                onClick={() => handleAddItem('Table', 120, 80, '#d97706')}
-                className="flex items-center justify-start gap-2 py-2.5 px-3 w-full bg-transparent rounded-lg text-sm font-normal transition-colors border-none text-text-primary hover:bg-bg-secondary"
-              >
-                <Table className="w-4 h-4" />
-                Table
-              </button>
-              <button 
-                onClick={() => handleAddItem('Bed', 160, 200, '#10b981')}
-                className="flex items-center justify-start gap-2 py-2.5 px-3 w-full bg-transparent rounded-lg text-sm font-normal transition-colors border-none text-text-primary hover:bg-bg-secondary"
-              >
-                <Bed className="w-4 h-4" />
-                Bed
-              </button>
-            </div>
-          </div>
-
-          <div className="flex-1">
-            {selectedItem ? (
-              <div>
-                <h2 className="text-xl font-semibold mb-8 text-text-primary font-display">Edit Item</h2>
-
-                {/* Label Input */}
-                <Input
-                  label="Label"
-                  type="text"
-                  value={selectedItem.type}
-                  onChange={(e) => handleUpdateItem(selectedItem.id, { type: e.target.value })}
-                />
-
-                {/* Width Input */}
-                <Input
-                  label="Width (cm)"
-                  type="number"
-                  value={selectedItem.width}
-                  onChange={(e) => handleUpdateItem(selectedItem.id, { width: Number(e.target.value) })}
-                />
-
-                {/* Height Input */}
-                <Input
-                  label="Height (cm)"
-                  type="number"
-                  value={selectedItem.height}
-                  onChange={(e) => handleUpdateItem(selectedItem.id, { height: Number(e.target.value) })}
-                />
-
-                {/* Rotation Input */}
-                <div className="mb-6">
-                  <label className="block text-xs font-medium mb-2 text-text-secondary">
-                    Rotation ({selectedItem.rotation || 0}°)
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="360"
-                    value={selectedItem.rotation || 0}
-                    onChange={(e) => handleUpdateItem(selectedItem.id, { rotation: Number(e.target.value) })}
-                    className="w-full"
-                  />
-                </div>
-
-                {/* Color Picker */}
-                <ColorPicker 
-                  label="Color" 
-                  value={selectedItem.color || '#e0e0e0'} 
-                  onChange={(color) => handleUpdateItem(selectedItem.id, { color })} 
-                />
-
-                {/* Delete Button */}
-                <div className="mt-8 pt-8">
+            {isWindowsDoorsOpen && (
+              <>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
                   <button
-                    onClick={handleDeleteItem}
-                    className="w-full px-4 py-2.5 bg-red-50 text-red-600 border border-red-200 rounded-md font-bold cursor-pointer hover:bg-red-100 transition-colors"
+                    onClick={() => handleAddWindowOrDoor('Window', 'top')}
+                    style={{ 
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '12px 14px',
+                      width: '100%',
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      color: '#0A0A0A',
+                      backgroundColor: '#FFFFFF',
+                      border: '1px solid #E5E5E5',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      transition: 'all 150ms',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#F5F5F5';
+                      e.currentTarget.style.borderColor = '#0A0A0A';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#FFFFFF';
+                      e.currentTarget.style.borderColor = '#E5E5E5';
+                    }}
                   >
-                    Delete Item
+                    <RectangleHorizontal className="w-4 h-4" style={{ color: '#666666' }} />
+                    <span>Add Window</span>
+                  </button>
+                  <button
+                    onClick={() => handleAddWindowOrDoor('Door', 'top')}
+                    style={{ 
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '12px 14px',
+                      width: '100%',
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      color: '#0A0A0A',
+                      backgroundColor: '#FFFFFF',
+                      border: '1px solid #E5E5E5',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      transition: 'all 150ms',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#F5F5F5';
+                      e.currentTarget.style.borderColor = '#0A0A0A';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#FFFFFF';
+                      e.currentTarget.style.borderColor = '#E5E5E5';
+                    }}
+                  >
+                    <DoorOpen className="w-4 h-4" style={{ color: '#666666' }} />
+                    <span>Add Door</span>
                   </button>
                 </div>
-              </div>
-            ) : (
-              <div className="h-full flex items-center justify-center text-text-secondary">
-                <p>Select an item to edit</p>
-              </div>
+              {items.filter(item => item.type.toLowerCase() === 'window' || item.type.toLowerCase() === 'door').length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '12px' }}>
+                  {items
+                    .filter(item => item.type.toLowerCase() === 'window' || item.type.toLowerCase() === 'door')
+                    .map((item) => (
+                      <div
+                        key={item.id}
+                        style={{ 
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '10px 12px',
+                          fontSize: '14px',
+                          color: '#0A0A0A',
+                          backgroundColor: '#FFFFFF',
+                          border: '1px solid #EFEFEF',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          transition: 'all 150ms',
+                        }}
+                        onClick={() => handleOpenEditor(item.id)}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#F5F5F5';
+                          e.currentTarget.style.borderColor = '#E5E5E5';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = '#FFFFFF';
+                          e.currentTarget.style.borderColor = '#EFEFEF';
+                        }}
+                      >
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
+                          <span style={{ fontWeight: 500, textTransform: 'capitalize' }}>{item.type}</span>
+                          <span style={{ fontSize: '12px', color: '#999999' }}>
+                            {item.width} × {item.height} cm
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenEditor(item.id);
+                            }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: '32px',
+                              height: '32px',
+                              padding: 0,
+                              color: '#666666',
+                              backgroundColor: 'transparent',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              transition: 'all 150ms',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = '#F5F5F5';
+                              e.currentTarget.style.color = '#0A0A0A';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                              e.currentTarget.style.color = '#666666';
+                            }}
+                            aria-label={`Edit ${item.type}`}
+                          >
+                            <Settings className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteItemById(item.id);
+                            }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: '32px',
+                              height: '32px',
+                              padding: 0,
+                              color: '#DC2626',
+                              backgroundColor: 'transparent',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              transition: 'all 150ms',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = '#FEF2F2';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                            }}
+                            aria-label={`Delete ${item.type}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+              </>
             )}
+          </div>
+
+          {/* Add Furniture Section */}
+          <div style={{ marginBottom: '24px' }}>
+            <button
+              onClick={() => setIsFurnitureOpen(!isFurnitureOpen)}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '8px 0',
+                backgroundColor: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                marginBottom: '12px',
+              }}
+            >
+              <h3 style={{ 
+                fontSize: '13px', 
+                fontWeight: 600,
+                color: '#666666',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                margin: 0
+              }}>
+                Furniture
+              </h3>
+              {isFurnitureOpen ? (
+                <ChevronUp className="w-4 h-4" style={{ color: '#999999' }} />
+              ) : (
+                <ChevronDown className="w-4 h-4" style={{ color: '#999999' }} />
+              )}
+            </button>
+            {isFurnitureOpen && (
+              <>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+                  {/* Show default furniture if room type is selected, otherwise show generic options */}
+                  {roomConfig.roomType ? (
+                    getDefaultFurnitureForRoom(roomConfig.roomType).map((furniture) => (
+                      <button
+                        key={furniture.type}
+                        onClick={() => handleAddItem(furniture.type, furniture.width, furniture.height, furniture.color)}
+                        style={{ 
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '12px 14px',
+                          width: '100%',
+                          fontSize: '14px',
+                          fontWeight: 500,
+                          color: '#0A0A0A',
+                          backgroundColor: '#FFFFFF',
+                          border: '1px solid #E5E5E5',
+                          borderRadius: '10px',
+                          cursor: 'pointer',
+                          transition: 'all 150ms',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#F5F5F5';
+                          e.currentTarget.style.borderColor = '#0A0A0A';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = '#FFFFFF';
+                          e.currentTarget.style.borderColor = '#E5E5E5';
+                        }}
+                      >
+                        <div style={{ 
+                          width: '16px', 
+                          height: '16px', 
+                          borderRadius: '4px', 
+                          backgroundColor: furniture.color 
+                        }} />
+                        <span>Add {furniture.label}</span>
+                      </button>
+                    ))
+                  ) : (
+                    <div style={{
+                      padding: '20px',
+                      textAlign: 'center',
+                      color: '#999999',
+                      fontSize: '13px',
+                      backgroundColor: '#FAFAFA',
+                      borderRadius: '10px',
+                      border: '1px dashed #E5E5E5',
+                    }}>
+                      Select a room type to see suggested furniture
+                    </div>
+                  )}
+
+                  {/* Browse all furniture button */}
+                  <button
+                    onClick={() => setIsFurnitureLibraryOpen(true)}
+                    style={{ 
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '12px 14px',
+                      width: '100%',
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      color: '#666666',
+                      backgroundColor: '#FAFAFA',
+                      border: '1px dashed #E5E5E5',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      transition: 'all 150ms',
+                      marginTop: '8px',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#F5F5F5';
+                      e.currentTarget.style.borderColor = '#0A0A0A';
+                      e.currentTarget.style.color = '#0A0A0A';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#FAFAFA';
+                      e.currentTarget.style.borderColor = '#E5E5E5';
+                      e.currentTarget.style.color = '#666666';
+                    }}
+                  >
+                    <Grid3x3 className="w-4 h-4" />
+                    <span>Browse All Furniture</span>
+                  </button>
+
+                  {/* Add custom furniture button */}
+                  <button
+                    onClick={() => setIsCustomFurnitureOpen(true)}
+                    style={{ 
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '12px 14px',
+                      width: '100%',
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      color: '#666666',
+                      backgroundColor: '#FAFAFA',
+                      border: '1px dashed #E5E5E5',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      transition: 'all 150ms',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#F5F5F5';
+                      e.currentTarget.style.borderColor = '#0A0A0A';
+                      e.currentTarget.style.color = '#0A0A0A';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#FAFAFA';
+                      e.currentTarget.style.borderColor = '#E5E5E5';
+                      e.currentTarget.style.color = '#666666';
+                    }}
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add Custom Furniture</span>
+                  </button>
+            </div>
+
+              {/* Furniture List */}
+              {furnitureItems.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '12px' }}>
+                  {furnitureItems.map((item) => {
+                    const isSelected = item.id === selectedId;
+
+                    return (
+                      <div
+                        key={item.id}
+                        style={{ 
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '10px 12px',
+                          fontSize: '14px',
+                          color: '#0A0A0A',
+                          backgroundColor: isSelected ? '#F5F5F5' : '#FFFFFF',
+                          border: isSelected ? '1px solid #0A0A0A' : '1px solid #EFEFEF',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          transition: 'all 150ms',
+                        }}
+                        onClick={() => handleOpenEditor(item.id)}
+                        onMouseEnter={(e) => {
+                          if (!isSelected) {
+                            e.currentTarget.style.backgroundColor = '#F5F5F5';
+                            e.currentTarget.style.borderColor = '#E5E5E5';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isSelected) {
+                            e.currentTarget.style.backgroundColor = '#FFFFFF';
+                            e.currentTarget.style.borderColor = '#EFEFEF';
+                          }
+                        }}
+                      >
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
+                          <span style={{ fontWeight: 500 }}>{item.type}</span>
+                          <span style={{ fontSize: '12px', color: '#999999' }}>
+                            {item.width} × {item.height} cm
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenEditor(item.id);
+                            }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: '32px',
+                              height: '32px',
+                              padding: 0,
+                              color: '#666666',
+                              backgroundColor: 'transparent',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              transition: 'all 150ms',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = '#F5F5F5';
+                              e.currentTarget.style.color = '#0A0A0A';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                              e.currentTarget.style.color = '#666666';
+                            }}
+                            aria-label={`Edit ${item.type}`}
+                          >
+                            <Settings className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteItemById(item.id);
+                            }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: '32px',
+                              height: '32px',
+                              padding: 0,
+                              color: '#DC2626',
+                              backgroundColor: 'transparent',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              transition: 'all 150ms',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = '#FEF2F2';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                            }}
+                            aria-label={`Delete ${item.type}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              </>
+            )}
+          </div>
           </div>
         </aside>
 
         {/* Canvas Area */}
         <div
-          className="flex-1 relative bg-bg-primary"
+          className="flex-1 relative min-h-0"
+          style={{ backgroundColor: '#FAFAF8' }}
           onClick={(e) => {
             if (e.target === e.currentTarget) setSelectedId(null);
           }}
@@ -345,14 +796,46 @@ export default function Home() {
             roomConfig={roomConfig}
             items={items}
             onItemChange={handleItemChange}
+            onItemDelete={handleDeleteItemById}
             selectedId={selectedId}
             onSelect={setSelectedId}
+            onEdit={handleOpenEditor}
             showAllMeasurements={showAllMeasurements}
             viewportWidth={viewport.width}
             viewportHeight={viewport.height}
           />
         </div>
       </div>
+
+      {/* Modals at root level so fixed positioning works */}
+      <ItemEditModal
+        isOpen={editingItemId !== null}
+        item={editingItem}
+        onClose={handleCloseEditor}
+        onUpdate={handleUpdateItem}
+        onDelete={handleDeleteItemById}
+      />
+
+      <RoomSettingsModal
+        isOpen={isRoomSettingsModalOpen}
+        roomName={roomName}
+        roomConfig={roomConfig}
+        ceilingHeight={ceilingHeight}
+        onClose={() => setIsRoomSettingsModalOpen(false)}
+        onUpdate={handleUpdateRoomSettings}
+      />
+
+      <FurnitureLibraryModal
+        isOpen={isFurnitureLibraryOpen}
+        onClose={() => setIsFurnitureLibraryOpen(false)}
+        onAddFurniture={handleAddFurnitureFromLibrary}
+      />
+
+      <CustomFurnitureModal
+        isOpen={isCustomFurnitureOpen}
+        onClose={() => setIsCustomFurnitureOpen(false)}
+        onAddCustomFurniture={handleAddCustomFurniture}
+      />
     </div>
   );
 }
