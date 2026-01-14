@@ -199,7 +199,7 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <Input
-                label={isWallObject ? "Length (cm)" : "Width (cm)"}
+                label="Width (cm)"
                 type="number"
                 value={localWidth}
                 onChange={(e) => setLocalWidth(Number(e.target.value))}

@@ -324,9 +324,9 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
       // HORIZONTAL DOOR ON TOP WALL
       // Group: doorLengthPx wide, wallThickPx tall
       frameX = 0;
-      frameY = wallThickPx - frameHeight;  // Frame at inner edge of wall
       frameWidth = doorLengthPx;
       frameHeight = 5;
+      frameY = wallThickPx - frameHeight;  // Frame at inner edge of wall
       
       // For top wall: "In" = swings down into room, "Out" = swings up outside room
       // Hinge position: "Left" = left side (x=0), "Right" = right side (x=doorLengthPx)
@@ -420,10 +420,10 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
     } else if (isOnBottomWall) {
       // HORIZONTAL DOOR ON BOTTOM WALL
       // Group: doorLengthPx wide, wallThickPx tall
-      frameX = 0;
-      frameY = 0;  // Frame at inner edge (top of wall, room side)
       frameWidth = doorLengthPx;
       frameHeight = 5;
+      frameX = 0;
+      frameY = 0;  // Frame at inner edge (top of wall, room side)
       
       // For bottom wall: "In" = swings up into room, "Out" = swings down outside room
       // Hinge position: "Left" = left side (x=0), "Right" = right side (x=doorLengthPx)
@@ -469,10 +469,10 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
       // VERTICAL DOOR ON RIGHT WALL
       // Group: wallThickPx wide, doorLengthPx tall
       // Frame at inner edge (left edge, room side)
-      frameX = 0;
-      frameY = 0;
       frameWidth = 5;
       frameHeight = doorLengthPx;
+      frameX = 0;
+      frameY = 0;
       
       // For right wall: "In" = swings left into room, "Out" = swings right outside room
       // Hinge position: "Left" = top (y=0), "Right" = bottom (y=doorLengthPx)
@@ -516,10 +516,10 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
       }
     } else {
       // Default to top wall rendering if position is ambiguous
-      frameX = 0;
-      frameY = wallThickPx - 2.5;
       frameWidth = doorLengthPx;
       frameHeight = 5;
+      frameX = 0;
+      frameY = wallThickPx - 2.5;
       panelX = isLeftHinge ? 0 : doorLengthPx - 5;
       panelY = isInward ? wallThickPx : -doorLengthPx;
       panelWidth = 5;

@@ -12,6 +12,7 @@ import CustomFurnitureModal from "@/components/ui/CustomFurnitureModal";
 import { Armchair, Table, Bed, RectangleHorizontal, DoorOpen, Trash2, Settings, ChevronDown, ChevronUp, Plus, Grid3x3, Sofa, Lamp, Box, Circle, Square, Bath, UtensilsCrossed, BookOpen, Monitor, CookingPot, Refrigerator } from "lucide-react";
 import { PIXELS_PER_CM, WALL_THICKNESS_PX } from "@/lib/constants";
 import { getDefaultFurnitureForRoom, FURNITURE_LIBRARY, getFurnitureByType, type RoomType, type FurnitureDefinition } from "@/lib/furnitureLibrary";
+import { type Unit, UNIT_LABELS } from "@/lib/unitConversion";
 
 // Calculate wall thickness in cm
 const WALL_THICKNESS_CM = WALL_THICKNESS_PX / PIXELS_PER_CM; // 5cm
@@ -69,11 +70,14 @@ export default function Home() {
   const [items, setItems] = useState<FurnitureItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showAllMeasurements, setShowAllMeasurements] = useState(false);
+  const [measurementUnit, setMeasurementUnit] = useState<Unit>('cm');
   const [viewport, setViewport] = useState({ width: 800, height: 600 });
   const [ceilingHeight, setCeilingHeight] = useState(250);
   const [roomName, setRoomName] = useState('Untitled Room');
   const [defaultWindowLength, setDefaultWindowLength] = useState(100);
+  const [defaultWindowHeight, setDefaultWindowHeight] = useState(140);
   const [defaultDoorLength, setDefaultDoorLength] = useState(90);
+  const [defaultDoorHeight, setDefaultDoorHeight] = useState(210);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [isRoomSettingsModalOpen, setIsRoomSettingsModalOpen] = useState(false);
   const [isWindowsDoorsOpen, setIsWindowsDoorsOpen] = useState(true);
@@ -179,12 +183,14 @@ export default function Home() {
     }
   };
 
-  const handleUpdateRoomSettings = (name: string, config: RoomConfig, ceiling: number, windowLength: number, doorLength: number) => {
+  const handleUpdateRoomSettings = (name: string, config: RoomConfig, ceiling: number, windowLength: number, windowHeight: number, doorLength: number, doorHeight: number) => {
     setRoomName(name);
     setRoomConfig(config);
     setCeilingHeight(ceiling);
     setDefaultWindowLength(windowLength);
+    setDefaultWindowHeight(windowHeight);
     setDefaultDoorLength(doorLength);
+    setDefaultDoorHeight(doorHeight);
   };
 
   const handleAddFurnitureFromLibrary = (furniture: any) => {
@@ -293,10 +299,12 @@ export default function Home() {
   };
 
   const handleAddWindowOrDoor = (type: 'Window' | 'Door', wall: 'top' | 'left') => {
+    // For doors and windows, height must ALWAYS be wall thickness for proper visual rendering
+    // The actual physical height is not used for rendering wall-integrated objects
     if (type === 'Window') {
-      handleAddItem('Window', 100, WALL_THICKNESS_CM, '#e0f7fa', wall);
+      handleAddItem('Window', defaultWindowLength, WALL_THICKNESS_CM, '#e0f7fa', wall);
     } else if (type === 'Door') {
-      handleAddItem('Door', 90, WALL_THICKNESS_CM, '#8d6e63', wall);
+      handleAddItem('Door', defaultDoorLength, WALL_THICKNESS_CM, '#8d6e63', wall);
     }
   };
 
@@ -429,8 +437,34 @@ export default function Home() {
           </span>
         </div>
         
-        {/* Right: Empty spacer for balance */}
-        <div style={{ width: '140px' }}></div>
+        {/* Right: Unit selector */}
+        <div style={{ 
+          display: 'flex', 
+          gap: '4px',
+          padding: '4px',
+          backgroundColor: '#F5F5F5',
+          borderRadius: '8px'
+        }}>
+          {(['cm', 'm', 'in', 'ft'] as Unit[]).map((unit) => (
+            <button
+              key={unit}
+              onClick={() => setMeasurementUnit(unit)}
+              style={{
+                padding: '6px 12px',
+                fontSize: '13px',
+                fontWeight: 500,
+                color: measurementUnit === unit ? '#FFFFFF' : '#666666',
+                backgroundColor: measurementUnit === unit ? '#0A0A0A' : 'transparent',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                transition: 'all 150ms',
+              }}
+            >
+              {UNIT_LABELS[unit]}
+            </button>
+          ))}
+        </div>
       </header>
 
       {/* Main Body */}
@@ -1015,6 +1049,7 @@ export default function Home() {
             onSelect={setSelectedId}
             onEdit={handleOpenEditor}
             showAllMeasurements={showAllMeasurements}
+            measurementUnit={measurementUnit}
             viewportWidth={viewport.width}
             viewportHeight={viewport.height}
           />
@@ -1036,7 +1071,9 @@ export default function Home() {
         roomConfig={roomConfig}
         ceilingHeight={ceilingHeight}
         defaultWindowLength={defaultWindowLength}
+        defaultWindowHeight={defaultWindowHeight}
         defaultDoorLength={defaultDoorLength}
+        defaultDoorHeight={defaultDoorHeight}
         onClose={() => setIsRoomSettingsModalOpen(false)}
         onUpdate={handleUpdateRoomSettings}
       />

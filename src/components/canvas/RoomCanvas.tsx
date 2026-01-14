@@ -1,7 +1,8 @@
 import React, { useRef, useEffect, useState } from "react";
-import { Stage, Layer, Rect, Group } from "react-konva";
+import { Stage, Layer, Rect, Group, Line, Text } from "react-konva";
 import { PIXELS_PER_CM, WALL_THICKNESS_PX } from "@/lib/constants";
 import { RoomConfig, FurnitureItem } from "@/types";
+import { type Unit, formatMeasurement } from "@/lib/unitConversion";
 import FurnitureShape from "./FurnitureShape";
 import MeasurementOverlay from "./MeasurementOverlay";
 import GridBackground from "./GridBackground";
@@ -17,6 +18,7 @@ interface RoomCanvasProps {
   onSelect: (id: string) => void;
   onEdit: (id: string) => void;
   showAllMeasurements: boolean;
+  measurementUnit?: Unit;
   viewportWidth: number;
   viewportHeight: number;
 }
@@ -31,12 +33,13 @@ export default function RoomCanvas({
   onSelect,
   onEdit,
   showAllMeasurements,
+  measurementUnit = 'cm',
   viewportWidth,
   viewportHeight,
 }: RoomCanvasProps) {
   const stageRef = useRef<any>(null);
   
-  // Zoom state: 1.0 = 100%, range 0.1 to 5.0
+  // Zoom state: 1.0 = 100%, range 0.1 to 3.0
   const [userZoom, setUserZoom] = useState(1.0);
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
   
@@ -44,6 +47,11 @@ export default function RoomCanvas({
   const [isPanning, setIsPanning] = useState(false);
   const [isSpacePressed, setIsSpacePressed] = useState(false);
   const lastPointerPos = useRef({ x: 0, y: 0 });
+  
+  // Zoom tooltip state (shows during Ctrl+Scroll zoom)
+  const [showZoomTooltip, setShowZoomTooltip] = useState(false);
+  const [zoomTooltipPos, setZoomTooltipPos] = useState({ x: 0, y: 0 });
+  const zoomTooltipTimeout = useRef<NodeJS.Timeout | null>(null);
 
   // Calculate optimal scale and position
   const roomPxWidth = roomConfig.width * PIXELS_PER_CM;
@@ -68,7 +76,13 @@ export default function RoomCanvas({
   
   const contentWidth = maxX - minX;
   const contentHeight = maxY - minY;
-  const padding = 200;
+  
+  // Dynamic padding that scales with zoom level
+  // At 100% zoom (userZoom=1.0): 100px padding - room uses maximum space
+  // At 300% zoom (userZoom=3.0): 300px padding - ensures edge visibility
+  // This keeps content away from edges at all zoom levels while maximizing space
+  const basePadding = 100;
+  const padding = basePadding * userZoom;
   
   // Base scale to fit content
   const baseScale = Math.min(
@@ -84,6 +98,29 @@ export default function RoomCanvas({
   const baseCenterOffsetX = viewportWidth / 2 - (contentWidth / 2 + minX) * scale;
   const baseCenterOffsetY = viewportHeight / 2 - (contentHeight / 2 + minY) * scale;
 
+  // Elastic boundary helper - allows ±100px over-pan with resistance
+  const ELASTIC_MARGIN = 100;
+  const applyElasticBoundary = (value: number, min: number, max: number): number => {
+    if (min > max) return value; // Invalid range, no clamping
+    
+    if (value < min) {
+      // Over-panned to the left/top - apply elastic resistance
+      const overpan = min - value;
+      if (overpan > ELASTIC_MARGIN) {
+        return min - ELASTIC_MARGIN; // Hard limit at margin
+      }
+      return value; // Allow within elastic margin
+    } else if (value > max) {
+      // Over-panned to the right/bottom - apply elastic resistance
+      const overpan = value - max;
+      if (overpan > ELASTIC_MARGIN) {
+        return max + ELASTIC_MARGIN; // Hard limit at margin
+      }
+      return value; // Allow within elastic margin
+    }
+    return value; // Within normal bounds
+  };
+
   // Mouse wheel handler - zoom with Ctrl/Cmd, pan otherwise
   const handleWheel = (e: any) => {
     e.evt.preventDefault();
@@ -94,18 +131,23 @@ export default function RoomCanvas({
     const ctrlPressed = e.evt.ctrlKey || e.evt.metaKey;
 
     if (ctrlPressed) {
-      // Zoom with Ctrl/Cmd + scroll - keep content center fixed
+      // Zoom with Ctrl/Cmd + scroll - cursor-anchored (Figma/Miro style)
+      // The point under the cursor stays under the cursor
       const scaleBy = 1.1;
       const direction = e.evt.deltaY > 0 ? -1 : 1;
       
       const oldZoom = userZoom;
       const newZoom = direction > 0 ? userZoom * scaleBy : userZoom / scaleBy;
-      const clampedZoom = Math.max(0.25, Math.min(3.0, newZoom));
+      const clampedZoom = Math.max(0.1, Math.min(3.0, newZoom));
       
       if (clampedZoom === oldZoom) return; // Already at limit
       
       const oldScale = baseScale * oldZoom;
       const newScale = baseScale * clampedZoom;
+      
+      // Get cursor position in viewport coordinates
+      const pointerPos = stage.getPointerPosition();
+      if (!pointerPos) return;
       
       // Calculate old and new base center offsets
       const oldBaseCenterOffsetX = viewportWidth / 2 - (contentWidth / 2 + minX) * oldScale;
@@ -113,21 +155,32 @@ export default function RoomCanvas({
       const newBaseCenterOffsetX = viewportWidth / 2 - (contentWidth / 2 + minX) * newScale;
       const newBaseCenterOffsetY = viewportHeight / 2 - (contentHeight / 2 + minY) * newScale;
       
-      // Find what world point is at viewport center
-      const centerPoint = { x: viewportWidth / 2, y: viewportHeight / 2 };
-      const worldPointAtCenter = {
-        x: (centerPoint.x - stagePos.x - oldBaseCenterOffsetX) / oldScale,
-        y: (centerPoint.y - stagePos.y - oldBaseCenterOffsetY) / oldScale,
+      // Find what world point is under the cursor
+      const worldPointUnderCursor = {
+        x: (pointerPos.x - stagePos.x - oldBaseCenterOffsetX) / oldScale,
+        y: (pointerPos.y - stagePos.y - oldBaseCenterOffsetY) / oldScale,
       };
       
-      // Calculate new stagePos to keep that world point at center
+      // Calculate new stagePos to keep that world point under the cursor
       const newPos = {
-        x: centerPoint.x - worldPointAtCenter.x * newScale - newBaseCenterOffsetX,
-        y: centerPoint.y - worldPointAtCenter.y * newScale - newBaseCenterOffsetY,
+        x: pointerPos.x - worldPointUnderCursor.x * newScale - newBaseCenterOffsetX,
+        y: pointerPos.y - worldPointUnderCursor.y * newScale - newBaseCenterOffsetY,
       };
       
       setUserZoom(clampedZoom);
       setStagePos(newPos);
+      
+      // Show zoom tooltip near cursor
+      setZoomTooltipPos({ x: pointerPos.x + 20, y: pointerPos.y - 10 });
+      setShowZoomTooltip(true);
+      
+      // Hide tooltip after 800ms of no zoom activity
+      if (zoomTooltipTimeout.current) {
+        clearTimeout(zoomTooltipTimeout.current);
+      }
+      zoomTooltipTimeout.current = setTimeout(() => {
+        setShowZoomTooltip(false);
+      }, 800);
     } else {
       // Pan with regular scroll (two-finger scroll on trackpad)
       const deltaX = e.evt.deltaX;
@@ -159,8 +212,9 @@ export default function RoomCanvas({
           minPosY = viewportHeight - (baseCenterOffsetY + maxY * scale);
         }
         
-        const clampedX = minPosX <= maxPosX ? Math.max(minPosX, Math.min(maxPosX, newX)) : newX;
-        const clampedY = minPosY <= maxPosY ? Math.max(minPosY, Math.min(maxPosY, newY)) : newY;
+        // Apply elastic boundaries (±100px over-pan allowed)
+        const clampedX = applyElasticBoundary(newX, minPosX, maxPosX);
+        const clampedY = applyElasticBoundary(newY, minPosY, maxPosY);
         
         return {
           x: clampedX,
@@ -170,13 +224,66 @@ export default function RoomCanvas({
     }
   };
 
-  // Zoom controls (25% - 300%)
+  // Zoom controls (10% - 300%)
+  // Button zoom is center-locked for predictable, consistent behavior
   const handleZoomIn = () => {
-    setUserZoom((prev) => Math.min(3.0, prev * 1.2));
+    const oldZoom = userZoom;
+    const newZoom = Math.min(3.0, oldZoom * 1.15);
+    if (newZoom === oldZoom) return; // Already at limit
+    
+    const oldScale = baseScale * oldZoom;
+    const newScale = baseScale * newZoom;
+    
+    // Calculate old and new base center offsets
+    const oldBaseCenterOffsetX = viewportWidth / 2 - (contentWidth / 2 + minX) * oldScale;
+    const oldBaseCenterOffsetY = viewportHeight / 2 - (contentHeight / 2 + minY) * oldScale;
+    const newBaseCenterOffsetX = viewportWidth / 2 - (contentWidth / 2 + minX) * newScale;
+    const newBaseCenterOffsetY = viewportHeight / 2 - (contentHeight / 2 + minY) * newScale;
+    
+    // Keep viewport center fixed
+    const centerPoint = { x: viewportWidth / 2, y: viewportHeight / 2 };
+    const worldPointAtCenter = {
+      x: (centerPoint.x - stagePos.x - oldBaseCenterOffsetX) / oldScale,
+      y: (centerPoint.y - stagePos.y - oldBaseCenterOffsetY) / oldScale,
+    };
+    
+    const newPos = {
+      x: centerPoint.x - worldPointAtCenter.x * newScale - newBaseCenterOffsetX,
+      y: centerPoint.y - worldPointAtCenter.y * newScale - newBaseCenterOffsetY,
+    };
+    
+    setUserZoom(newZoom);
+    setStagePos(newPos);
   };
 
   const handleZoomOut = () => {
-    setUserZoom((prev) => Math.max(0.25, prev / 1.2));
+    const oldZoom = userZoom;
+    const newZoom = Math.max(0.1, oldZoom / 1.15);
+    if (newZoom === oldZoom) return; // Already at limit
+    
+    const oldScale = baseScale * oldZoom;
+    const newScale = baseScale * newZoom;
+    
+    // Calculate old and new base center offsets
+    const oldBaseCenterOffsetX = viewportWidth / 2 - (contentWidth / 2 + minX) * oldScale;
+    const oldBaseCenterOffsetY = viewportHeight / 2 - (contentHeight / 2 + minY) * oldScale;
+    const newBaseCenterOffsetX = viewportWidth / 2 - (contentWidth / 2 + minX) * newScale;
+    const newBaseCenterOffsetY = viewportHeight / 2 - (contentHeight / 2 + minY) * newScale;
+    
+    // Keep viewport center fixed
+    const centerPoint = { x: viewportWidth / 2, y: viewportHeight / 2 };
+    const worldPointAtCenter = {
+      x: (centerPoint.x - stagePos.x - oldBaseCenterOffsetX) / oldScale,
+      y: (centerPoint.y - stagePos.y - oldBaseCenterOffsetY) / oldScale,
+    };
+    
+    const newPos = {
+      x: centerPoint.x - worldPointAtCenter.x * newScale - newBaseCenterOffsetX,
+      y: centerPoint.y - worldPointAtCenter.y * newScale - newBaseCenterOffsetY,
+    };
+    
+    setUserZoom(newZoom);
+    setStagePos(newPos);
   };
 
   const handleResetView = () => {
@@ -184,18 +291,33 @@ export default function RoomCanvas({
     setStagePos({ x: 0, y: 0 }); // Reset pan to center
   };
 
-  // Keyboard shortcut for fit to view
+  // Keyboard shortcuts for zoom and view control
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
-      // F key = Fit to View (reset zoom and pan)
-      if (e.key === 'f' || e.key === 'F') {
-        // Don't trigger if typing in input field
-        const target = e.target as HTMLElement;
-        const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
-        if (!isInputField) {
-          e.preventDefault();
-          handleResetView();
-        }
+      // Don't trigger if typing in input field
+      const target = e.target as HTMLElement;
+      const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+      if (isInputField) return;
+
+      // F or 0 key = Fit to View (reset zoom and pan)
+      if (e.key === 'f' || e.key === 'F' || e.key === '0') {
+        e.preventDefault();
+        handleResetView();
+      }
+      // + or = key = Zoom In
+      else if (e.key === '+' || e.key === '=') {
+        e.preventDefault();
+        handleZoomIn();
+      }
+      // - key = Zoom Out
+      else if (e.key === '-') {
+        e.preventDefault();
+        handleZoomOut();
+      }
+      // Cmd/Ctrl + 0 = Reset to 100%
+      else if ((e.metaKey || e.ctrlKey) && e.key === '0') {
+        e.preventDefault();
+        handleResetView();
       }
     };
 
@@ -275,16 +397,16 @@ export default function RoomCanvas({
           minPosY = viewportHeight - (baseCenterOffsetY + maxY * scale);
         }
         
-        // Clamp position - ensure min <= max for valid range
-        const clampedX = minPosX <= maxPosX ? Math.max(minPosX, Math.min(maxPosX, newX)) : newX;
-        const clampedY = minPosY <= maxPosY ? Math.max(minPosY, Math.min(maxPosY, newY)) : newY;
+        // Apply elastic boundaries (±100px over-pan allowed)
+        const clampedX = applyElasticBoundary(newX, minPosX, maxPosX);
+        const clampedY = applyElasticBoundary(newY, minPosY, maxPosY);
         
         return {
           x: clampedX,
           y: clampedY,
         };
       });
-      
+
       lastPointerPos.current = pos;
     }
   };
@@ -393,6 +515,46 @@ export default function RoomCanvas({
               strokeWidth={WALL_THICKNESS_PX}
             />
             <GridBackground width={roomConfig.width} height={roomConfig.height} />
+            
+            {/* Room Dimensions - Always visible on top and left walls */}
+            <Group>
+              {/* Top wall - Room width */}
+              <Line 
+                points={[0, -100, roomConfig.width * PIXELS_PER_CM, -100]} 
+                stroke="#0a0a0a" 
+                strokeWidth={2} 
+              />
+              <Line points={[0, -105, 0, -95]} stroke="#0a0a0a" strokeWidth={2} />
+              <Line points={[roomConfig.width * PIXELS_PER_CM, -105, roomConfig.width * PIXELS_PER_CM, -95]} stroke="#0a0a0a" strokeWidth={2} />
+              <Text 
+                x={roomConfig.width * PIXELS_PER_CM / 2} 
+                y={-100 - 15} 
+                text={formatMeasurement(roomConfig.width, measurementUnit)}
+                fontSize={16}
+                fill="#0a0a0a"
+                align="center"
+                offsetX={formatMeasurement(roomConfig.width, measurementUnit).length * 16 * 0.3}
+              />
+              
+              {/* Left wall - Room height */}
+              <Line 
+                points={[-100, 0, -100, roomConfig.height * PIXELS_PER_CM]} 
+                stroke="#0a0a0a" 
+                strokeWidth={2} 
+              />
+              <Line points={[-105, 0, -95, 0]} stroke="#0a0a0a" strokeWidth={2} />
+              <Line points={[-105, roomConfig.height * PIXELS_PER_CM, -95, roomConfig.height * PIXELS_PER_CM]} stroke="#0a0a0a" strokeWidth={2} />
+              <Text 
+                x={-100 - 30} 
+                y={roomConfig.height * PIXELS_PER_CM / 2} 
+                text={formatMeasurement(roomConfig.height, measurementUnit)}
+                fontSize={16}
+                fill="#0a0a0a"
+                align="center"
+                offsetY={8}
+              />
+            </Group>
+            
             {items.map((item) => (
               <FurnitureShape
                 key={item.id}
@@ -417,6 +579,8 @@ export default function RoomCanvas({
                     item={item}
                     room={roomConfig}
                     otherItems={neighbors}
+                    zoom={userZoom}
+                    unit={measurementUnit}
                   />
                 );
               }
@@ -461,7 +625,7 @@ export default function RoomCanvas({
             e.currentTarget.style.backgroundColor = '#FFFFFF';
             e.currentTarget.style.borderColor = '#E5E5E5';
           }}
-          title="Zoom In"
+          title="Zoom In (+)"
         >
           <Plus size={20} color="#0A0A0A" />
         </button>
@@ -489,7 +653,7 @@ export default function RoomCanvas({
             e.currentTarget.style.backgroundColor = '#FFFFFF';
             e.currentTarget.style.borderColor = '#E5E5E5';
           }}
-          title="Fit to View (F) - Reset zoom and center room"
+          title="Fit to View (F or 0) - Reset zoom and center room"
         >
           <Maximize2 size={18} color="#0A0A0A" />
         </button>
@@ -548,11 +712,35 @@ export default function RoomCanvas({
             e.currentTarget.style.backgroundColor = '#FFFFFF';
             e.currentTarget.style.borderColor = '#E5E5E5';
           }}
-          title="Zoom Out"
+          title="Zoom Out (-)"
         >
           <Minus size={20} color="#0A0A0A" />
         </button>
       </div>
+      
+      {/* Zoom Tooltip - shows near cursor during Ctrl+Scroll zoom */}
+      {showZoomTooltip && (
+        <div
+          style={{
+            position: 'absolute',
+            left: `${zoomTooltipPos.x}px`,
+            top: `${zoomTooltipPos.y}px`,
+            backgroundColor: 'rgba(0, 0, 0, 0.85)',
+            color: 'white',
+            padding: '6px 12px',
+            borderRadius: '6px',
+            fontSize: '14px',
+            fontWeight: '600',
+            pointerEvents: 'none',
+            zIndex: 1000,
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+            transition: 'opacity 200ms ease-out',
+            opacity: showZoomTooltip ? 1 : 0,
+          }}
+        >
+          {Math.round(userZoom * 100)}%
+        </div>
+      )}
     </div>
   );
 }
