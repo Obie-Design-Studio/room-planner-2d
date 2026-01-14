@@ -1,0 +1,93 @@
+# Git Commit Guidelines
+
+## When to Prompt for Commits
+After completing any of these, prompt the user to commit:
+- A complete feature or bugfix
+- 3-5 related tasks that work together
+- Before starting a major refactor
+- When user seems satisfied with current work
+- When asked to commit
+
+## README Maintenance
+
+### When to Update README
+Update the README.md file whenever:
+- A new major feature is added
+- Core functionality changes significantly
+- New dependencies are added
+- Usage instructions change
+- Project setup steps change
+
+### What to Update in README
+Keep these sections current:
+- **Features list**: Add new features as bullet points
+- **Tech Stack**: Update when adding new libraries
+- **Usage instructions**: Update when UX changes significantly
+- **Project structure**: Update if major architectural changes
+
+### Before Committing
+Always check if README needs updating:
+1. Review what changed in this commit
+2. Ask: "Does this change how users interact with the app?"
+3. Ask: "Would someone reading README be confused by this change?"
+4. If yes to either: Update README before committing
+
+## Commit Message Format
+- Use clear, descriptive present-tense messages
+- Start with: Add/Fix/Update/Remove/Refactor
+- Include what changed and why
+- Keep first line under 72 characters
+- Add details in body if needed
+
+Example:
+```
+Add zoom controls with center-locked behavior
+
+- Implement 25%-300% zoom range
+- Add viewport center-locked zoom (not mouse-pointer)
+- Increase canvas padding from 50px to 200px
+- Support both button controls and Cmd/Ctrl+scroll
+```
+
+## Version Tags
+- Only create tags for significant milestones
+- Use semantic versioning: vMAJOR.MINOR.PATCH
+  - MAJOR: Breaking changes or major rewrites
+  - MINOR: New features, non-breaking
+  - PATCH: Bug fixes only
+- Always prompt user to confirm version number
+- Tag message should summarize milestone
+
+Example:
+```bash
+git tag -a v1.1.0 -m "Add zoom and pan functionality with improved UX"
+```
+
+## Changelog Generation
+When creating a commit or tag, generate changelog in this format:
+
+```
+## [Version] - Date
+
+### Added
+- New features
+
+### Fixed
+- Bug fixes
+
+### Changed
+- Modifications to existing features
+
+### Removed
+- Deprecated/removed features
+```
+
+## Commit Workflow
+1. Check git status and diff
+2. Review all changes
+3. Group related changes logically
+4. Draft commit message
+5. Show user what will be committed
+6. Ask for confirmation
+7. Create commit
+8. Report success with commit hash

@@ -1,12 +1,120 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
+import { Stage, Layer } from 'react-konva';
 import { FURNITURE_LIBRARY, type FurnitureDefinition } from '@/lib/furnitureLibrary';
+import {
+  BedSymbol,
+  NightstandSymbol,
+  DresserSymbol,
+  ClosetSymbol,
+  DeskSymbol,
+  SofaSymbol,
+  ArmchairSymbol,
+  CoffeeTableSymbol,
+  TVStandSymbol,
+  BookshelfSymbol,
+  DiningTableSymbol,
+  ChairSymbol,
+  RefrigeratorSymbol,
+  StoveSymbol,
+  CounterSymbol,
+  FilingCabinetSymbol,
+  ToiletSymbol,
+  SinkSymbol,
+  ShowerSymbol,
+  BathtubSymbol,
+  WallToiletSymbol,
+  TowelDryerSymbol,
+  TableSymbol,
+} from '@/components/canvas/furnitureSymbols';
 
 interface FurnitureLibraryModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddFurniture: (furniture: FurnitureDefinition) => void;
 }
+
+// Mapping from furniture type to symbol component
+const FURNITURE_SYMBOL_MAP: Record<string, React.FC<{ widthCm: number; heightCm: number }>> = {
+  'Bed': BedSymbol,
+  'Nightstand': NightstandSymbol,
+  'Dresser': DresserSymbol,
+  'Closet': ClosetSymbol,
+  'Desk': DeskSymbol,
+  'Sofa': SofaSymbol,
+  'Armchair': ArmchairSymbol,
+  'Coffee Table': CoffeeTableSymbol,
+  'TV Stand': TVStandSymbol,
+  'Bookshelf': BookshelfSymbol,
+  'Dining Table': DiningTableSymbol,
+  'Chair': ChairSymbol,
+  'Refrigerator': RefrigeratorSymbol,
+  'Stove': StoveSymbol,
+  'Counter': CounterSymbol,
+  'Filing Cabinet': FilingCabinetSymbol,
+  'Toilet': ToiletSymbol,
+  'Sink': SinkSymbol,
+  'Shower': ShowerSymbol,
+  'Bathtub': BathtubSymbol,
+  'Wall Toilet': WallToiletSymbol,
+  'Towel Dryer': TowelDryerSymbol,
+  'Table': TableSymbol,
+};
+
+// Component to render furniture preview icon
+const FurniturePreview: React.FC<{ furniture: FurnitureDefinition }> = ({ furniture }) => {
+  const SymbolComponent = FURNITURE_SYMBOL_MAP[furniture.type];
+  
+  if (!SymbolComponent) {
+    // Fallback to color block if no symbol found
+    return (
+      <div style={{ 
+        width: '48px', 
+        height: '48px', 
+        borderRadius: '8px', 
+        backgroundColor: furniture.color,
+        border: '1px solid rgba(0,0,0,0.1)',
+      }} />
+    );
+  }
+
+  // PIXELS_PER_CM constant from constants.ts
+  const PIXELS_PER_CM = 2;
+  
+  // Calculate the actual pixel dimensions of the furniture
+  const furnitureWidthPx = furniture.width * PIXELS_PER_CM;
+  const furnitureHeightPx = furniture.height * PIXELS_PER_CM;
+  
+  // Calculate scale to fit in preview with padding
+  const previewSize = 48;
+  const padding = 8;
+  const availableSize = previewSize - padding * 2;
+  const maxDimension = Math.max(furnitureWidthPx, furnitureHeightPx);
+  const scale = availableSize / maxDimension;
+  
+  // Calculate final Stage dimensions
+  const stageWidth = furnitureWidthPx * scale;
+  const stageHeight = furnitureHeightPx * scale;
+  
+  return (
+    <div style={{ 
+      width: '48px', 
+      height: '48px', 
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#FAFAFA',
+      borderRadius: '8px',
+      border: '1px solid #E5E5E5',
+    }}>
+      <Stage width={stageWidth} height={stageHeight}>
+        <Layer scale={{ x: scale, y: scale }}>
+          <SymbolComponent widthCm={furniture.width} heightCm={furniture.height} />
+        </Layer>
+      </Stage>
+    </div>
+  );
+};
 
 const FurnitureLibraryModal: React.FC<FurnitureLibraryModalProps> = ({
   isOpen,
@@ -57,7 +165,7 @@ const FurnitureLibraryModal: React.FC<FurnitureLibraryModalProps> = ({
           position: 'relative',
           width: '100%',
           maxWidth: '640px',
-          maxHeight: '80vh',
+          maxHeight: 'calc(100vh - 80px)',
           margin: '0 16px',
           backgroundColor: '#FFFFFF',
           borderRadius: '16px',
@@ -124,6 +232,7 @@ const FurnitureLibraryModal: React.FC<FurnitureLibraryModalProps> = ({
           padding: '16px 24px', 
           borderBottom: '1px solid #EFEFEF',
           display: 'flex',
+          alignItems: 'center',
           gap: '8px',
           overflowX: 'auto',
         }}>
@@ -132,12 +241,17 @@ const FurnitureLibraryModal: React.FC<FurnitureLibraryModalProps> = ({
               key={category}
               onClick={() => setSelectedCategory(category)}
               style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 padding: '8px 16px',
                 fontSize: '13px',
                 fontWeight: 500,
+                lineHeight: '1',
                 color: selectedCategory === category ? '#FFFFFF' : '#666666',
                 backgroundColor: selectedCategory === category ? '#0A0A0A' : '#FAFAFA',
-                border: selectedCategory === category ? 'none' : '1px solid #E5E5E5',
+                border: '1px solid',
+                borderColor: selectedCategory === category ? '#0A0A0A' : '#E5E5E5',
                 borderRadius: '8px',
                 cursor: 'pointer',
                 transition: 'all 150ms',
@@ -200,14 +314,8 @@ const FurnitureLibraryModal: React.FC<FurnitureLibraryModalProps> = ({
                   e.currentTarget.style.transform = 'translateY(0)';
                 }}
               >
-                {/* Color preview */}
-                <div style={{ 
-                  width: '48px', 
-                  height: '48px', 
-                  borderRadius: '8px', 
-                  backgroundColor: furniture.color,
-                  border: '1px solid rgba(0,0,0,0.1)',
-                }} />
+                {/* Furniture icon preview */}
+                <FurniturePreview furniture={furniture} />
                 
                 {/* Label */}
                 <div style={{

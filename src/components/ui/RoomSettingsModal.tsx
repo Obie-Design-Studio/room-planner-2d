@@ -9,8 +9,10 @@ interface RoomSettingsModalProps {
   roomName: string;
   roomConfig: RoomConfig;
   ceilingHeight: number;
+  defaultWindowLength: number;
+  defaultDoorLength: number;
   onClose: () => void;
-  onUpdate: (name: string, config: RoomConfig, ceiling: number) => void;
+  onUpdate: (name: string, config: RoomConfig, ceiling: number, windowLength: number, doorLength: number) => void;
 }
 
 const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
@@ -18,6 +20,8 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
   roomName,
   roomConfig,
   ceilingHeight,
+  defaultWindowLength,
+  defaultDoorLength,
   onClose,
   onUpdate,
 }) => {
@@ -26,6 +30,8 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
   const [localHeight, setLocalHeight] = useState(roomConfig.height);
   const [localCeiling, setLocalCeiling] = useState(ceilingHeight);
   const [localRoomType, setLocalRoomType] = useState<RoomType | undefined>(roomConfig.roomType);
+  const [localWindowLength, setLocalWindowLength] = useState(defaultWindowLength);
+  const [localDoorLength, setLocalDoorLength] = useState(defaultDoorLength);
 
   // Sync local state when props change
   useEffect(() => {
@@ -35,8 +41,10 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
       setLocalHeight(roomConfig.height);
       setLocalCeiling(ceilingHeight);
       setLocalRoomType(roomConfig.roomType);
+      setLocalWindowLength(defaultWindowLength);
+      setLocalDoorLength(defaultDoorLength);
     }
-  }, [isOpen, roomName, roomConfig, ceilingHeight]);
+  }, [isOpen, roomName, roomConfig, ceilingHeight, defaultWindowLength, defaultDoorLength]);
 
   if (!isOpen) return null;
 
@@ -47,7 +55,7 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
   };
 
   const handleApply = () => {
-    onUpdate(localName, { width: localWidth, height: localHeight, roomType: localRoomType }, localCeiling);
+    onUpdate(localName, { width: localWidth, height: localHeight, roomType: localRoomType }, localCeiling, localWindowLength, localDoorLength);
     onClose();
   };
 
@@ -75,12 +83,15 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
           position: 'relative',
           width: '100%',
           maxWidth: '448px',
+          maxHeight: 'calc(100vh - 80px)',
           margin: '0 16px',
           backgroundColor: '#FFFFFF',
           borderRadius: '16px',
           overflow: 'hidden',
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05)',
           animation: 'modalSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
         {/* Header */}
@@ -135,7 +146,7 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
         </div>
 
         {/* Content */}
-        <div style={{ padding: '24px' }}>
+        <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             {/* Room Type Dropdown */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -198,7 +209,7 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
               />
 
               <Input
-                label="Height (cm)"
+                label="Length (cm)"
                 type="number"
                 value={localHeight}
                 onChange={(e) => setLocalHeight(Number(e.target.value))}
@@ -211,6 +222,54 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
               value={localCeiling}
               onChange={(e) => setLocalCeiling(Number(e.target.value))}
             />
+
+            {/* Divider */}
+            <div style={{ 
+              height: '1px', 
+              backgroundColor: '#EFEFEF',
+              margin: '4px 0'
+            }} />
+
+            {/* Default Dimensions Section */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label
+                style={{
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: '#666666',
+                  letterSpacing: '-0.01em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Default Dimensions
+              </label>
+              <p style={{
+                fontSize: '12px',
+                color: '#999999',
+                margin: 0,
+                lineHeight: '1.4',
+              }}>
+                Set default lengths for new windows and doors (thickness is fixed to wall thickness)
+              </p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <Input
+                label="Window Length (cm)"
+                type="number"
+                value={localWindowLength}
+                onChange={(e) => setLocalWindowLength(Number(e.target.value))}
+                min={10}
+              />
+
+              <Input
+                label="Door Length (cm)"
+                type="number"
+                value={localDoorLength}
+                onChange={(e) => setLocalDoorLength(Number(e.target.value))}
+                min={10}
+              />
+            </div>
           </div>
         </div>
 

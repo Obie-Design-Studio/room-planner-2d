@@ -9,14 +9,56 @@ import ItemEditModal from "@/components/ui/ItemEditModal";
 import RoomSettingsModal from "@/components/ui/RoomSettingsModal";
 import FurnitureLibraryModal from "@/components/ui/FurnitureLibraryModal";
 import CustomFurnitureModal from "@/components/ui/CustomFurnitureModal";
-import { Armchair, Table, Bed, RectangleHorizontal, DoorOpen, Trash2, Settings, ChevronDown, ChevronUp, Plus, Grid3x3 } from "lucide-react";
+import { Armchair, Table, Bed, RectangleHorizontal, DoorOpen, Trash2, Settings, ChevronDown, ChevronUp, Plus, Grid3x3, Sofa, Lamp, Box, Circle, Square, Bath, UtensilsCrossed, BookOpen, Monitor, CookingPot, Refrigerator } from "lucide-react";
 import { PIXELS_PER_CM, WALL_THICKNESS_PX } from "@/lib/constants";
-import { getDefaultFurnitureForRoom, FURNITURE_LIBRARY, getFurnitureByType, type RoomType } from "@/lib/furnitureLibrary";
+import { getDefaultFurnitureForRoom, FURNITURE_LIBRARY, getFurnitureByType, type RoomType, type FurnitureDefinition } from "@/lib/furnitureLibrary";
+
+// Calculate wall thickness in cm
+const WALL_THICKNESS_CM = WALL_THICKNESS_PX / PIXELS_PER_CM; // 5cm
 
 const RoomCanvas = dynamic(
   () => import("@/components/canvas/RoomCanvas"),
   { ssr: false }
 );
+
+// Mapping from furniture type to lucide-react icon
+const FURNITURE_ICON_MAP: Record<string, any> = {
+  'Bed': Bed,
+  'Nightstand': Lamp,
+  'Dresser': Box,
+  'Closet': Box,
+  'Desk': Table,
+  'Sofa': Sofa,
+  'Armchair': Armchair,
+  'Coffee Table': Table,
+  'TV Stand': Monitor,
+  'Bookshelf': BookOpen,
+  'Dining Table': Table,
+  'Chair': Circle,
+  'Refrigerator': Refrigerator,
+  'Stove': CookingPot,
+  'Counter': Square,
+  'Filing Cabinet': Box,
+  'Toilet': Circle,
+  'Sink': Bath,
+  'Shower': Bath,
+  'Bathtub': Bath,
+  'Wall Toilet': Circle,
+  'Towel Dryer': Square,
+  'Table': Table,
+};
+
+// Component to render furniture preview icon for sidebar
+const FurnitureIconPreview: React.FC<{ furniture: FurnitureDefinition }> = ({ furniture }) => {
+  const IconComponent = FURNITURE_ICON_MAP[furniture.type];
+  
+  if (!IconComponent) {
+    // Fallback to generic square icon
+    return <Square className="w-4 h-4" style={{ color: '#666666' }} />;
+  }
+
+  return <IconComponent className="w-4 h-4" style={{ color: '#666666' }} />;
+};
 
 export default function Home() {
   const [roomConfig, setRoomConfig] = useState<RoomConfig>({
@@ -30,12 +72,19 @@ export default function Home() {
   const [viewport, setViewport] = useState({ width: 800, height: 600 });
   const [ceilingHeight, setCeilingHeight] = useState(250);
   const [roomName, setRoomName] = useState('Untitled Room');
+  const [defaultWindowLength, setDefaultWindowLength] = useState(100);
+  const [defaultDoorLength, setDefaultDoorLength] = useState(90);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [isRoomSettingsModalOpen, setIsRoomSettingsModalOpen] = useState(false);
   const [isWindowsDoorsOpen, setIsWindowsDoorsOpen] = useState(true);
   const [isFurnitureOpen, setIsFurnitureOpen] = useState(true);
   const [isFurnitureLibraryOpen, setIsFurnitureLibraryOpen] = useState(false);
   const [isCustomFurnitureOpen, setIsCustomFurnitureOpen] = useState(false);
+  
+  // History state for undo/redo
+  const [history, setHistory] = useState<FurnitureItem[][]>([[]]);
+  const [historyIndex, setHistoryIndex] = useState(0);
+  const [copiedItem, setCopiedItem] = useState<FurnitureItem | null>(null);
 
   useEffect(() => {
     const handleResize = () => {
@@ -50,10 +99,92 @@ export default function Home() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const handleUpdateRoomSettings = (name: string, config: RoomConfig, ceiling: number) => {
+  // Save to history when items change
+  const saveToHistory = (newItems: FurnitureItem[]) => {
+    const newHistory = history.slice(0, historyIndex + 1);
+    newHistory.push(newItems);
+    // Limit history to 50 states
+    if (newHistory.length > 50) {
+      newHistory.shift();
+    } else {
+      setHistoryIndex(historyIndex + 1);
+    }
+    setHistory(newHistory);
+    setItems(newItems);
+  };
+
+  // Undo function
+  const handleUndo = () => {
+    if (historyIndex > 0) {
+      const newIndex = historyIndex - 1;
+      setHistoryIndex(newIndex);
+      setItems(history[newIndex]);
+    }
+  };
+
+  // Redo function
+  const handleRedo = () => {
+    if (historyIndex < history.length - 1) {
+      const newIndex = historyIndex + 1;
+      setHistoryIndex(newIndex);
+      setItems(history[newIndex]);
+    }
+  };
+
+  // Copy selected item
+  const handleCopy = () => {
+    if (selectedId) {
+      const item = items.find(i => i.id === selectedId);
+      if (item) {
+        setCopiedItem(item);
+      }
+    }
+  };
+
+  // Paste copied item
+  const handlePaste = () => {
+    if (copiedItem) {
+      const newItem: FurnitureItem = {
+        ...copiedItem,
+        id: crypto.randomUUID(),
+        x: copiedItem.x + 20, // Offset slightly
+        y: copiedItem.y + 20,
+      };
+      saveToHistory([...items, newItem]);
+      setSelectedId(newItem.id);
+    }
+  };
+
+  // Duplicate selected item
+  const handleDuplicate = () => {
+    if (selectedId) {
+      const item = items.find(i => i.id === selectedId);
+      if (item) {
+        const newItem: FurnitureItem = {
+          ...item,
+          id: crypto.randomUUID(),
+          x: item.x + 20,
+          y: item.y + 20,
+        };
+        saveToHistory([...items, newItem]);
+        setSelectedId(newItem.id);
+      }
+    }
+  };
+
+  // Select all items
+  const handleSelectAll = () => {
+    if (items.length > 0) {
+      setSelectedId(items[0].id);
+    }
+  };
+
+  const handleUpdateRoomSettings = (name: string, config: RoomConfig, ceiling: number, windowLength: number, doorLength: number) => {
     setRoomName(name);
     setRoomConfig(config);
     setCeilingHeight(ceiling);
+    setDefaultWindowLength(windowLength);
+    setDefaultDoorLength(doorLength);
   };
 
   const handleAddFurnitureFromLibrary = (furniture: any) => {
@@ -69,14 +200,14 @@ export default function Home() {
     let x = 20;
     let y = 20;
     
-    const typeLower = type.toLowerCase();
+    const typeLower = type?.toLowerCase() || '';
     const isWallObject = typeLower === 'window' || typeLower === 'door';
 
     if (wall === 'top') {
       x = 50; // 50cm from left
-      y = -5; // Center in wall (10px wall = 5cm, so -5cm centers 10cm object)
+      y = -WALL_THICKNESS_CM; // Center in wall - top-left position for wall-centered object
     } else if (wall === 'left') {
-      x = -5; // Center in wall (10px wall = 5cm, so -5cm centers 10cm object)
+      x = -WALL_THICKNESS_CM; // Center in wall - top-left position for wall-centered object
       y = 50; // 50cm from top
     }
 
@@ -103,8 +234,9 @@ export default function Home() {
       height: h,
       rotation: 0,
       color: c,
+      ...(typeLower === 'window' && { floorDistance: 90 }), // Default floor distance for windows
     };
-    setItems((prev) => [...prev, newItem]);
+    saveToHistory([newItem, ...items]); // Add new item at the top of the list
     setSelectedId(newItem.id); // Auto-select the new item
   };
 
@@ -114,6 +246,13 @@ export default function Home() {
         item.id === id ? { ...item, ...updates } : item
       )
     );
+  };
+
+  const handleItemChangeEnd = (id: string, updates: Partial<FurnitureItem>) => {
+    const newItems = items.map((item) =>
+      item.id === id ? { ...item, ...updates } : item
+    );
+    saveToHistory(newItems);
   };
 
   const handleSelect = (id: string) => {
@@ -133,22 +272,21 @@ export default function Home() {
     id: string,
     updates: Partial<FurnitureItem>
   ) => {
-    setItems((prevItems) =>
-      prevItems.map((item) =>
-        item.id === id ? { ...item, ...updates } : item
-      )
+    const newItems = items.map((item) =>
+      item.id === id ? { ...item, ...updates } : item
     );
+    saveToHistory(newItems);
   };
 
   const handleDeleteItem = () => {
     if (selectedId) {
-      setItems((prevItems) => prevItems.filter((item) => item.id !== selectedId));
+      saveToHistory(items.filter((item) => item.id !== selectedId));
       setSelectedId(null);
     }
   };
 
   const handleDeleteItemById = (id: string) => {
-    setItems((prevItems) => prevItems.filter((item) => item.id !== id));
+    saveToHistory(items.filter((item) => item.id !== id));
     if (selectedId === id) {
       setSelectedId(null);
     }
@@ -156,27 +294,92 @@ export default function Home() {
 
   const handleAddWindowOrDoor = (type: 'Window' | 'Door', wall: 'top' | 'left') => {
     if (type === 'Window') {
-      handleAddItem('Window', 100, 10, '#e0f7fa', wall);
+      handleAddItem('Window', 100, WALL_THICKNESS_CM, '#e0f7fa', wall);
     } else if (type === 'Door') {
-      handleAddItem('Door', 90, 10, '#8d6e63', wall);
+      handleAddItem('Door', 90, WALL_THICKNESS_CM, '#8d6e63', wall);
     }
   };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Check if user is typing in an input field
+      const target = e.target as HTMLElement;
+      const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+      
+      // Cmd/Ctrl + Z = Undo
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+        return;
+      }
+      
+      // Cmd/Ctrl + Shift + Z = Redo
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && e.shiftKey) {
+        e.preventDefault();
+        handleRedo();
+        return;
+      }
+      
+      // Cmd/Ctrl + Y = Redo (alternative)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'y') {
+        e.preventDefault();
+        handleRedo();
+        return;
+      }
+
+      // Don't process other shortcuts if typing in input field
+      if (isInputField) return;
+      
+      // Cmd/Ctrl + C = Copy
+      if ((e.metaKey || e.ctrlKey) && e.key === 'c' && selectedId) {
+        e.preventDefault();
+        handleCopy();
+        return;
+      }
+      
+      // Cmd/Ctrl + V = Paste
+      if ((e.metaKey || e.ctrlKey) && e.key === 'v' && copiedItem) {
+        e.preventDefault();
+        handlePaste();
+        return;
+      }
+      
+      // Cmd/Ctrl + D = Duplicate
+      if ((e.metaKey || e.ctrlKey) && e.key === 'd' && selectedId) {
+        e.preventDefault();
+        handleDuplicate();
+        return;
+      }
+      
+      // Cmd/Ctrl + A = Select All
+      if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
+        e.preventDefault();
+        handleSelectAll();
+        return;
+      }
+      
+      // Delete or Backspace = Delete selected item
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId !== null) {
+        e.preventDefault();
         handleDeleteItem();
+        return;
+      }
+      
+      // Escape = Deselect
+      if (e.key === 'Escape') {
+        setSelectedId(null);
+        return;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedId]);
+  }, [selectedId, items, historyIndex, history, copiedItem]);
 
   const selectedItem = items.find((item) => item.id === selectedId);
   const editingItem = items.find((item) => item.id === editingItemId) || null;
   const furnitureItems = items.filter((item) => {
-    const type = item.type.toLowerCase();
+    const type = item.type?.toLowerCase() || '';
     return type !== "window" && type !== "door";
   });
 
@@ -347,70 +550,11 @@ export default function Home() {
             </button>
             {isWindowsDoorsOpen && (
               <>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
-                  <button
-                    onClick={() => handleAddWindowOrDoor('Window', 'top')}
-                    style={{ 
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      padding: '12px 14px',
-                      width: '100%',
-                      fontSize: '14px',
-                      fontWeight: 500,
-                      color: '#0A0A0A',
-                      backgroundColor: '#FFFFFF',
-                      border: '1px solid #E5E5E5',
-                      borderRadius: '10px',
-                      cursor: 'pointer',
-                      transition: 'all 150ms',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#F5F5F5';
-                      e.currentTarget.style.borderColor = '#0A0A0A';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = '#FFFFFF';
-                      e.currentTarget.style.borderColor = '#E5E5E5';
-                    }}
-                  >
-                    <RectangleHorizontal className="w-4 h-4" style={{ color: '#666666' }} />
-                    <span>Add Window</span>
-                  </button>
-                  <button
-                    onClick={() => handleAddWindowOrDoor('Door', 'top')}
-                    style={{ 
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      padding: '12px 14px',
-                      width: '100%',
-                      fontSize: '14px',
-                      fontWeight: 500,
-                      color: '#0A0A0A',
-                      backgroundColor: '#FFFFFF',
-                      border: '1px solid #E5E5E5',
-                      borderRadius: '10px',
-                      cursor: 'pointer',
-                      transition: 'all 150ms',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#F5F5F5';
-                      e.currentTarget.style.borderColor = '#0A0A0A';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = '#FFFFFF';
-                      e.currentTarget.style.borderColor = '#E5E5E5';
-                    }}
-                  >
-                    <DoorOpen className="w-4 h-4" style={{ color: '#666666' }} />
-                    <span>Add Door</span>
-                  </button>
-                </div>
-              {items.filter(item => item.type.toLowerCase() === 'window' || item.type.toLowerCase() === 'door').length > 0 && (
+              {/* Windows & Doors List - Show first */}
+              {items.filter(item => item.type?.toLowerCase() === 'window' || item.type?.toLowerCase() === 'door').length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '12px' }}>
                   {items
-                    .filter(item => item.type.toLowerCase() === 'window' || item.type.toLowerCase() === 'door')
+                    .filter(item => item.type?.toLowerCase() === 'window' || item.type?.toLowerCase() === 'door')
                     .map((item) => (
                       <div
                         key={item.id}
@@ -509,6 +653,68 @@ export default function Home() {
                     ))}
                 </div>
               )}
+              
+              {/* Add Window/Door Buttons - Show after list */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: items.filter(item => item.type?.toLowerCase() === 'window' || item.type?.toLowerCase() === 'door').length > 0 ? '12px' : '0' }}>
+                <button
+                  onClick={() => handleAddWindowOrDoor('Window', 'top')}
+                  style={{ 
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '12px 14px',
+                    width: '100%',
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    color: '#0A0A0A',
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #E5E5E5',
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    transition: 'all 150ms',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#F5F5F5';
+                    e.currentTarget.style.borderColor = '#0A0A0A';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#FFFFFF';
+                    e.currentTarget.style.borderColor = '#E5E5E5';
+                  }}
+                >
+                  <RectangleHorizontal className="w-4 h-4" style={{ color: '#666666' }} />
+                  <span>Add Window</span>
+                </button>
+                <button
+                  onClick={() => handleAddWindowOrDoor('Door', 'top')}
+                  style={{ 
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '12px 14px',
+                    width: '100%',
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    color: '#0A0A0A',
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #E5E5E5',
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    transition: 'all 150ms',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#F5F5F5';
+                    e.currentTarget.style.borderColor = '#0A0A0A';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#FFFFFF';
+                    e.currentTarget.style.borderColor = '#E5E5E5';
+                  }}
+                >
+                  <DoorOpen className="w-4 h-4" style={{ color: '#666666' }} />
+                  <span>Add Door</span>
+                </button>
+              </div>
               </>
             )}
           </div>
@@ -547,131 +753,9 @@ export default function Home() {
             </button>
             {isFurnitureOpen && (
               <>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
-                  {/* Show default furniture if room type is selected, otherwise show generic options */}
-                  {roomConfig.roomType ? (
-                    getDefaultFurnitureForRoom(roomConfig.roomType).map((furniture) => (
-                      <button
-                        key={furniture.type}
-                        onClick={() => handleAddItem(furniture.type, furniture.width, furniture.height, furniture.color)}
-                        style={{ 
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '10px',
-                          padding: '12px 14px',
-                          width: '100%',
-                          fontSize: '14px',
-                          fontWeight: 500,
-                          color: '#0A0A0A',
-                          backgroundColor: '#FFFFFF',
-                          border: '1px solid #E5E5E5',
-                          borderRadius: '10px',
-                          cursor: 'pointer',
-                          transition: 'all 150ms',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#F5F5F5';
-                          e.currentTarget.style.borderColor = '#0A0A0A';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = '#FFFFFF';
-                          e.currentTarget.style.borderColor = '#E5E5E5';
-                        }}
-                      >
-                        <div style={{ 
-                          width: '16px', 
-                          height: '16px', 
-                          borderRadius: '4px', 
-                          backgroundColor: furniture.color 
-                        }} />
-                        <span>Add {furniture.label}</span>
-                      </button>
-                    ))
-                  ) : (
-                    <div style={{
-                      padding: '20px',
-                      textAlign: 'center',
-                      color: '#999999',
-                      fontSize: '13px',
-                      backgroundColor: '#FAFAFA',
-                      borderRadius: '10px',
-                      border: '1px dashed #E5E5E5',
-                    }}>
-                      Select a room type to see suggested furniture
-                    </div>
-                  )}
-
-                  {/* Browse all furniture button */}
-                  <button
-                    onClick={() => setIsFurnitureLibraryOpen(true)}
-                    style={{ 
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      padding: '12px 14px',
-                      width: '100%',
-                      fontSize: '14px',
-                      fontWeight: 500,
-                      color: '#666666',
-                      backgroundColor: '#FAFAFA',
-                      border: '1px dashed #E5E5E5',
-                      borderRadius: '10px',
-                      cursor: 'pointer',
-                      transition: 'all 150ms',
-                      marginTop: '8px',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#F5F5F5';
-                      e.currentTarget.style.borderColor = '#0A0A0A';
-                      e.currentTarget.style.color = '#0A0A0A';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = '#FAFAFA';
-                      e.currentTarget.style.borderColor = '#E5E5E5';
-                      e.currentTarget.style.color = '#666666';
-                    }}
-                  >
-                    <Grid3x3 className="w-4 h-4" />
-                    <span>Browse All Furniture</span>
-                  </button>
-
-                  {/* Add custom furniture button */}
-                  <button
-                    onClick={() => setIsCustomFurnitureOpen(true)}
-                    style={{ 
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      padding: '12px 14px',
-                      width: '100%',
-                      fontSize: '14px',
-                      fontWeight: 500,
-                      color: '#666666',
-                      backgroundColor: '#FAFAFA',
-                      border: '1px dashed #E5E5E5',
-                      borderRadius: '10px',
-                      cursor: 'pointer',
-                      transition: 'all 150ms',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#F5F5F5';
-                      e.currentTarget.style.borderColor = '#0A0A0A';
-                      e.currentTarget.style.color = '#0A0A0A';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = '#FAFAFA';
-                      e.currentTarget.style.borderColor = '#E5E5E5';
-                      e.currentTarget.style.color = '#666666';
-                    }}
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Add Custom Furniture</span>
-                  </button>
-            </div>
-
-              {/* Furniture List */}
+              {/* Furniture List - Show first */}
               {furnitureItems.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '12px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px' }}>
                   {furnitureItems.map((item) => {
                     const isSelected = item.id === selectedId;
 
@@ -705,11 +789,22 @@ export default function Home() {
                           }
                         }}
                       >
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
-                          <span style={{ fontWeight: 500 }}>{item.type}</span>
-                          <span style={{ fontSize: '12px', color: '#999999' }}>
-                            {item.width} × {item.height} cm
-                          </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
+                          {/* Color indicator */}
+                          <div style={{ 
+                            width: '8px', 
+                            height: '8px', 
+                            borderRadius: '50%', 
+                            backgroundColor: item.color || '#999999',
+                            border: '1px solid rgba(0,0,0,0.1)',
+                            flexShrink: 0,
+                          }} />
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
+                            <span style={{ fontWeight: 500 }}>{item.type}</span>
+                            <span style={{ fontSize: '12px', color: '#999999' }}>
+                              {item.width} × {item.height} cm
+                            </span>
+                          </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <button
@@ -778,6 +873,124 @@ export default function Home() {
                   })}
                 </div>
               )}
+
+              {/* Add Buttons - Show after furniture list */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {/* Show default furniture if room type is selected, otherwise show generic options */}
+                {roomConfig.roomType ? (
+                  getDefaultFurnitureForRoom(roomConfig.roomType).map((furniture) => (
+                    <button
+                      key={furniture.type}
+                      onClick={() => handleAddItem(furniture.type, furniture.width, furniture.height, furniture.color)}
+                      style={{ 
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '12px 14px',
+                        width: '100%',
+                        fontSize: '14px',
+                        fontWeight: 500,
+                        color: '#0A0A0A',
+                        backgroundColor: '#FFFFFF',
+                        border: '1px solid #E5E5E5',
+                        borderRadius: '10px',
+                        cursor: 'pointer',
+                        transition: 'all 150ms',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#F5F5F5';
+                        e.currentTarget.style.borderColor = '#0A0A0A';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = '#FFFFFF';
+                        e.currentTarget.style.borderColor = '#E5E5E5';
+                      }}
+                    >
+                      <FurnitureIconPreview furniture={furniture} />
+                      <span>Add {furniture.label}</span>
+                    </button>
+                  ))
+                ) : (
+                  <div style={{
+                    padding: '20px',
+                    textAlign: 'center',
+                    color: '#999999',
+                    fontSize: '13px',
+                    backgroundColor: '#FAFAFA',
+                    borderRadius: '10px',
+                    border: '1px dashed #E5E5E5',
+                  }}>
+                    Select a room type to see suggested furniture
+                  </div>
+                )}
+
+                {/* Browse all furniture button */}
+                <button
+                  onClick={() => setIsFurnitureLibraryOpen(true)}
+                  style={{ 
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '12px 14px',
+                    width: '100%',
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    color: '#666666',
+                    backgroundColor: '#FAFAFA',
+                    border: '1px dashed #E5E5E5',
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    transition: 'all 150ms',
+                    marginTop: '8px',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#F5F5F5';
+                    e.currentTarget.style.borderColor = '#0A0A0A';
+                    e.currentTarget.style.color = '#0A0A0A';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#FAFAFA';
+                    e.currentTarget.style.borderColor = '#E5E5E5';
+                    e.currentTarget.style.color = '#666666';
+                  }}
+                >
+                  <Grid3x3 className="w-4 h-4" />
+                  <span>Browse All Furniture</span>
+                </button>
+
+                {/* Add custom furniture button */}
+                <button
+                  onClick={() => setIsCustomFurnitureOpen(true)}
+                  style={{ 
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '12px 14px',
+                    width: '100%',
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    color: '#666666',
+                    backgroundColor: '#FAFAFA',
+                    border: '1px dashed #E5E5E5',
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    transition: 'all 150ms',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#F5F5F5';
+                    e.currentTarget.style.borderColor = '#0A0A0A';
+                    e.currentTarget.style.color = '#0A0A0A';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#FAFAFA';
+                    e.currentTarget.style.borderColor = '#E5E5E5';
+                    e.currentTarget.style.color = '#666666';
+                  }}
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add Custom Furniture</span>
+                </button>
+              </div>
               </>
             )}
           </div>
@@ -796,6 +1009,7 @@ export default function Home() {
             roomConfig={roomConfig}
             items={items}
             onItemChange={handleItemChange}
+            onItemChangeEnd={handleItemChangeEnd}
             onItemDelete={handleDeleteItemById}
             selectedId={selectedId}
             onSelect={setSelectedId}
@@ -821,6 +1035,8 @@ export default function Home() {
         roomName={roomName}
         roomConfig={roomConfig}
         ceilingHeight={ceilingHeight}
+        defaultWindowLength={defaultWindowLength}
+        defaultDoorLength={defaultDoorLength}
         onClose={() => setIsRoomSettingsModalOpen(false)}
         onUpdate={handleUpdateRoomSettings}
       />

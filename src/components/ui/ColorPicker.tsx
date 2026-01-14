@@ -28,7 +28,7 @@ const ColorPicker: React.FC<ColorPickerProps> = ({ label, value, onChange }) => 
             position: 'relative',
             width: '42px',
             height: '42px',
-            backgroundColor: value,
+            backgroundColor: value || '#000000',
             border: '1px solid #E5E5E5',
             borderRadius: '8px',
             overflow: 'hidden',
@@ -48,7 +48,7 @@ const ColorPicker: React.FC<ColorPickerProps> = ({ label, value, onChange }) => 
           {/* The Hidden Input - Force it to cover everything */}
           <input
             type="color"
-            value={value}
+            value={value || '#000000'}
             onChange={(e) => onChange(e.target.value)}
             style={{
               position: 'absolute',
@@ -68,7 +68,7 @@ const ColorPicker: React.FC<ColorPickerProps> = ({ label, value, onChange }) => 
         {/* Hex Value Text */}
         <input
           type="text"
-          value={value.toUpperCase()}
+          value={value?.toUpperCase() || '#000000'}
           onChange={(e) => {
             const hex = e.target.value;
             if (/^#[0-9A-F]{6}$/i.test(hex)) {

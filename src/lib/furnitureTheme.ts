@@ -1,23 +1,23 @@
 export const FURNITURE_THEME = {
   // Stroke colors
   stroke: {
-    primary: '#333333',      // Main outlines
-    secondary: '#666666',    // Detail lines
-    accent: '#999999',       // Subtle features
+    primary: '#000000',      // Main outlines - pure black for maximum contrast
+    secondary: '#222222',    // Detail lines - very dark gray
+    accent: '#444444',       // Subtle features - dark gray
   },
   
   // Fill colors
   fill: {
     primary: '#FFFFFF',      // Main furniture body
-    secondary: '#F5F5F5',    // Secondary surfaces
-    accent: '#E0E0E0',       // Highlights/cushions
+    secondary: '#E8E8E8',    // Secondary surfaces - darker
+    accent: '#C0C0C0',       // Highlights/cushions - darker for visibility
   },
   
   // Stroke widths (in pixels, will scale with zoom)
   strokeWidth: {
-    primary: 2,              // Main outlines
-    secondary: 1,            // Detail lines
-    thin: 0.5,               // Very fine details
+    primary: 4,              // Main outlines - extra thick for small icons
+    secondary: 2.5,          // Detail lines - thicker
+    thin: 1.5,               // Very fine details - thicker
   },
   
   // Door specific

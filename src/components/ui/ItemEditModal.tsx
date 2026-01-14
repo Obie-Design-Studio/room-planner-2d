@@ -24,6 +24,7 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
   const [localHeight, setLocalHeight] = useState(0);
   const [localRotation, setLocalRotation] = useState(0);
   const [localColor, setLocalColor] = useState('#e0e0e0');
+  const [localFloorDistance, setLocalFloorDistance] = useState(90);
 
   // Sync local state when item changes
   useEffect(() => {
@@ -33,6 +34,7 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
       setLocalHeight(item.height);
       setLocalRotation(item.rotation || 0);
       setLocalColor(item.color || '#e0e0e0');
+      setLocalFloorDistance(item.floorDistance || 90);
     }
   }, [item]);
 
@@ -44,14 +46,53 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
     }
   };
 
+  const isWallObject = item.type?.toLowerCase() === 'door' || item.type?.toLowerCase() === 'window';
+  const isDoor = item.type?.toLowerCase() === 'door';
+  const isWindow = item.type?.toLowerCase() === 'window';
+
+  // Door orientation state (derived from rotation)
+  const doorSwing = localRotation >= 180 ? 'out' : 'in';
+  const doorHinge = localRotation % 180 === 0 ? 'left' : 'right';
+  
+  // Debug logging
+  if (isDoor && isOpen) {
+    console.log('Door Edit Modal:', {
+      rotation: localRotation,
+      swing: doorSwing,
+      hinge: doorHinge,
+      position: { x: item?.x, y: item?.y }
+    });
+  }
+
+  const setDoorOrientation = (swing: 'in' | 'out', hinge: 'left' | 'right') => {
+    // Map swing + hinge to rotation angle
+    if (swing === 'in' && hinge === 'left') setLocalRotation(0);
+    else if (swing === 'in' && hinge === 'right') setLocalRotation(90);
+    else if (swing === 'out' && hinge === 'left') setLocalRotation(180);
+    else if (swing === 'out' && hinge === 'right') setLocalRotation(270);
+  };
+
   const handleApply = () => {
-    onUpdate(item.id, {
+    const updates: Partial<FurnitureItem> = {
       type: localType,
       width: localWidth,
-      height: localHeight,
       rotation: localRotation,
       color: localColor,
-    });
+    };
+
+    // For windows, include height and floor distance
+    if (isWindow) {
+      updates.height = localHeight;
+      updates.floorDistance = localFloorDistance;
+    } else if (isDoor) {
+      // For doors, keep height fixed
+      updates.height = item.height;
+    } else {
+      // For regular furniture, update height normally
+      updates.height = localHeight;
+    }
+
+    onUpdate(item.id, updates);
     onClose();
   };
 
@@ -84,12 +125,15 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
           position: 'relative',
           width: '100%',
           maxWidth: '448px',
+          maxHeight: 'calc(100vh - 80px)',
           margin: '0 16px',
           backgroundColor: '#FFFFFF',
           borderRadius: '16px',
           overflow: 'hidden',
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05)',
           animation: 'modalSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
         {/* Header */}
@@ -144,7 +188,7 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
         </div>
 
         {/* Content */}
-        <div style={{ padding: '24px' }}>
+        <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <Input
               label="Label"
@@ -155,49 +199,188 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <Input
-                label="Width (cm)"
+                label={isWallObject ? "Length (cm)" : "Width (cm)"}
                 type="number"
                 value={localWidth}
                 onChange={(e) => setLocalWidth(Number(e.target.value))}
               />
 
-              <Input
-                label="Height (cm)"
-                type="number"
-                value={localHeight}
-                onChange={(e) => setLocalHeight(Number(e.target.value))}
-              />
+              {isWindow ? (
+                <Input
+                  label="Height (cm)"
+                  type="number"
+                  value={localHeight}
+                  onChange={(e) => setLocalHeight(Number(e.target.value))}
+                />
+              ) : isDoor ? (
+                <Input
+                  label="Height (cm)"
+                  type="number"
+                  value={localHeight}
+                  onChange={(e) => setLocalHeight(Number(e.target.value))}
+                />
+              ) : (
+                <Input
+                  label="Height (cm)"
+                  type="number"
+                  value={localHeight}
+                  onChange={(e) => setLocalHeight(Number(e.target.value))}
+                />
+              )}
             </div>
 
-            <div>
-              <label
-                style={{ 
-                  display: 'block',
-                  fontSize: '12px',
-                  fontWeight: 500,
-                  color: '#666666',
-                  marginBottom: '8px',
-                }}
-              >
-                Rotation ({localRotation}°)
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="360"
-                value={localRotation}
-                onChange={(e) => setLocalRotation(Number(e.target.value))}
-                style={{
-                  width: '100%',
-                  height: '6px',
-                  borderRadius: '3px',
-                  outline: 'none',
-                  appearance: 'none',
-                  cursor: 'pointer',
-                  background: `linear-gradient(to right, #0A0A0A 0%, #0A0A0A ${(localRotation / 360) * 100}%, #E5E5E5 ${(localRotation / 360) * 100}%, #E5E5E5 100%)`,
-                }}
+            {/* Floor Distance for Windows */}
+            {isWindow && (
+              <Input
+                label="From Floor Distance (cm)"
+                type="number"
+                value={localFloorDistance}
+                onChange={(e) => setLocalFloorDistance(Number(e.target.value))}
               />
-            </div>
+            )}
+
+            {/* Rotation Control */}
+            {!isWindow && (
+              <div>
+                {isDoor ? (
+                  // Door: Two separate controls for Swing and Hinge
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    {/* Swing Direction */}
+                    <div>
+                      <label
+                        style={{ 
+                          display: 'block',
+                          fontSize: '12px',
+                          fontWeight: 500,
+                          color: '#666666',
+                          marginBottom: '8px',
+                        }}
+                      >
+                        Swing
+                      </label>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          onClick={() => setDoorOrientation('in', doorHinge)}
+                          style={{
+                            flex: 1,
+                            padding: '12px',
+                            fontSize: '14px',
+                            fontWeight: 500,
+                            color: doorSwing === 'in' ? '#FFFFFF' : '#666666',
+                            backgroundColor: doorSwing === 'in' ? '#0A0A0A' : '#FAFAFA',
+                            border: `1px solid ${doorSwing === 'in' ? '#0A0A0A' : '#E5E5E5'}`,
+                            borderRadius: '10px',
+                            cursor: 'pointer',
+                            transition: 'all 150ms',
+                          }}
+                        >
+                          In
+                        </button>
+                        <button
+                          onClick={() => setDoorOrientation('out', doorHinge)}
+                          style={{
+                            flex: 1,
+                            padding: '12px',
+                            fontSize: '14px',
+                            fontWeight: 500,
+                            color: doorSwing === 'out' ? '#FFFFFF' : '#666666',
+                            backgroundColor: doorSwing === 'out' ? '#0A0A0A' : '#FAFAFA',
+                            border: `1px solid ${doorSwing === 'out' ? '#0A0A0A' : '#E5E5E5'}`,
+                            borderRadius: '10px',
+                            cursor: 'pointer',
+                            transition: 'all 150ms',
+                          }}
+                        >
+                          Out
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Hinge Side */}
+                    <div>
+                      <label
+                        style={{ 
+                          display: 'block',
+                          fontSize: '12px',
+                          fontWeight: 500,
+                          color: '#666666',
+                          marginBottom: '8px',
+                        }}
+                      >
+                        Hinge
+                      </label>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          onClick={() => setDoorOrientation(doorSwing, 'left')}
+                          style={{
+                            flex: 1,
+                            padding: '12px',
+                            fontSize: '14px',
+                            fontWeight: 500,
+                            color: doorHinge === 'left' ? '#FFFFFF' : '#666666',
+                            backgroundColor: doorHinge === 'left' ? '#0A0A0A' : '#FAFAFA',
+                            border: `1px solid ${doorHinge === 'left' ? '#0A0A0A' : '#E5E5E5'}`,
+                            borderRadius: '10px',
+                            cursor: 'pointer',
+                            transition: 'all 150ms',
+                          }}
+                        >
+                          Left
+                        </button>
+                        <button
+                          onClick={() => setDoorOrientation(doorSwing, 'right')}
+                          style={{
+                            flex: 1,
+                            padding: '12px',
+                            fontSize: '14px',
+                            fontWeight: 500,
+                            color: doorHinge === 'right' ? '#FFFFFF' : '#666666',
+                            backgroundColor: doorHinge === 'right' ? '#0A0A0A' : '#FAFAFA',
+                            border: `1px solid ${doorHinge === 'right' ? '#0A0A0A' : '#E5E5E5'}`,
+                            borderRadius: '10px',
+                            cursor: 'pointer',
+                            transition: 'all 150ms',
+                          }}
+                        >
+                          Right
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  // Regular furniture: slider
+                  <>
+                    <label
+                      style={{ 
+                        display: 'block',
+                        fontSize: '12px',
+                        fontWeight: 500,
+                        color: '#666666',
+                        marginBottom: '8px',
+                      }}
+                    >
+                      Rotation ({localRotation}°)
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="360"
+                      value={localRotation}
+                      onChange={(e) => setLocalRotation(Number(e.target.value))}
+                      style={{
+                        width: '100%',
+                        height: '6px',
+                        borderRadius: '3px',
+                        outline: 'none',
+                        appearance: 'none',
+                        cursor: 'pointer',
+                        background: `linear-gradient(to right, #0A0A0A 0%, #0A0A0A ${(localRotation / 360) * 100}%, #E5E5E5 ${(localRotation / 360) * 100}%, #E5E5E5 100%)`,
+                      }}
+                    />
+                  </>
+                )}
+              </div>
+            )}
 
             <ColorPicker
               label="Color"

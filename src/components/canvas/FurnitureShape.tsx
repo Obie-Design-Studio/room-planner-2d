@@ -1,7 +1,10 @@
 import React, { useRef, useEffect } from 'react';
 import { Rect, Group, Text, Transformer, Arc } from 'react-konva';
 import { FurnitureItem, RoomConfig } from '@/types';
-import { PIXELS_PER_CM } from '@/lib/constants';
+import { PIXELS_PER_CM, WALL_THICKNESS_PX } from '@/lib/constants';
+
+// Calculate wall thickness in cm
+const WALL_THICKNESS_CM = WALL_THICKNESS_PX / PIXELS_PER_CM; // 5cm
 import { 
   ToiletSymbol, 
   SinkSymbol, 
@@ -42,6 +45,7 @@ interface FurnitureShapeProps {
   onSelect: (id: string) => void;
   onEdit: (id: string) => void;
   onChange: (id: string, updates: Partial<FurnitureItem>) => void;
+  onChangeEnd?: (id: string, updates: Partial<FurnitureItem>) => void;
   onDelete: (id: string) => void;
   roomConfig: RoomConfig;
 }
@@ -52,14 +56,25 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
   onSelect,
   onEdit,
   onChange,
+  onChangeEnd,
   onDelete,
   roomConfig,
 }) => {
   const shapeRef = useRef<any>(null);
   const trRef = useRef<any>(null);
 
-  const widthPx = item.width * PIXELS_PER_CM;
-  const heightPx = item.height * PIXELS_PER_CM;
+  // Door physical dimensions (never change)
+  const doorLengthPx = item.width * PIXELS_PER_CM;   // Door length (90cm = 180px)
+  const wallThickPx = item.height * PIXELS_PER_CM;  // Wall thickness (5cm = 10px)
+  
+  // Detect if door is on a vertical wall (left or right)
+  const isOnVerticalWall = (item.type?.toLowerCase() === 'door' || item.type?.toLowerCase() === 'window') && 
+                           (Math.abs(item.x - (-WALL_THICKNESS_CM)) < 1 || 
+                            Math.abs(item.x - roomConfig.width) < 1);
+  
+  // Group dimensions - swap for vertical walls so the bounding box is correct
+  const widthPx = isOnVerticalWall ? wallThickPx : doorLengthPx;
+  const heightPx = isOnVerticalWall ? doorLengthPx : wallThickPx;
 
   // VISUAL POSITION (Center): Data (Top-Left) + Half Width
   const x = (item.x * PIXELS_PER_CM) + (widthPx / 2);
@@ -73,7 +88,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
   }, [isSelected]);
 
 
-  const isWallObject = item.type.toLowerCase() === 'window' || item.type.toLowerCase() === 'door';
+  const isWallObject = item.type?.toLowerCase() === 'window' || item.type?.toLowerCase() === 'door';
 
   const roomWidthPx = roomConfig.width * PIXELS_PER_CM;
   const roomHeightPx = roomConfig.height * PIXELS_PER_CM;
@@ -96,7 +111,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
     width: widthPx,
     height: heightPx,
     draggable: true,
-    rotation: item.rotation,
+    rotation: isWallObject ? 0 : (item.rotation || 0), // Wall objects don't rotate the group
     offsetX: widthPx / 2,
     offsetY: heightPx / 2,
     onClick: (e: any) => {
@@ -128,7 +143,8 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
 
       if (isWallObject) {
         // --- STRICT WALL LOCKING ---
-        // We calculate which wall is closest and FORCE the item onto it.
+        // Use RAW dimensions (not swapped) for consistent calculations
+        // doorLengthPx = door length (90cm), wallThickPx = wall thickness (5cm)
         
         const distLeft = currentCenterX;
         const distRight = Math.abs(roomWidthPx - currentCenterX);
@@ -137,71 +153,55 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
 
         const minDist = Math.min(distLeft, distRight, distTop, distBottom);
 
-        // Wall Thickness Offset (to center item ON the wall line)
-        // Assuming walls are effectively 0-width lines for calculation, or we want them centered on the border
-        // If we want them inside the wall, we might need a small offset, but let's stick to the line for now.
-
         if (minDist === distTop) {
-          // LOCK TO TOP WALL
-          finalRotation = 0;
-          // Center the window/door in the wall thickness
-          // Wall is 10px thick (5cm), object is 10cm (20px) tall
-          // Position object center at -5cm to center it in the wall
-          finalYCm = -5; // Centered in wall thickness
+          // LOCK TO TOP WALL (horizontal door)
+          finalRotation = item.rotation || 0;
+          finalYCm = -WALL_THICKNESS_CM;
           
-          // Allow X movement, but clamp to room width
-          const visualLeftX = currentCenterX - widthPx / 2;
-          const clampedX = Math.max(0, Math.min(visualLeftX, roomWidthPx - widthPx));
+          // For horizontal walls: width = doorLength, height = wallThick
+          const clampedX = Math.max(0, Math.min(currentCenterX - doorLengthPx / 2, roomWidthPx - doorLengthPx));
           finalXCm = Math.round(clampedX / PIXELS_PER_CM);
           
-          // Override the visual position immediately to prevent "loose" feeling
-          e.target.y(-5 * PIXELS_PER_CM + heightPx / 2); // Center in wall
+          e.target.y(-WALL_THICKNESS_CM * PIXELS_PER_CM + wallThickPx / 2);
+          e.target.x(clampedX + doorLengthPx / 2);
           e.target.rotation(0);
         } 
         else if (minDist === distBottom) {
-          // LOCK TO BOTTOM WALL
-          finalRotation = 0;
-          // Center the window/door in the wall thickness
-          // Position object so its center is at roomHeight + 5cm (wall center)
-          finalYCm = Math.round((roomHeightPx + 5 * PIXELS_PER_CM - heightPx / 2) / PIXELS_PER_CM);
+          // LOCK TO BOTTOM WALL (horizontal door)
+          finalRotation = item.rotation || 0;
+          finalYCm = roomConfig.height;
           
-          const visualLeftX = currentCenterX - widthPx / 2;
-          const clampedX = Math.max(0, Math.min(visualLeftX, roomWidthPx - widthPx));
+          const clampedX = Math.max(0, Math.min(currentCenterX - doorLengthPx / 2, roomWidthPx - doorLengthPx));
           finalXCm = Math.round(clampedX / PIXELS_PER_CM);
 
-          e.target.y(roomHeightPx + 5 * PIXELS_PER_CM - heightPx / 2);
+          e.target.y(roomHeightPx + wallThickPx / 2);
+          e.target.x(clampedX + doorLengthPx / 2);
           e.target.rotation(0);
         } 
         else if (minDist === distLeft) {
-          // LOCK TO LEFT WALL
-          finalRotation = 90;
-          // Center the window/door in the wall thickness
-          // Position object center at -5cm (wall center)
-          finalXCm = Math.round((-5 * PIXELS_PER_CM + heightPx / 2 - widthPx / 2) / PIXELS_PER_CM);
+          // LOCK TO LEFT WALL (vertical door)
+          finalRotation = item.rotation || 0;
+          finalXCm = -WALL_THICKNESS_CM;
           
-          // Allow Y movement
-          // Visual Center Y tracks mouse
-          // Clamp Visual Top Y
-          const visualTopY = currentCenterY - widthPx / 2; // Visual height is widthPx
-          const clampedY = Math.max(0, Math.min(visualTopY, roomHeightPx - widthPx));
-          finalYCm = Math.round((clampedY + widthPx/2 - heightPx/2) / PIXELS_PER_CM);
+          // For vertical walls: width = wallThick, height = doorLength
+          const clampedY = Math.max(0, Math.min(currentCenterY - doorLengthPx / 2, roomHeightPx - doorLengthPx));
+          finalYCm = Math.round(clampedY / PIXELS_PER_CM);
 
-          e.target.x(-5 * PIXELS_PER_CM + heightPx / 2); // Lock Visual X to wall center
-          e.target.rotation(90);
+          e.target.x(-WALL_THICKNESS_CM * PIXELS_PER_CM + wallThickPx / 2);
+          e.target.y(clampedY + doorLengthPx / 2);
+          e.target.rotation(0);  // Don't rotate group, rendering handles orientation
         } 
         else if (minDist === distRight) {
-          // LOCK TO RIGHT WALL
-          finalRotation = 90;
-          // Center the window/door in the wall thickness
-          // Position object center at roomWidth + 5cm (wall center)
-          finalXCm = Math.round((roomWidthPx + 5 * PIXELS_PER_CM + heightPx / 2 - widthPx / 2) / PIXELS_PER_CM);
+          // LOCK TO RIGHT WALL (vertical door)
+          finalRotation = item.rotation || 0;
+          finalXCm = roomConfig.width;
           
-          const visualTopY = currentCenterY - widthPx / 2;
-          const clampedY = Math.max(0, Math.min(visualTopY, roomHeightPx - widthPx));
-          finalYCm = Math.round((clampedY + widthPx/2 - heightPx/2) / PIXELS_PER_CM);
+          const clampedY = Math.max(0, Math.min(currentCenterY - doorLengthPx / 2, roomHeightPx - doorLengthPx));
+          finalYCm = Math.round(clampedY / PIXELS_PER_CM);
 
-          e.target.x(roomWidthPx + 5 * PIXELS_PER_CM - heightPx / 2); // Lock Visual X to wall center
-          e.target.rotation(90);
+          e.target.x(roomWidthPx + wallThickPx / 2);
+          e.target.y(clampedY + doorLengthPx / 2);
+          e.target.rotation(0);  // Don't rotate group, rendering handles orientation
         }
       } else {
         // Standard Drag for Furniture
@@ -225,6 +225,14 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
       const bbox = node.getClientRect({ skipTransform: false });
       if (isOutsideRoomPx(bbox)) {
         onDelete(item.id);
+      } else if (onChangeEnd) {
+        // Save to history after drag ends
+        const topLeftX = node.x() - widthPx / 2;
+        const topLeftY = node.y() - heightPx / 2;
+        onChangeEnd(item.id, {
+          x: Math.round(topLeftX / PIXELS_PER_CM),
+          y: Math.round(topLeftY / PIXELS_PER_CM),
+        });
       }
     },
     onTransformEnd: (e: any) => {
@@ -234,9 +242,28 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
       node.scaleX(1);
       node.scaleY(1);
       
-      const newWidthCm = Math.round((widthPx * scaleX) / PIXELS_PER_CM);
-      const newHeightCm = Math.round((heightPx * scaleY) / PIXELS_PER_CM);
-      const newRotation = Math.round(node.rotation());
+      let newWidthCm = Math.round((widthPx * scaleX) / PIXELS_PER_CM);
+      let newHeightCm = Math.round((heightPx * scaleY) / PIXELS_PER_CM);
+      
+      // For doors and windows, lock height to wall thickness
+      if (isWallObject) {
+        newHeightCm = WALL_THICKNESS_CM;
+      }
+      
+      // Rotation handling
+      let newRotation = Math.round(node.rotation());
+      
+      // For doors: snap to 90-degree increments (0, 90, 180, 270)
+      if (item.type?.toLowerCase() === 'door') {
+        newRotation = Math.round(newRotation / 90) * 90;
+        newRotation = newRotation % 360;
+        if (newRotation < 0) newRotation += 360;
+      }
+      
+      // For windows: no rotation allowed, always keep at current rotation
+      if (item.type?.toLowerCase() === 'window') {
+        newRotation = item.rotation || 0;
+      }
       
       const newCenterX = node.x();
       const newCenterY = node.y();
@@ -253,43 +280,292 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
         }
       }
 
-      onChange(item.id, {
+      const updates = {
         x: Math.round(newTopLeftX / PIXELS_PER_CM),
         y: Math.round(newTopLeftY / PIXELS_PER_CM),
         width: newWidthCm,
         height: newHeightCm,
         rotation: newRotation
-      });
+      };
+      onChange(item.id, updates);
+      
+      // Save to history after transform ends
+      if (onChangeEnd) {
+        onChangeEnd(item.id, updates);
+      }
     },
   };
 
   // RENDER: DOOR
-  if (item.type.toLowerCase() === 'door') {
+  if (item.type?.toLowerCase() === 'door') {
+    // Door rendering based on rotation:
+    // 0° = Left hinge, Inward (swings into room)
+    // 90° = Right hinge, Inward (swings into room)
+    // 180° = Left hinge, Outward (swings away from room)
+    // 270° = Right hinge, Outward (swings away from room)
+    
+    const rotation = item.rotation || 0;
+    const isInward = rotation < 180;
+    const isLeftHinge = rotation % 180 === 0;
+    
+    // Detect which wall the door is on based on item position
+    // Top wall: y ≈ -WALL_THICKNESS_CM
+    // Left wall: x ≈ -WALL_THICKNESS_CM
+    const isOnTopWall = Math.abs(item.y - (-WALL_THICKNESS_CM)) < 1;
+    const isOnLeftWall = Math.abs(item.x - (-WALL_THICKNESS_CM)) < 1;
+    const isOnBottomWall = Math.abs(item.y - roomConfig.height) < 1;
+    const isOnRightWall = Math.abs(item.x - roomConfig.width) < 1;
+    
+    let frameX, frameY, frameWidth, frameHeight;
+    let panelX, panelY, panelWidth, panelHeight;
+    let arcX, arcY, arcRotation;
+    
+    if (isOnTopWall) {
+      // HORIZONTAL DOOR ON TOP WALL
+      // Group: doorLengthPx wide, wallThickPx tall
+      frameX = 0;
+      frameY = wallThickPx - frameHeight;  // Frame at inner edge of wall
+      frameWidth = doorLengthPx;
+      frameHeight = 5;
+      
+      // For top wall: "In" = swings down into room, "Out" = swings up outside room
+      // Hinge position: "Left" = left side (x=0), "Right" = right side (x=doorLengthPx)
+      
+      if (rotation === 0) {
+        // In + Left: hinge at left, swings down-right into room
+        panelX = 0;
+        panelY = wallThickPx - 5;  // Panel flush with wall, not sticking into room
+        panelWidth = 5;
+        panelHeight = doorLengthPx;
+        arcX = 0;
+        arcY = wallThickPx;
+        arcRotation = 0;
+      } else if (rotation === 90) {
+        // In + Right: hinge at right, swings down-left into room
+        panelX = doorLengthPx - 5;
+        panelY = wallThickPx - 5;  // Panel flush with wall
+        panelWidth = 5;
+        panelHeight = doorLengthPx;
+        arcX = doorLengthPx;
+        arcY = wallThickPx;
+        arcRotation = 90;
+      } else if (rotation === 180) {
+        // Out + Left: hinge at left, swings up-right outside room
+        panelX = 0;
+        panelY = -doorLengthPx;
+        panelWidth = 5;
+        panelHeight = doorLengthPx;
+        arcX = 0;
+        arcY = wallThickPx;
+        arcRotation = 270;
+      } else {
+        // 270: Out + Right: hinge at right, swings up-left outside room
+        panelX = doorLengthPx - 5;
+        panelY = -doorLengthPx;
+        panelWidth = 5;
+        panelHeight = doorLengthPx;
+        arcX = doorLengthPx;
+        arcY = wallThickPx;
+        arcRotation = 180;
+      }
+    } else if (isOnLeftWall) {
+      // VERTICAL DOOR ON LEFT WALL
+      // Group: wallThickPx wide, doorLengthPx tall
+      // Frame at inner edge of wall (right edge, against room)
+      frameX = wallThickPx - 5;
+      frameY = 0;
+      frameWidth = 5;
+      frameHeight = doorLengthPx;
+      
+      // For left wall: "In" = swings right into room, "Out" = swings left outside room
+      // Hinge position: "Left" = top (y=0), "Right" = bottom (y=doorLengthPx)
+      
+      if (rotation === 0) {
+        // In + Left: hinge at top, swings right-down into room
+        panelX = wallThickPx - 5;  // Panel flush with wall
+        panelY = 0;
+        panelWidth = doorLengthPx;
+        panelHeight = 5;
+        arcX = wallThickPx;
+        arcY = 0;
+        arcRotation = 0;
+      } else if (rotation === 90) {
+        // In + Right: hinge at bottom, swings right-up into room
+        panelX = wallThickPx - 5;  // Panel flush with wall
+        panelY = doorLengthPx - 5;
+        panelWidth = doorLengthPx;
+        panelHeight = 5;
+        arcX = wallThickPx;
+        arcY = doorLengthPx;
+        arcRotation = 270;
+      } else if (rotation === 180) {
+        // Out + Left: hinge at top, swings left-down outside room
+        panelX = -doorLengthPx;
+        panelY = 0;
+        panelWidth = doorLengthPx;
+        panelHeight = 5;
+        arcX = 0;
+        arcY = 0;
+        arcRotation = 90;
+      } else {
+        // 270: Out + Right: hinge at bottom, swings left-up outside room
+        panelX = -doorLengthPx;
+        panelY = doorLengthPx - 5;
+        panelWidth = doorLengthPx;
+        panelHeight = 5;
+        arcX = 0;
+        arcY = doorLengthPx;
+        arcRotation = 180;
+      }
+    } else if (isOnBottomWall) {
+      // HORIZONTAL DOOR ON BOTTOM WALL
+      // Group: doorLengthPx wide, wallThickPx tall
+      frameX = 0;
+      frameY = 0;  // Frame at inner edge (top of wall, room side)
+      frameWidth = doorLengthPx;
+      frameHeight = 5;
+      
+      // For bottom wall: "In" = swings up into room, "Out" = swings down outside room
+      // Hinge position: "Left" = left side (x=0), "Right" = right side (x=doorLengthPx)
+      
+      if (rotation === 0) {
+        // In + Left: hinge at left, swings up-right into room
+        panelX = 0;
+        panelY = -doorLengthPx + 5;  // Panel flush with wall
+        panelWidth = 5;
+        panelHeight = doorLengthPx;
+        arcX = 0;
+        arcY = 0;
+        arcRotation = 270;
+      } else if (rotation === 90) {
+        // In + Right: hinge at right, swings up-left into room
+        panelX = doorLengthPx - 5;
+        panelY = -doorLengthPx + 5;  // Panel flush with wall
+        panelWidth = 5;
+        panelHeight = doorLengthPx;
+        arcX = doorLengthPx;
+        arcY = 0;
+        arcRotation = 180;
+      } else if (rotation === 180) {
+        // Out + Left: hinge at left, swings down-right outside room
+        panelX = 0;
+        panelY = wallThickPx;
+        panelWidth = 5;
+        panelHeight = doorLengthPx;
+        arcX = 0;
+        arcY = 0;
+        arcRotation = 0;
+      } else {
+        // 270: Out + Right: hinge at right, swings down-left outside room
+        panelX = doorLengthPx - 5;
+        panelY = wallThickPx;
+        panelWidth = 5;
+        panelHeight = doorLengthPx;
+        arcX = doorLengthPx;
+        arcY = 0;
+        arcRotation = 90;
+      }
+    } else if (isOnRightWall) {
+      // VERTICAL DOOR ON RIGHT WALL
+      // Group: wallThickPx wide, doorLengthPx tall
+      // Frame at inner edge (left edge, room side)
+      frameX = 0;
+      frameY = 0;
+      frameWidth = 5;
+      frameHeight = doorLengthPx;
+      
+      // For right wall: "In" = swings left into room, "Out" = swings right outside room
+      // Hinge position: "Left" = top (y=0), "Right" = bottom (y=doorLengthPx)
+      
+      if (rotation === 0) {
+        // In + Left: hinge at top, swings left-down into room
+        panelX = -doorLengthPx + 5;  // Panel flush with wall
+        panelY = 0;
+        panelWidth = doorLengthPx;
+        panelHeight = 5;
+        arcX = 0;
+        arcY = 0;
+        arcRotation = 90;
+      } else if (rotation === 90) {
+        // In + Right: hinge at bottom, swings left-up into room
+        panelX = -doorLengthPx + 5;  // Panel flush with wall
+        panelY = doorLengthPx - 5;
+        panelWidth = doorLengthPx;
+        panelHeight = 5;
+        arcX = 0;
+        arcY = doorLengthPx;
+        arcRotation = 180;
+      } else if (rotation === 180) {
+        // Out + Left: hinge at top, swings right-down outside room
+        panelX = wallThickPx;
+        panelY = 0;
+        panelWidth = doorLengthPx;
+        panelHeight = 5;
+        arcX = 0;
+        arcY = 0;
+        arcRotation = 0;
+      } else {
+        // 270: Out + Right: hinge at bottom, swings right-up outside room
+        panelX = wallThickPx;
+        panelY = doorLengthPx - 5;
+        panelWidth = doorLengthPx;
+        panelHeight = 5;
+        arcX = 0;
+        arcY = doorLengthPx;
+        arcRotation = 270;
+      }
+    } else {
+      // Default to top wall rendering if position is ambiguous
+      frameX = 0;
+      frameY = wallThickPx - 2.5;
+      frameWidth = doorLengthPx;
+      frameHeight = 5;
+      panelX = isLeftHinge ? 0 : doorLengthPx - 5;
+      panelY = isInward ? wallThickPx : -doorLengthPx;
+      panelWidth = 5;
+      panelHeight = doorLengthPx;
+      arcX = isLeftHinge ? 0 : doorLengthPx;
+      arcY = wallThickPx;
+      arcRotation = rotation === 0 ? 0 : rotation === 90 ? 90 : rotation === 180 ? 270 : 180;
+    }
+    
     return (
       <>
         <Group {...groupProps}>
-          <Rect width={widthPx} height={5} fill="#8d6e63" y={heightPx - 5} />
-          <Rect width={5} height={widthPx} fill="#a1887f" x={0} y={heightPx - widthPx} />
+          {/* Door frame (threshold) */}
+          <Rect width={frameWidth} height={frameHeight} fill="#8d6e63" x={frameX} y={frameY} />
+          {/* Door panel - shows hinge side and open/closed state */}
+          <Rect width={panelWidth} height={panelHeight} fill="#a1887f" x={panelX} y={panelY} />
+          {/* Door swing arc - shows direction of opening */}
           <Arc 
-            innerRadius={widthPx} 
-            outerRadius={widthPx} 
+            innerRadius={0}
+            outerRadius={doorLengthPx} 
             angle={90} 
             stroke="gray" 
+            strokeWidth={2}
             dash={[5, 5]} 
-            rotation={270}
-            x={0}
-            y={heightPx}
+            rotation={arcRotation}
+            x={arcX}
+            y={arcY}
           />
-          <Rect width={widthPx} height={widthPx} opacity={0} />
+          {/* Invisible hit box */}
+          <Rect width={widthPx} height={heightPx} opacity={0} />
         </Group>
         {isSelected && (
           <Transformer
             ref={trRef}
             boundBoxFunc={(oldBox, newBox) => {
-              if (Math.abs(newBox.width) < 5 || Math.abs(newBox.height) < 5) return oldBox;
-              return newBox;
+              // Lock height to wall thickness, only allow width changes
+              if (Math.abs(newBox.width) < 5) return oldBox;
+              return {
+                ...newBox,
+                height: WALL_THICKNESS_CM * PIXELS_PER_CM,
+              };
             }}
             flipEnabled={false}
+            rotateEnabled={true}
+            rotationSnaps={[0, 90, 180, 270]}
+            enabledAnchors={['middle-left', 'middle-right']}
           />
         )}
       </>
@@ -297,7 +573,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
   }
 
   // RENDER: WINDOW
-  if (item.type.toLowerCase() === 'window') {
+  if (item.type?.toLowerCase() === 'window') {
     return (
       <>
         <Group {...groupProps}>
@@ -308,10 +584,16 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
           <Transformer
             ref={trRef}
             boundBoxFunc={(oldBox, newBox) => {
-              if (Math.abs(newBox.width) < 5 || Math.abs(newBox.height) < 5) return oldBox;
-              return newBox;
+              // Lock height to wall thickness, only allow width changes
+              if (Math.abs(newBox.width) < 5) return oldBox;
+              return {
+                ...newBox,
+                height: WALL_THICKNESS_CM * PIXELS_PER_CM, // Lock height to wall thickness
+              };
             }}
             flipEnabled={false}
+            rotateEnabled={false} // Disable rotation for windows
+            enabledAnchors={['middle-left', 'middle-right']} // Only allow horizontal resizing
           />
         )}
       </>
@@ -320,7 +602,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
 
   // RENDER: STANDARD ITEM (using architectural symbols)
   const renderSymbol = () => {
-    const typeLower = item.type.toLowerCase();
+    const typeLower = item.type?.toLowerCase() || '';
     switch (typeLower) {
       case 'toilet':
         return <ToiletSymbol widthCm={item.width} heightCm={item.height} />;

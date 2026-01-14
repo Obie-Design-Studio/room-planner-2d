@@ -61,12 +61,15 @@ const CustomFurnitureModal: React.FC<CustomFurnitureModalProps> = ({
           position: 'relative',
           width: '100%',
           maxWidth: '448px',
+          maxHeight: 'calc(100vh - 80px)',
           margin: '0 16px',
           backgroundColor: '#FFFFFF',
           borderRadius: '16px',
           overflow: 'hidden',
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05)',
           animation: 'modalSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
         {/* Header */}
@@ -121,7 +124,7 @@ const CustomFurnitureModal: React.FC<CustomFurnitureModalProps> = ({
         </div>
 
         {/* Content */}
-        <div style={{ padding: '24px' }}>
+        <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <Input
               label="Label"
@@ -151,7 +154,7 @@ const CustomFurnitureModal: React.FC<CustomFurnitureModalProps> = ({
 
             <ColorPicker
               label="Color"
-              color={color}
+              value={color}
               onChange={setColor}
             />
           </div>

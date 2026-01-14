@@ -13,6 +13,7 @@ export interface FurnitureItem {
   height: number; // in cm
   rotation: number; // in degrees, default 0
   color?: string; // optional hex code
+  floorDistance?: number; // optional, for windows - distance from floor in cm
 }
 
 export interface WallObject {
