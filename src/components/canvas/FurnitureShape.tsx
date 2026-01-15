@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { Rect, Group, Text, Transformer, Arc } from 'react-konva';
+import { Rect, Group, Text, Transformer, Arc, Circle, Path } from 'react-konva';
 import { FurnitureItem, RoomConfig } from '@/types';
 import { PIXELS_PER_CM, WALL_THICKNESS_PX } from '@/lib/constants';
 
@@ -67,18 +67,28 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
   const doorLengthPx = item.width * PIXELS_PER_CM;   // Door length (90cm = 180px)
   const wallThickPx = item.height * PIXELS_PER_CM;  // Wall thickness (5cm = 10px)
   
+  const isWallObject = item.type?.toLowerCase() === 'window' || item.type?.toLowerCase() === 'door';
+  
   // Detect if door is on a vertical wall (left or right)
-  const isOnVerticalWall = (item.type?.toLowerCase() === 'door' || item.type?.toLowerCase() === 'window') && 
+  const isOnVerticalWall = isWallObject && 
                            (Math.abs(item.x - (-WALL_THICKNESS_CM)) < 1 || 
                             Math.abs(item.x - roomConfig.width) < 1);
   
   // Group dimensions - swap for vertical walls so the bounding box is correct
   const widthPx = isOnVerticalWall ? wallThickPx : doorLengthPx;
   const heightPx = isOnVerticalWall ? doorLengthPx : wallThickPx;
+  
+  // For boundary calculations, we need the VISUAL bounding box size after rotation
+  const rotation = item.rotation || 0;
+  const isRotated90 = rotation === 90 || rotation === 270;
+  const visualWidthPx = (!isWallObject && isRotated90) ? heightPx : widthPx;
+  const visualHeightPx = (!isWallObject && isRotated90) ? widthPx : heightPx;
 
-  // VISUAL POSITION (Center): Data (Top-Left) + Half Width
-  const x = (item.x * PIXELS_PER_CM) + (widthPx / 2);
-  const y = (item.y * PIXELS_PER_CM) + (heightPx / 2);
+  // VISUAL POSITION (Center): 
+  // item.x/y represents top-left of the VISUAL (rotated) bounding box
+  // Group position is the center of that visual bounding box
+  const x = (item.x * PIXELS_PER_CM) + (visualWidthPx / 2);
+  const y = (item.y * PIXELS_PER_CM) + (visualHeightPx / 2);
 
   useEffect(() => {
     if (isSelected && trRef.current && shapeRef.current) {
@@ -86,9 +96,6 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
       trRef.current.getLayer()?.batchDraw();
     }
   }, [isSelected]);
-
-
-  const isWallObject = item.type?.toLowerCase() === 'window' || item.type?.toLowerCase() === 'door';
 
   const roomWidthPx = roomConfig.width * PIXELS_PER_CM;
   const roomHeightPx = roomConfig.height * PIXELS_PER_CM;
@@ -103,6 +110,8 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
     );
   };
 
+  // Group is positioned at the CENTER of the visual (rotated) bounding box
+  // The Group itself is rotated, and content is drawn at original dimensions
   const groupProps = {
     ref: shapeRef,
     id: item.id, // Add ID so Stage can identify clicked items
@@ -111,7 +120,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
     width: widthPx,
     height: heightPx,
     draggable: true,
-    rotation: isWallObject ? 0 : (item.rotation || 0), // Wall objects don't rotate the group
+    rotation: isWallObject ? 0 : rotation, // Apply rotation for furniture
     offsetX: widthPx / 2,
     offsetY: heightPx / 2,
     onClick: (e: any) => {
@@ -204,11 +213,23 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
           e.target.rotation(0);  // Don't rotate group, rendering handles orientation
         }
       } else {
-        // Standard Drag for Furniture
-        const topLeftX = currentCenterX - widthPx / 2;
-        const topLeftY = currentCenterY - heightPx / 2;
-        finalXCm = Math.round(topLeftX / PIXELS_PER_CM);
-        finalYCm = Math.round(topLeftY / PIXELS_PER_CM);
+        // Standard Drag for Furniture - constrain to room bounds
+        // Use visual dimensions (after rotation) for boundary calculation
+        
+        // Calculate top-left based on center position and visual dimensions
+        const topLeftX = currentCenterX - visualWidthPx / 2;
+        const topLeftY = currentCenterY - visualHeightPx / 2;
+        
+        // Clamp position to keep furniture inside room
+        const clampedTopLeftX = Math.max(0, Math.min(topLeftX, roomWidthPx - visualWidthPx));
+        const clampedTopLeftY = Math.max(0, Math.min(topLeftY, roomHeightPx - visualHeightPx));
+        
+        finalXCm = Math.round(clampedTopLeftX / PIXELS_PER_CM);
+        finalYCm = Math.round(clampedTopLeftY / PIXELS_PER_CM);
+        
+        // Update visual position to clamped center position
+        e.target.x(clampedTopLeftX + visualWidthPx / 2);
+        e.target.y(clampedTopLeftY + visualHeightPx / 2);
       }
 
       // Sync State
@@ -221,12 +242,9 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
     onDragEnd: (e: any) => {
       if (isWallObject) return;
 
-      const node = e.target;
-      const bbox = node.getClientRect({ skipTransform: false });
-      if (isOutsideRoomPx(bbox)) {
-        onDelete(item.id);
-      } else if (onChangeEnd) {
-        // Save to history after drag ends
+      // Save to history after drag ends
+      if (onChangeEnd) {
+        const node = e.target;
         const topLeftX = node.x() - widthPx / 2;
         const topLeftY = node.y() - heightPx / 2;
         onChangeEnd(item.id, {
@@ -250,19 +268,17 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
         newHeightCm = WALL_THICKNESS_CM;
       }
       
-      // Rotation handling
+      // Rotation handling - snap to 90-degree increments for all items
       let newRotation = Math.round(node.rotation());
-      
-      // For doors: snap to 90-degree increments (0, 90, 180, 270)
-      if (item.type?.toLowerCase() === 'door') {
-        newRotation = Math.round(newRotation / 90) * 90;
-        newRotation = newRotation % 360;
-        if (newRotation < 0) newRotation += 360;
-      }
       
       // For windows: no rotation allowed, always keep at current rotation
       if (item.type?.toLowerCase() === 'window') {
         newRotation = item.rotation || 0;
+      } else {
+        // For all other items (doors and furniture): snap to 90-degree increments
+        newRotation = Math.round(newRotation / 90) * 90;
+        newRotation = newRotation % 360;
+        if (newRotation < 0) newRotation += 360;
       }
       
       const newCenterX = node.x();
@@ -273,10 +289,32 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
       const newTopLeftY = newCenterY - (newHeightPx / 2);
       
       if (!isWallObject) {
-        const bbox = node.getClientRect({ skipTransform: false });
-        if (isOutsideRoomPx(bbox)) {
-          onDelete(item.id);
-          return;
+        // Check if new position/rotation would be outside room
+        const newXCm = Math.round(newTopLeftX / PIXELS_PER_CM);
+        const newYCm = Math.round(newTopLeftY / PIXELS_PER_CM);
+        
+        // Calculate bounding box after rotation
+        const rad = (newRotation * Math.PI) / 180;
+        const cos = Math.abs(Math.cos(rad));
+        const sin = Math.abs(Math.sin(rad));
+        const rotatedWidth = newWidthCm * cos + newHeightCm * sin;
+        const rotatedHeight = newWidthCm * sin + newHeightCm * cos;
+        
+        // Check if furniture would be outside room bounds
+        const wouldBeOutside = 
+          newXCm < 0 || 
+          newYCm < 0 || 
+          newXCm + rotatedWidth > roomConfig.width || 
+          newYCm + rotatedHeight > roomConfig.height;
+        
+        if (wouldBeOutside) {
+          // Revert the transformation - reset node to original state
+          node.rotation(item.rotation || 0);
+          node.position({
+            x: (item.x * PIXELS_PER_CM) + (widthPx / 2),
+            y: (item.y * PIXELS_PER_CM) + (heightPx / 2)
+          });
+          return; // Don't apply the changes
         }
       }
 
@@ -295,6 +333,80 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
       }
     },
   };
+
+  const handleRotateClick = (e: any) => {
+    e.cancelBubble = true;
+    const currentRotation = item.rotation || 0;
+    const nextRotation = (currentRotation + 90) % 360;
+    
+    // For furniture (not wall objects), recalculate position when rotating
+    if (!isWallObject) {
+      // Current visual dimensions (may already be swapped due to current rotation)
+      const isCurrentlyRotated90 = currentRotation === 90 || currentRotation === 270;
+      const currentVisualWidth = isCurrentlyRotated90 ? item.height : item.width;
+      const currentVisualHeight = isCurrentlyRotated90 ? item.width : item.height;
+      
+      // New visual dimensions after rotation
+      const isNextRotated90 = nextRotation === 90 || nextRotation === 270;
+      const nextVisualWidth = isNextRotated90 ? item.height : item.width;
+      const nextVisualHeight = isNextRotated90 ? item.width : item.height;
+      
+      // Calculate current center position
+      const centerX = item.x + currentVisualWidth / 2;
+      const centerY = item.y + currentVisualHeight / 2;
+      
+      // Calculate new top-left position (keeping center the same)
+      let newX = centerX - nextVisualWidth / 2;
+      let newY = centerY - nextVisualHeight / 2;
+      
+      // Clamp to room bounds
+      newX = Math.max(0, Math.min(newX, roomConfig.width - nextVisualWidth));
+      newY = Math.max(0, Math.min(newY, roomConfig.height - nextVisualHeight));
+      
+      // Apply rotation with adjusted position
+      onChange(item.id, { rotation: nextRotation, x: Math.round(newX), y: Math.round(newY) });
+      if (onChangeEnd) {
+        onChangeEnd(item.id, { rotation: nextRotation, x: Math.round(newX), y: Math.round(newY) });
+      }
+      return;
+    }
+    
+    onChange(item.id, { rotation: nextRotation });
+    if (onChangeEnd) {
+      onChangeEnd(item.id, { rotation: nextRotation });
+    }
+  };
+
+  // Render rotate button helper
+  const renderRotateButton = () => (
+    <Group
+      x={widthPx / 2}
+      y={heightPx / 2}
+      onClick={handleRotateClick}
+      onTap={handleRotateClick}
+    >
+      {/* Button background */}
+      <Circle
+        radius={16}
+        fill="#FFFFFF"
+        stroke="#0A0A0A"
+        strokeWidth={1.5}
+        shadowColor="rgba(0, 0, 0, 0.15)"
+        shadowBlur={8}
+        shadowOffset={{ x: 0, y: 2 }}
+        shadowOpacity={1}
+      />
+      {/* Rotate icon (↻) */}
+      <Path
+        data="M 0 -6 A 6 6 0 1 1 -5.2 3 L -3.5 1.5 M -5.2 3 L -7 1.5"
+        stroke="#0A0A0A"
+        strokeWidth={1.5}
+        fill="transparent"
+        lineCap="round"
+        lineJoin="round"
+      />
+    </Group>
+  );
 
   // RENDER: DOOR
   if (item.type?.toLowerCase() === 'door') {
@@ -550,6 +662,9 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
           />
           {/* Invisible hit box */}
           <Rect width={widthPx} height={heightPx} opacity={0} />
+          
+          {/* Centered Rotate Button - only show when selected */}
+          {isSelected && renderRotateButton()}
         </Group>
         {isSelected && (
           <Transformer
@@ -563,8 +678,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
               };
             }}
             flipEnabled={false}
-            rotateEnabled={true}
-            rotationSnaps={[0, 90, 180, 270]}
+            rotateEnabled={false}
             enabledAnchors={['middle-left', 'middle-right']}
           />
         )}
@@ -670,6 +784,9 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
     <>
       <Group {...groupProps}>
         {renderSymbol()}
+        
+        {/* Centered Rotate Button - only show when selected */}
+        {isSelected && renderRotateButton()}
       </Group>
       {isSelected && (
         <Transformer
@@ -679,6 +796,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
             return newBox;
           }}
           flipEnabled={false}
+          rotateEnabled={false}
         />
       )}
     </>

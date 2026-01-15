@@ -65,6 +65,7 @@ export default function Home() {
   const [roomConfig, setRoomConfig] = useState<RoomConfig>({
     width: 400,
     height: 300,
+    roomType: 'living',
   });
 
   const [items, setItems] = useState<FurnitureItem[]>([]);

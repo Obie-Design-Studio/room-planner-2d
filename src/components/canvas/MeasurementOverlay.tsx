@@ -15,8 +15,19 @@ interface Props {
 const MeasurementOverlay: React.FC<Props> = ({ item, room, otherItems = [], zoom = 1.0, unit = 'cm' }) => {
   const x = item.x * PIXELS_PER_CM;
   const y = item.y * PIXELS_PER_CM;
-  const w = item.width * PIXELS_PER_CM;
-  const h = item.height * PIXELS_PER_CM;
+  
+  // Account for rotation when calculating visual dimensions
+  const rotation = item.rotation || 0;
+  const isRotated90 = rotation === 90 || rotation === 270;
+  
+  // Visual dimensions (what you see on screen after rotation)
+  const w = (isRotated90 ? item.height : item.width) * PIXELS_PER_CM;
+  const h = (isRotated90 ? item.width : item.height) * PIXELS_PER_CM;
+  
+  // Actual item dimensions (for labels)
+  const actualWidth = item.width;
+  const actualHeight = item.height;
+  
   const roomW = room.width * PIXELS_PER_CM;
   const roomH = room.height * PIXELS_PER_CM;
 
@@ -549,47 +560,69 @@ const MeasurementOverlay: React.FC<Props> = ({ item, room, otherItems = [], zoom
     }
   });
 
+  // Gap around center for rotation button
+  const buttonRadius = 20; // Space to leave clear for rotation button
+  
+  // Determine which dimension to show on which axis based on rotation
+  // At 0° or 180°: horizontal = width, vertical = height
+  // At 90° or 270°: horizontal = height, vertical = width
+  const horizontalLabel = isRotated90 ? actualHeight : actualWidth;
+  const verticalLabel = isRotated90 ? actualWidth : actualHeight;
+  
   return (
     <Group>
-      {/* Item dimension label - positioned above the item */}
+      {/* Furniture dimensions - blue lines showing width and height, split to avoid rotation button */}
+      {/* Horizontal dimension lines - split at center */}
+      <Line points={[x, midY, midX - buttonRadius, midY]} stroke={COLORS.dimension} dash={dash} strokeWidth={1.5} />
+      <Line points={[midX + buttonRadius, midY, x + w, midY]} stroke={COLORS.dimension} dash={dash} strokeWidth={1.5} />
       <DimensionLabel 
-        x={adjustLabelX(midX, formatDimensions(item.width, item.height, unit).length * fontSize * 0.6)} 
-        y={adjustLabelY(y - labelOffset - 5, fontSize)} 
-        text={formatDimensions(item.width, item.height, unit)}
+        x={x + w / 4} 
+        y={midY - labelOffset} 
+        text={formatMeasurement(horizontalLabel, unit)}
         color={COLORS.dimension}
       />
       
-      {/* Left Measure */}
+      {/* Vertical dimension lines - split at center */}
+      <Line points={[midX, y, midX, midY - buttonRadius]} stroke={COLORS.dimension} dash={dash} strokeWidth={1.5} />
+      <Line points={[midX, midY + buttonRadius, midX, y + h]} stroke={COLORS.dimension} dash={dash} strokeWidth={1.5} />
+      <DimensionLabel 
+        x={midX + labelOffset + 10} 
+        y={y + h / 4} 
+        text={formatMeasurement(verticalLabel, unit)}
+        color={COLORS.dimension}
+      />
+      
+      {/* Left gap - red line from wall/obstacle to furniture */}
       <Line points={[leftBound, midY, x, midY]} stroke={COLORS.distance} dash={dash} strokeWidth={1.5} />
       <DimensionLabel 
         x={adjustLabelX((leftBound + x) / 2, formatMeasurement(Math.round((x - leftBound) / PIXELS_PER_CM), unit).length * fontSize * 0.6)} 
-        y={midY - labelOffset} 
+        y={midY + labelOffset + 5} 
         text={formatMeasurement(Math.round((x - leftBound) / PIXELS_PER_CM), unit)}
         color={COLORS.distance}
       />
 
-      {/* Right Measure */}
+      {/* Right gap - red line from furniture to wall/obstacle */}
       <Line points={[x + w, midY, rightBound, midY]} stroke={COLORS.distance} dash={dash} strokeWidth={1.5} />
       <DimensionLabel 
         x={adjustLabelX((x + w + rightBound) / 2, formatMeasurement(Math.round((rightBound - (x + w)) / PIXELS_PER_CM), unit).length * fontSize * 0.6)} 
-        y={midY - labelOffset} 
+        y={midY + labelOffset + 5} 
         text={formatMeasurement(Math.round((rightBound - (x + w)) / PIXELS_PER_CM), unit)}
         color={COLORS.distance}
       />
 
-      {/* Top Measure */}
+      {/* Top gap - red line from wall/obstacle to furniture */}
       <Line points={[midX, topBound, midX, y]} stroke={COLORS.distance} dash={dash} strokeWidth={1.5} />
       <DimensionLabel 
-        x={midX + labelOffset + 10} 
+        x={midX - labelOffset - 10} 
         y={adjustLabelY((topBound + y) / 2, fontSize)} 
         text={formatMeasurement(Math.round((y - topBound) / PIXELS_PER_CM), unit)}
         color={COLORS.distance}
       />
 
-      {/* Bottom Measure */}
+      {/* Bottom gap - red line from furniture to wall/obstacle */}
       <Line points={[midX, y + h, midX, bottomBound]} stroke={COLORS.distance} dash={dash} strokeWidth={1.5} />
       <DimensionLabel 
-        x={midX + labelOffset + 10} 
+        x={midX - labelOffset - 10} 
         y={adjustLabelY((y + h + bottomBound) / 2, fontSize)} 
         text={formatMeasurement(Math.round((bottomBound - (y + h)) / PIXELS_PER_CM), unit)}
         color={COLORS.distance}

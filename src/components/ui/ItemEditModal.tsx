@@ -348,7 +348,7 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
                     </div>
                   </div>
                 ) : (
-                  // Regular furniture: slider
+                  // Regular furniture: rotate button
                   <>
                     <label
                       style={{ 
@@ -359,24 +359,51 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
                         marginBottom: '8px',
                       }}
                     >
-                      Rotation ({localRotation}°)
+                      Rotation
                     </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="360"
-                      value={localRotation}
-                      onChange={(e) => setLocalRotation(Number(e.target.value))}
+                    <button
+                      onClick={() => {
+                        const nextRotation = (localRotation + 90) % 360;
+                        setLocalRotation(nextRotation);
+                      }}
                       style={{
                         width: '100%',
-                        height: '6px',
-                        borderRadius: '3px',
-                        outline: 'none',
-                        appearance: 'none',
+                        padding: '16px',
+                        fontSize: '14px',
+                        fontWeight: 500,
+                        color: '#0A0A0A',
+                        backgroundColor: '#FAFAFA',
+                        border: '1px solid #E5E5E5',
+                        borderRadius: '10px',
                         cursor: 'pointer',
-                        background: `linear-gradient(to right, #0A0A0A 0%, #0A0A0A ${(localRotation / 360) * 100}%, #E5E5E5 ${(localRotation / 360) * 100}%, #E5E5E5 100%)`,
+                        transition: 'all 150ms',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
                       }}
-                    />
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#F5F5F5';
+                        e.currentTarget.style.borderColor = '#D4D4D4';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = '#FAFAFA';
+                        e.currentTarget.style.borderColor = '#E5E5E5';
+                      }}
+                    >
+                      <span style={{ color: '#666666' }}>
+                        {localRotation === 0 && '↑ 0°'}
+                        {localRotation === 90 && '→ 90°'}
+                        {localRotation === 180 && '↓ 180°'}
+                        {localRotation === 270 && '← 270°'}
+                      </span>
+                      <span style={{ 
+                        fontSize: '12px',
+                        color: '#999999',
+                        fontWeight: 400,
+                      }}>
+                        Click to rotate
+                      </span>
+                    </button>
                   </>
                 )}
               </div>
