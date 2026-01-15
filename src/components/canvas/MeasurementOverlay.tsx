@@ -43,9 +43,9 @@ const MeasurementOverlay: React.FC<Props> = ({ item, room, otherItems = [], zoom
   const dash = [4, 4];
   
   // Zoom-aware font size: scales WITH zoom for readability
-  // At 100% zoom: 16px, at 300% zoom: 22px, at 10% zoom: 14px
-  const baseFontSize = 16;
-  const fontSize = Math.max(14, Math.min(26, baseFontSize + (zoom - 1) * 6));
+  // At 100% zoom: 20px, at 300% zoom: 28px, at 10% zoom: 16px
+  const baseFontSize = 20;
+  const fontSize = Math.max(16, Math.min(30, baseFontSize + (zoom - 1) * 8));
   
   // Zoom-aware offsets for better spacing at different zoom levels
   const outsideOffset = Math.max(15, Math.min(30, 20 / zoom)); // Distance outside room for wall object measurements

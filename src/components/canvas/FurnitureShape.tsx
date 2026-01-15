@@ -780,10 +780,47 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
     }
   };
 
+  // Format furniture name for display
+  const getFurnitureName = () => {
+    const name = item.name || item.type || 'Item';
+    // Capitalize first letter of each word
+    return name.split(' ').map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    ).join(' ');
+  };
+
   return (
     <>
       <Group {...groupProps}>
         {renderSymbol()}
+        
+        {/* Furniture Label - only show for non-wall objects */}
+        {!isWallObject && (
+          <>
+            {/* Label background for better readability */}
+            <Rect
+              x={widthPx / 2 - 40}
+              y={heightPx / 2 - 10}
+              width={80}
+              height={20}
+              fill="#FFFFFF"
+              opacity={0.9}
+              cornerRadius={4}
+            />
+            <Text
+              text={getFurnitureName()}
+              x={widthPx / 2}
+              y={heightPx / 2}
+              offsetX={0}
+              offsetY={7}
+              fontSize={14}
+              fontFamily="Inter, -apple-system, system-ui, sans-serif"
+              fontStyle="600"
+              fill="#0A0A0A"
+              align="center"
+            />
+          </>
+        )}
         
         {/* Centered Rotate Button - only show when selected */}
         {isSelected && renderRotateButton()}
