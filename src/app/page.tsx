@@ -667,22 +667,25 @@ export default function Home() {
             borderRight: '1px solid #EFEFEF',
             backgroundColor: '#FAFAFA',
             position: 'absolute',
-            top: '64px',
+            top: '0',
             left: 0,
             bottom: 0,
             transform: isSidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
             transition: 'transform 250ms ease-in-out',
-            zIndex: 50,
+            zIndex: 100,
             boxShadow: isSidebarOpen ? '4px 0 12px rgba(0, 0, 0, 0.1)' : 'none',
           }}
           className="md:relative md:top-auto md:left-auto md:bottom-auto md:translate-x-0 md:w-[280px] lg:w-[320px] md:z-auto md:shadow-none md:flex-shrink-0"
         >
-          <div style={{ 
-            flex: 1, 
-            minHeight: 0, 
-            overflowY: 'auto', 
-            padding: '20px'
-          }}>
+          <div 
+            style={{ 
+              flex: 1, 
+              minHeight: 0, 
+              overflowY: 'auto', 
+              padding: '20px'
+            }}
+            className="mt-[65px] md:mt-0"
+          >
             {/* Room Settings Section */}
             <div style={{ marginBottom: '24px' }}>
               <h3 style={{ 
@@ -1237,12 +1240,12 @@ export default function Home() {
             onClick={() => setIsSidebarOpen(false)}
             style={{
               position: 'fixed',
-              top: '64px',
+              top: '0',
               left: 0,
               right: 0,
               bottom: 0,
               backgroundColor: 'rgba(0, 0, 0, 0.4)',
-              zIndex: 40,
+              zIndex: 90,
               transition: 'opacity 250ms ease-in-out',
             }}
             className="md:hidden"
