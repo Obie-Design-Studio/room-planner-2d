@@ -49,6 +49,7 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
   const isWallObject = item.type?.toLowerCase() === 'door' || item.type?.toLowerCase() === 'window';
   const isDoor = item.type?.toLowerCase() === 'door';
   const isWindow = item.type?.toLowerCase() === 'window';
+  const isWall = item.type?.toLowerCase() === 'wall';
 
   // Door orientation state (derived from rotation)
   const doorSwing = localRotation >= 180 ? 'out' : 'in';
@@ -199,7 +200,7 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <Input
-                label="Width (cm)"
+                label={isWall ? "Length (cm)" : "Width (cm)"}
                 type="number"
                 value={localWidth}
                 onChange={(e) => setLocalWidth(Number(e.target.value))}
@@ -215,6 +216,13 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
               ) : isDoor ? (
                 <Input
                   label="Height (cm)"
+                  type="number"
+                  value={localHeight}
+                  onChange={(e) => setLocalHeight(Number(e.target.value))}
+                />
+              ) : isWall ? (
+                <Input
+                  label="Thickness (cm)"
                   type="number"
                   value={localHeight}
                   onChange={(e) => setLocalHeight(Number(e.target.value))}
@@ -240,7 +248,7 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
             )}
 
             {/* Rotation Control */}
-            {!isWindow && (
+            {!isWindow && !isWall && (
               <div>
                 {isDoor ? (
                   // Door: Two separate controls for Swing and Hinge

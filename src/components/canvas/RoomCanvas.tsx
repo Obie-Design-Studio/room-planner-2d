@@ -556,16 +556,113 @@ export default function RoomCanvas({
           y={stagePos.y + baseCenterOffsetY}
         >
           <Group x={0} y={0}>
+            {/* Floor background */}
             <Rect
               name="floor"
-              x={-WALL_THICKNESS_PX / 2}
-              y={-WALL_THICKNESS_PX / 2}
-              width={roomConfig.width * PIXELS_PER_CM + WALL_THICKNESS_PX}
-              height={roomConfig.height * PIXELS_PER_CM + WALL_THICKNESS_PX}
+              x={0}
+              y={0}
+              width={roomConfig.width * PIXELS_PER_CM}
+              height={roomConfig.height * PIXELS_PER_CM}
               fill="white"
-              stroke="black"
-              strokeWidth={WALL_THICKNESS_PX}
             />
+            
+            {/* Walls with door gaps */}
+            {(() => {
+              const roomWidthPx = roomConfig.width * PIXELS_PER_CM;
+              const roomHeightPx = roomConfig.height * PIXELS_PER_CM;
+              const WALL_THICKNESS_CM = WALL_THICKNESS_PX / PIXELS_PER_CM;
+              
+              // Find all doors and their positions
+              const doors = items.filter(item => item.type?.toLowerCase() === 'door');
+              
+              // Helper: Generate wall segments for a wall, with gaps for doors
+              const generateWallSegments = (wall: 'top' | 'bottom' | 'left' | 'right') => {
+                const segments: Array<{ x1: number; y1: number; x2: number; y2: number }> = [];
+                
+                // Get doors on this wall
+                const wallDoors = doors.filter(door => {
+                  if (wall === 'top') return Math.abs(door.y - (-WALL_THICKNESS_CM)) < 1;
+                  if (wall === 'bottom') return Math.abs(door.y - roomConfig.height) < 1;
+                  if (wall === 'left') return Math.abs(door.x - (-WALL_THICKNESS_CM)) < 1;
+                  if (wall === 'right') return Math.abs(door.x - roomConfig.width) < 1;
+                  return false;
+                });
+                
+                // Sort doors by position along the wall
+                wallDoors.sort((a, b) => {
+                  if (wall === 'top' || wall === 'bottom') return a.x - b.x;
+                  return a.y - b.y;
+                });
+                
+                if (wall === 'top' || wall === 'bottom') {
+                  // Horizontal wall
+                  const y = wall === 'top' ? -WALL_THICKNESS_PX / 2 : roomHeightPx + WALL_THICKNESS_PX / 2;
+                  let currentX = -WALL_THICKNESS_PX / 2;
+                  const endX = roomWidthPx + WALL_THICKNESS_PX / 2;
+                  
+                  wallDoors.forEach(door => {
+                    const doorStartX = door.x * PIXELS_PER_CM;
+                    const doorEndX = doorStartX + door.width * PIXELS_PER_CM;
+                    
+                    // Add segment before door (if there's space)
+                    if (doorStartX > currentX + 1) {
+                      segments.push({ x1: currentX, y1: y, x2: doorStartX, y2: y });
+                    }
+                    
+                    currentX = doorEndX;
+                  });
+                  
+                  // Add final segment after last door
+                  if (currentX < endX - 1) {
+                    segments.push({ x1: currentX, y1: y, x2: endX, y2: y });
+                  }
+                } else {
+                  // Vertical wall
+                  const x = wall === 'left' ? -WALL_THICKNESS_PX / 2 : roomWidthPx + WALL_THICKNESS_PX / 2;
+                  let currentY = -WALL_THICKNESS_PX / 2;
+                  const endY = roomHeightPx + WALL_THICKNESS_PX / 2;
+                  
+                  wallDoors.forEach(door => {
+                    const doorStartY = door.y * PIXELS_PER_CM;
+                    const doorEndY = doorStartY + door.width * PIXELS_PER_CM; // door.width is the length along the wall
+                    
+                    // Add segment before door (if there's space)
+                    if (doorStartY > currentY + 1) {
+                      segments.push({ x1: x, y1: currentY, x2: x, y2: doorStartY });
+                    }
+                    
+                    currentY = doorEndY;
+                  });
+                  
+                  // Add final segment after last door
+                  if (currentY < endY - 1) {
+                    segments.push({ x1: x, y1: currentY, x2: x, y2: endY });
+                  }
+                }
+                
+                return segments;
+              };
+              
+              // Generate all wall segments
+              const allSegments = [
+                ...generateWallSegments('top'),
+                ...generateWallSegments('right'),
+                ...generateWallSegments('bottom'),
+                ...generateWallSegments('left'),
+              ];
+              
+              return allSegments.map((seg, i) => (
+                <Line
+                  key={`wall-${i}`}
+                  points={[seg.x1, seg.y1, seg.x2, seg.y2]}
+                  stroke="black"
+                  strokeWidth={WALL_THICKNESS_PX}
+                  lineCap="square"
+                  listening={false}
+                />
+              ));
+            })()}
+            
             <GridBackground width={roomConfig.width} height={roomConfig.height} />
             
             {/* Room Dimensions - Always visible on top and left walls */}
@@ -578,26 +675,27 @@ export default function RoomCanvas({
               />
               <Line points={[0, -105, 0, -95]} stroke="#0a0a0a" strokeWidth={2} />
               <Line points={[roomConfig.width * PIXELS_PER_CM, -105, roomConfig.width * PIXELS_PER_CM, -95]} stroke="#0a0a0a" strokeWidth={2} />
-              {/* White background for text */}
-              <Rect
-                x={roomConfig.width * PIXELS_PER_CM / 2 - (formatMeasurement(roomConfig.width, measurementUnit).length * 24 * 0.3) - 6}
-                y={-100 - 15 - 4}
-                width={formatMeasurement(roomConfig.width, measurementUnit).length * 24 * 0.6 + 12}
-                height={24 + 8}
-                fill="white"
-                stroke="#e5e5e5"
-                strokeWidth={1}
-                cornerRadius={4}
-              />
-              <Text 
-                x={roomConfig.width * PIXELS_PER_CM / 2} 
-                y={-100 - 15} 
-                text={formatMeasurement(roomConfig.width, measurementUnit)}
-                fontSize={24}
-                fill="#0a0a0a"
-                align="center"
-                offsetX={formatMeasurement(roomConfig.width, measurementUnit).length * 24 * 0.3}
-              />
+              {/* Top wall label - ABOVE the dimension line, 2x bigger, zoom-responsive, no box */}
+              {(() => {
+                const topText = formatMeasurement(roomConfig.width, measurementUnit);
+                // 2x bigger base (48px), scales with zoom for readability
+                const baseFontSize = 48;
+                const topFontSize = Math.max(36, Math.min(64, baseFontSize + (userZoom - 1) * 12));
+                const textWidth = topText.length * topFontSize * 0.6;
+                const topCenterX = roomConfig.width * PIXELS_PER_CM / 2 - textWidth / 2;
+                const topY = -100 - 15 - topFontSize; // Position so bottom edge is 15px above line
+                return (
+                  <Text 
+                    x={topCenterX}
+                    y={topY}
+                    text={topText}
+                    fontSize={topFontSize}
+                    fontFamily="Arial, sans-serif"
+                    fontStyle="bold"
+                    fill="#0a0a0a"
+                  />
+                );
+              })()}
               
               {/* Left wall - Room height */}
               <Line 
@@ -607,26 +705,27 @@ export default function RoomCanvas({
               />
               <Line points={[-105, 0, -95, 0]} stroke="#0a0a0a" strokeWidth={2} />
               <Line points={[-105, roomConfig.height * PIXELS_PER_CM, -95, roomConfig.height * PIXELS_PER_CM]} stroke="#0a0a0a" strokeWidth={2} />
-              {/* White background for text */}
-              <Rect
-                x={-100 - 30 - (formatMeasurement(roomConfig.height, measurementUnit).length * 24 * 0.6 + 12) / 2}
-                y={roomConfig.height * PIXELS_PER_CM / 2 - 16}
-                width={formatMeasurement(roomConfig.height, measurementUnit).length * 24 * 0.6 + 12}
-                height={32}
-                fill="white"
-                stroke="#e5e5e5"
-                strokeWidth={1}
-                cornerRadius={4}
-              />
-              <Text 
-                x={-100 - 30} 
-                y={roomConfig.height * PIXELS_PER_CM / 2} 
-                text={formatMeasurement(roomConfig.height, measurementUnit)}
-                fontSize={24}
-                fill="#0a0a0a"
-                align="center"
-                offsetY={12}
-              />
+              {/* Left wall label - LEFT of the dimension line, 2x bigger, zoom-responsive, no box */}
+              {(() => {
+                const leftText = formatMeasurement(roomConfig.height, measurementUnit);
+                // 2x bigger base (48px), scales with zoom for readability
+                const baseFontSize = 48;
+                const leftFontSize = Math.max(36, Math.min(64, baseFontSize + (userZoom - 1) * 12));
+                const textWidth = leftText.length * leftFontSize * 0.6;
+                const leftX = -100 - 15 - textWidth; // Position so right edge is 15px left of line
+                const leftCenterY = roomConfig.height * PIXELS_PER_CM / 2;
+                return (
+                  <Text 
+                    x={leftX}
+                    y={leftCenterY - leftFontSize / 2}
+                    text={leftText}
+                    fontSize={leftFontSize}
+                    fontFamily="Arial, sans-serif"
+                    fontStyle="bold"
+                    fill="#0a0a0a"
+                  />
+                );
+              })()}
             </Group>
             
             {items.map((item) => (

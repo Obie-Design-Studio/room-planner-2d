@@ -26,6 +26,7 @@ import {
   WallToiletSymbol,
   TowelDryerSymbol,
   TableSymbol,
+  WallSymbol,
 } from '@/components/canvas/furnitureSymbols';
 
 interface FurnitureLibraryModalProps {
@@ -60,6 +61,7 @@ const FURNITURE_SYMBOL_MAP: Record<string, React.FC<{ widthCm: number; heightCm:
   'Wall Toilet': WallToiletSymbol,
   'Towel Dryer': TowelDryerSymbol,
   'Table': TableSymbol,
+  'Wall': WallSymbol,
 };
 
 // Component to render furniture preview icon

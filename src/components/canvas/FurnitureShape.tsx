@@ -28,7 +28,8 @@ import {
   ShowerSymbol,
   BathtubSymbol,
   WallToiletSymbol,
-  TowelDryerSymbol
+  TowelDryerSymbol,
+  WallSymbol
 } from './furnitureSymbols';
 
 function getContrastColor(hexColor: string) {
@@ -675,6 +676,120 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
       arcRotation = rotation === 0 ? 0 : rotation === 90 ? 90 : rotation === 180 ? 270 : 180;
     }
     
+    // Calculate door panel in open position (90 degrees from closed)
+    // Door panel will be a thin rectangle extending from the hinge point
+    let doorPanelX, doorPanelY, doorPanelWidth, doorPanelHeight;
+    
+    if (isOnTopWall) {
+      // Horizontal door on top wall
+      if (rotation === 0) {
+        // Hinge at left, opens into room (door extends downward)
+        doorPanelX = 0;
+        doorPanelY = wallThickPx;
+        doorPanelWidth = 5;
+        doorPanelHeight = doorLengthPx;
+      } else if (rotation === 90) {
+        // Hinge at right, opens into room (door extends downward)
+        doorPanelX = doorLengthPx - 5;
+        doorPanelY = wallThickPx;
+        doorPanelWidth = 5;
+        doorPanelHeight = doorLengthPx;
+      } else if (rotation === 180) {
+        // Hinge at left, opens outside room (door extends upward)
+        doorPanelX = 0;
+        doorPanelY = -doorLengthPx;
+        doorPanelWidth = 5;
+        doorPanelHeight = doorLengthPx;
+      } else {
+        // 270: Hinge at right, opens outside room (door extends upward)
+        doorPanelX = doorLengthPx - 5;
+        doorPanelY = -doorLengthPx;
+        doorPanelWidth = 5;
+        doorPanelHeight = doorLengthPx;
+      }
+    } else if (isOnLeftWall) {
+      // Vertical door on left wall
+      if (rotation === 0) {
+        // Hinge at top, opens into room (door extends rightward)
+        doorPanelX = wallThickPx;
+        doorPanelY = 0;
+        doorPanelWidth = doorLengthPx;
+        doorPanelHeight = 5;
+      } else if (rotation === 90) {
+        // Hinge at bottom, opens into room (door extends rightward)
+        doorPanelX = wallThickPx;
+        doorPanelY = doorLengthPx - 5;
+        doorPanelWidth = doorLengthPx;
+        doorPanelHeight = 5;
+      } else if (rotation === 180) {
+        // Hinge at top, opens outside room (door extends leftward)
+        doorPanelX = -doorLengthPx;
+        doorPanelY = 0;
+        doorPanelWidth = doorLengthPx;
+        doorPanelHeight = 5;
+      } else {
+        // 270: Hinge at bottom, opens outside room (door extends leftward)
+        doorPanelX = -doorLengthPx;
+        doorPanelY = doorLengthPx - 5;
+        doorPanelWidth = doorLengthPx;
+        doorPanelHeight = 5;
+      }
+    } else if (isOnBottomWall) {
+      // Horizontal door on bottom wall
+      if (rotation === 0) {
+        // Hinge at left, opens into room (door extends upward)
+        doorPanelX = 0;
+        doorPanelY = -doorLengthPx;
+        doorPanelWidth = 5;
+        doorPanelHeight = doorLengthPx;
+      } else if (rotation === 90) {
+        // Hinge at right, opens into room (door extends upward)
+        doorPanelX = doorLengthPx - 5;
+        doorPanelY = -doorLengthPx;
+        doorPanelWidth = 5;
+        doorPanelHeight = doorLengthPx;
+      } else if (rotation === 180) {
+        // Hinge at left, opens outside room (door extends downward)
+        doorPanelX = 0;
+        doorPanelY = wallThickPx;
+        doorPanelWidth = 5;
+        doorPanelHeight = doorLengthPx;
+      } else {
+        // 270: Hinge at right, opens outside room (door extends downward)
+        doorPanelX = doorLengthPx - 5;
+        doorPanelY = wallThickPx;
+        doorPanelWidth = 5;
+        doorPanelHeight = doorLengthPx;
+      }
+    } else {
+      // Right wall
+      if (rotation === 0) {
+        // Hinge at top, opens into room (door extends leftward)
+        doorPanelX = -doorLengthPx;
+        doorPanelY = 0;
+        doorPanelWidth = doorLengthPx;
+        doorPanelHeight = 5;
+      } else if (rotation === 90) {
+        // Hinge at bottom, opens into room (door extends leftward)
+        doorPanelX = -doorLengthPx;
+        doorPanelY = doorLengthPx - 5;
+        doorPanelWidth = doorLengthPx;
+        doorPanelHeight = 5;
+      } else if (rotation === 180) {
+        // Hinge at top, opens outside room (door extends rightward)
+        doorPanelX = wallThickPx;
+        doorPanelY = 0;
+        doorPanelWidth = doorLengthPx;
+        doorPanelHeight = 5;
+      } else {
+        // 270: Hinge at bottom, opens outside room (door extends rightward)
+        doorPanelX = wallThickPx;
+        doorPanelY = doorLengthPx - 5;
+        doorPanelWidth = doorLengthPx;
+        doorPanelHeight = 5;
+      }
+    }
+    
     const hitAreaPadding = 30; // 30px padding for easier clicking
     return (
       <>
@@ -687,17 +802,22 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
             height={heightPx + hitAreaPadding} 
             opacity={0}
           />
-          {/* Door frame (threshold) */}
-          <Rect width={frameWidth} height={frameHeight} fill="#8d6e63" x={frameX} y={frameY} />
-          {/* Door panel - shows hinge side and open/closed state */}
-          <Rect width={panelWidth} height={panelHeight} fill="#a1887f" x={panelX} y={panelY} />
-          {/* Door swing arc - shows direction of opening */}
+          {/* Door panel in open position */}
+          <Rect 
+            width={doorPanelWidth} 
+            height={doorPanelHeight} 
+            fill="#8B4513" 
+            x={doorPanelX} 
+            y={doorPanelY} 
+          />
+          
+          {/* Door swing arc - shows path of swing */}
           <Arc 
             innerRadius={0}
             outerRadius={doorLengthPx} 
             angle={90} 
-            stroke="gray" 
-            strokeWidth={2}
+            stroke="#666666" 
+            strokeWidth={1}
             dash={[5, 5]} 
             rotation={arcRotation}
             x={arcX}
@@ -825,6 +945,8 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
         return <WallToiletSymbol widthCm={item.width} heightCm={item.height} />;
       case 'towel dryer':
         return <TowelDryerSymbol widthCm={item.width} heightCm={item.height} />;
+      case 'wall':
+        return <WallSymbol widthCm={item.width} heightCm={item.height} />;
       default:
         // Fallback: simple rectangle
         return (

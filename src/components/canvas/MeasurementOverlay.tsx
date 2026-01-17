@@ -67,13 +67,18 @@ const MeasurementOverlay: React.FC<Props> = ({
   
   const dash = [4, 4];
   
-  // Zoom-aware font size: scales WITH zoom for readability
+  // Zoom-aware font size for furniture measurements
   // At 100% zoom: 24px, at 300% zoom: 32px, at 10% zoom: 20px
   const baseFontSize = 24;
   const fontSize = Math.max(20, Math.min(36, baseFontSize + (zoom - 1) * 8));
   
+  // LARGER font size for wall object measurements (doors/windows) - 2x bigger
+  // At 100% zoom: 32px, scales up to 48px at high zoom, down to 28px at low zoom
+  const wallBaseFontSize = 32;
+  const wallFontSize = Math.max(28, Math.min(48, wallBaseFontSize + (zoom - 1) * 12));
+  
   // Zoom-aware offsets for better spacing at different zoom levels
-  const outsideOffset = Math.max(15, Math.min(30, 20 / zoom)); // Distance outside room for wall object measurements
+  const outsideOffset = Math.max(20, Math.min(40, 30 / zoom)); // Distance outside room for wall object measurements
   const labelOffset = Math.max(10, Math.min(20, 15 / zoom)); // Offset for labels from measurement lines
 
   // Helper: check if a value is inside a range
@@ -113,8 +118,8 @@ const MeasurementOverlay: React.FC<Props> = ({
     existingLabels: Array<{ x: number; y: number; width: number; height: number }>,
     isVertical: boolean = false
   ): { x: number; y: number } => {
-    const padding = 4;
-    const charWidth = fontSize * 0.6;
+    const padding = 8; // Match the padding in DimensionLabel
+    const charWidth = fontSize * 1.1; // Match the charWidth in DimensionLabel
     const textWidth = text.length * charWidth;
     const textHeight = fontSize;
     const labelWidth = textWidth + padding * 2;
@@ -366,32 +371,83 @@ const MeasurementOverlay: React.FC<Props> = ({
     setEditingDirection(null);
   };
 
-  // Helper component: Dimension label with white background
+  // Helper component: Dimension label with white background (for furniture)
   const DimensionLabel = ({ x, y, text, color = '#1a1a1a', customFontSize }: { x: number; y: number; text: string; color?: string; customFontSize?: number }) => {
     const actualFontSize = customFontSize || fontSize;
-    const padding = 4;
-    const charWidth = actualFontSize * 0.6; // Approximate character width based on font size
-    const textWidth = text.length * charWidth;
-    const textHeight = actualFontSize;
+    const padding = 12;
+    
+    // Use very generous width to ensure text fits
+    const estimatedWidth = text.length * actualFontSize * 0.7 + 30;
+    const boxWidth = Math.max(estimatedWidth, 80); // Minimum 80px wide
+    const boxHeight = actualFontSize + padding * 2;
+    
+    // Calculate positions - center x,y is the center of the label
+    const boxX = x - boxWidth / 2;
+    const boxY = y - boxHeight / 2;
     
     return (
       <Group>
         <Rect
-          x={x - textWidth / 2 - padding}
-          y={y - textHeight / 2 - padding}
-          width={textWidth + padding * 2}
-          height={textHeight + padding * 2}
+          x={boxX}
+          y={boxY}
+          width={boxWidth}
+          height={boxHeight}
           fill="white"
           stroke="#e5e5e5"
           strokeWidth={1}
-          cornerRadius={3}
+          cornerRadius={4}
         />
         <Text
-          x={x - textWidth / 2}
-          y={y - textHeight / 2}
+          x={boxX}
+          y={y - actualFontSize / 2}
           text={text}
           fill={color}
           fontSize={actualFontSize}
+          fontFamily="Arial, sans-serif"
+          fontStyle="bold"
+          align="center"
+          width={boxWidth}
+        />
+      </Group>
+    );
+  };
+
+  // Helper component: LARGE dimension label for wall objects (doors/windows) - 2x size
+  const WallDimensionLabel = ({ x, y, text, color = '#1a1a1a' }: { x: number; y: number; text: string; color?: string }) => {
+    const actualFontSize = wallFontSize;
+    const padding = 14;
+    
+    // Use very generous width to ensure text fits
+    const estimatedWidth = text.length * actualFontSize * 0.7 + 40;
+    const boxWidth = Math.max(estimatedWidth, 100); // Minimum 100px wide for larger labels
+    const boxHeight = actualFontSize + padding * 2;
+    
+    // Calculate positions - center x,y is the center of the label
+    const boxX = x - boxWidth / 2;
+    const boxY = y - boxHeight / 2;
+    
+    return (
+      <Group>
+        <Rect
+          x={boxX}
+          y={boxY}
+          width={boxWidth}
+          height={boxHeight}
+          fill="white"
+          stroke="#e5e5e5"
+          strokeWidth={1}
+          cornerRadius={4}
+        />
+        <Text
+          x={boxX}
+          y={y - actualFontSize / 2}
+          text={text}
+          fill={color}
+          fontSize={actualFontSize}
+          fontFamily="Arial, sans-serif"
+          fontStyle="bold"
+          align="center"
+          width={boxWidth}
         />
       </Group>
     );
@@ -416,24 +472,30 @@ const MeasurementOverlay: React.FC<Props> = ({
     value: number;
   }) => {
     const actualFontSize = customFontSize || fontSize;
-    const padding = 4;
-    const charWidth = actualFontSize * 0.6;
-    const textWidth = text.length * charWidth;
-    const textHeight = actualFontSize;
+    const padding = 12;
+    
+    // Use very generous width to ensure text fits
+    const estimatedWidth = text.length * actualFontSize * 0.7 + 30;
+    const boxWidth = Math.max(estimatedWidth, 80); // Minimum 80px wide
+    const boxHeight = actualFontSize + padding * 2;
+    
+    // Calculate positions - center x,y is the center of the label
+    const boxX = x - boxWidth / 2;
+    const boxY = y - boxHeight / 2;
     
     const isEditable = onItemChange !== undefined;
     
     return (
       <Group name="dimension-label">
         <Rect
-          x={x - textWidth / 2 - padding}
-          y={y - textHeight / 2 - padding}
-          width={textWidth + padding * 2}
-          height={textHeight + padding * 2}
+          x={boxX}
+          y={boxY}
+          width={boxWidth}
+          height={boxHeight}
           fill="white"
           stroke={isEditable ? color : "#e5e5e5"}
           strokeWidth={isEditable ? 2 : 1}
-          cornerRadius={3}
+          cornerRadius={4}
           listening={isEditable}
           name="dimension-label-rect"
           onMouseDown={(e) => {
@@ -469,11 +531,15 @@ const MeasurementOverlay: React.FC<Props> = ({
           }}
         />
         <Text
-          x={x - textWidth / 2}
-          y={y - textHeight / 2}
+          x={boxX}
+          y={y - actualFontSize / 2}
           text={text}
           fill={color}
           fontSize={actualFontSize}
+          fontFamily="Arial, sans-serif"
+          fontStyle="bold"
+          align="center"
+          width={boxWidth}
           listening={false}
         />
       </Group>
@@ -505,8 +571,8 @@ const MeasurementOverlay: React.FC<Props> = ({
       
       // Track label positions to avoid overlaps
       const existingLabels: Array<{ x: number; y: number; width: number; height: number }> = [];
-      const padding = 4;
-      const charWidth = fontSize * 0.6;
+      const padding = 8; // Match DimensionLabel padding
+      const charWidth = fontSize * 1.1; // Match DimensionLabel charWidth
       
       // Calculate label positions with collision avoidance
       const itemWidthText = formatMeasurement(item.width, unit);
@@ -559,7 +625,7 @@ const MeasurementOverlay: React.FC<Props> = ({
             dash={dash} 
             strokeWidth={1.5} 
           />
-          <DimensionLabel 
+          <WallDimensionLabel 
             x={itemWidthPos.x} 
             y={itemWidthPos.y} 
             text={itemWidthText}
@@ -575,12 +641,11 @@ const MeasurementOverlay: React.FC<Props> = ({
                 dash={dash} 
                 strokeWidth={1.5} 
               />
-              <DimensionLabel 
+              <WallDimensionLabel 
                 x={leftDistPos.x} 
                 y={leftDistPos.y} 
                 text={leftDistText}
                 color={COLORS.edge}
-                customFontSize={fontSize + 2}
               />
             </>
           )}
@@ -594,12 +659,11 @@ const MeasurementOverlay: React.FC<Props> = ({
                 dash={dash} 
                 strokeWidth={1.5} 
               />
-              <DimensionLabel 
+              <WallDimensionLabel 
                 x={rightDistPos.x} 
                 y={rightDistPos.y} 
                 text={rightDistText}
                 color={COLORS.edge}
-                customFontSize={fontSize + 2}
               />
             </>
           )}
@@ -622,9 +686,9 @@ const MeasurementOverlay: React.FC<Props> = ({
             dash={dash} 
             strokeWidth={1.5} 
           />
-          <DimensionLabel 
+          <WallDimensionLabel 
             x={x + w / 2} 
-            y={measureY + 15} 
+            y={measureY + 25} 
             text={formatMeasurement(item.width, unit)}
             color={COLORS.dimension}
           />
@@ -638,12 +702,11 @@ const MeasurementOverlay: React.FC<Props> = ({
                 dash={dash} 
                 strokeWidth={1.5} 
               />
-              <DimensionLabel 
+              <WallDimensionLabel 
                 x={x / 2} 
-                y={measureY + 15} 
+                y={measureY + 25} 
                 text={formatMeasurement(leftDist, unit)}
                 color={COLORS.edge}
-                customFontSize={fontSize + 2}
               />
             </>
           )}
@@ -657,12 +720,11 @@ const MeasurementOverlay: React.FC<Props> = ({
                 dash={dash} 
                 strokeWidth={1.5} 
               />
-              <DimensionLabel 
+              <WallDimensionLabel 
                 x={x + w + (roomW - (x + w)) / 2} 
-                y={measureY + 15} 
+                y={measureY + 25} 
                 text={formatMeasurement(rightDist, unit)}
                 color={COLORS.edge}
-                customFontSize={fontSize + 2}
               />
             </>
           )}
@@ -683,13 +745,13 @@ const MeasurementOverlay: React.FC<Props> = ({
       
       // Track label positions to avoid overlaps (vertical wall)
       const existingLabels: Array<{ x: number; y: number; width: number; height: number }> = [];
-      const padding = 4;
-      const charWidth = fontSize * 0.6;
+      const padding = 8; // Match DimensionLabel padding
+      const charWidth = fontSize * 1.1; // Match DimensionLabel charWidth
       
       // Calculate label positions with collision avoidance
       const itemWidthText = formatMeasurement(item.width, unit);
       const itemWidthPos = adjustLabelPosition(
-        measureX - 30,
+        measureX - 60,
         visualCenterY,
         itemWidthText,
         existingLabels,
@@ -704,7 +766,7 @@ const MeasurementOverlay: React.FC<Props> = ({
       
       const topDistText = formatMeasurement(topDist, unit);
       const topDistPos = topDist > 0 ? adjustLabelPosition(
-        measureX - 30,
+        measureX - 60,
         windowStartY / 2,
         topDistText,
         existingLabels,
@@ -721,7 +783,7 @@ const MeasurementOverlay: React.FC<Props> = ({
       
       const bottomDistText = formatMeasurement(bottomDist, unit);
       const bottomDistPos = bottomDist > 0 ? adjustLabelPosition(
-        measureX - 30,
+        measureX - 60,
         windowEndY + (roomH - windowEndY) / 2,
         bottomDistText,
         existingLabels,
@@ -737,7 +799,7 @@ const MeasurementOverlay: React.FC<Props> = ({
             dash={dash} 
             strokeWidth={1.5} 
           />
-          <DimensionLabel 
+          <WallDimensionLabel 
             x={itemWidthPos.x} 
             y={itemWidthPos.y} 
             text={itemWidthText}
@@ -753,12 +815,11 @@ const MeasurementOverlay: React.FC<Props> = ({
                 dash={dash} 
                 strokeWidth={1.5} 
               />
-              <DimensionLabel 
+              <WallDimensionLabel 
                 x={topDistPos.x} 
                 y={topDistPos.y} 
                 text={topDistText}
                 color={COLORS.edge}
-                customFontSize={fontSize + 2}
               />
             </>
           )}
@@ -772,12 +833,11 @@ const MeasurementOverlay: React.FC<Props> = ({
                 dash={dash} 
                 strokeWidth={1.5} 
               />
-              <DimensionLabel 
+              <WallDimensionLabel 
                 x={bottomDistPos.x} 
                 y={bottomDistPos.y} 
                 text={bottomDistText}
                 color={COLORS.edge}
-                customFontSize={fontSize + 2}
               />
             </>
           )}
@@ -805,8 +865,8 @@ const MeasurementOverlay: React.FC<Props> = ({
             dash={dash} 
             strokeWidth={1.5} 
           />
-          <DimensionLabel 
-            x={measureX + 30} 
+          <WallDimensionLabel 
+            x={measureX + 50} 
             y={visualCenterY} 
             text={formatMeasurement(item.width, unit)}
             color={COLORS.dimension}
@@ -821,12 +881,11 @@ const MeasurementOverlay: React.FC<Props> = ({
                 dash={dash} 
                 strokeWidth={1.5} 
               />
-              <DimensionLabel 
-                x={measureX + 30} 
+              <WallDimensionLabel 
+                x={measureX + 50} 
                 y={windowStartY / 2} 
                 text={formatMeasurement(topDist, unit)}
                 color={COLORS.edge}
-                customFontSize={fontSize + 2}
               />
             </>
           )}
@@ -840,12 +899,11 @@ const MeasurementOverlay: React.FC<Props> = ({
                 dash={dash} 
                 strokeWidth={1.5} 
               />
-              <DimensionLabel 
-                x={measureX + 30} 
+              <WallDimensionLabel 
+                x={measureX + 50} 
                 y={windowEndY + (roomH - windowEndY) / 2} 
                 text={formatMeasurement(bottomDist, unit)}
                 color={COLORS.edge}
-                customFontSize={fontSize + 2}
               />
             </>
           )}

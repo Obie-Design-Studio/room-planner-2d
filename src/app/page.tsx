@@ -777,7 +777,7 @@ export default function Home() {
                 letterSpacing: '0.05em',
                 margin: 0
               }}>
-                Windows & Doors
+                Windows, Doors & Walls
               </h3>
               {isWindowsDoorsOpen ? (
                 <ChevronUp className="w-4 h-4" style={{ color: '#999999' }} />
@@ -787,11 +787,11 @@ export default function Home() {
             </button>
             {isWindowsDoorsOpen && (
               <>
-              {/* Windows & Doors List - Show first */}
-              {items.filter(item => item.type?.toLowerCase() === 'window' || item.type?.toLowerCase() === 'door').length > 0 && (
+              {/* Windows, Doors & Walls List - Show first */}
+              {items.filter(item => item.type?.toLowerCase() === 'window' || item.type?.toLowerCase() === 'door' || item.type?.toLowerCase() === 'wall').length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '12px' }}>
                   {items
-                    .filter(item => item.type?.toLowerCase() === 'window' || item.type?.toLowerCase() === 'door')
+                    .filter(item => item.type?.toLowerCase() === 'window' || item.type?.toLowerCase() === 'door' || item.type?.toLowerCase() === 'wall')
                     .map((item) => (
                       <div
                         key={item.id}
@@ -891,8 +891,8 @@ export default function Home() {
                 </div>
               )}
               
-              {/* Add Window/Door Buttons - Show after list */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: items.filter(item => item.type?.toLowerCase() === 'window' || item.type?.toLowerCase() === 'door').length > 0 ? '12px' : '0' }}>
+              {/* Add Window/Door/Wall Buttons - Show after list */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: items.filter(item => item.type?.toLowerCase() === 'window' || item.type?.toLowerCase() === 'door' || item.type?.toLowerCase() === 'wall').length > 0 ? '12px' : '0' }}>
                 <button
                   onClick={() => handleAddWindowOrDoor('Window', 'top')}
                   style={{ 
@@ -950,6 +950,40 @@ export default function Home() {
                 >
                   <DoorOpen className="w-4 h-4" style={{ color: '#666666' }} />
                   <span>Add Door</span>
+                </button>
+                <button
+                  onClick={() => {
+                    const wallDef = getFurnitureByType('Wall');
+                    if (wallDef) {
+                      handleAddItem('Wall', wallDef.width, wallDef.height, wallDef.color);
+                    }
+                  }}
+                  style={{ 
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '12px 14px',
+                    width: '100%',
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    color: '#0A0A0A',
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #E5E5E5',
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    transition: 'all 150ms',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#F5F5F5';
+                    e.currentTarget.style.borderColor = '#0A0A0A';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#FFFFFF';
+                    e.currentTarget.style.borderColor = '#E5E5E5';
+                  }}
+                >
+                  <Square className="w-4 h-4" style={{ color: '#666666' }} />
+                  <span>Add Wall</span>
                 </button>
               </div>
               </>
