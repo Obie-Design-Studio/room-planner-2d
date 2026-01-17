@@ -15,7 +15,7 @@ interface RoomCanvasProps {
   onItemChangeEnd?: (id: string, updates: Partial<FurnitureItem>) => void;
   onItemDelete: (id: string) => void;
   selectedId: string | null;
-  onSelect: (id: string) => void;
+  onSelect: (id: string | null) => void;
   onEdit: (id: string) => void;
   showAllMeasurements: boolean;
   measurementUnit?: Unit;
@@ -48,6 +48,9 @@ export default function RoomCanvas({
   const [isSpacePressed, setIsSpacePressed] = useState(false);
   const lastPointerPos = useRef({ x: 0, y: 0 });
   
+  // Track timestamp of measurement click to prevent deselection
+  const measurementClickTimeRef = useRef(0);
+  
   // Zoom tooltip state (shows during Ctrl+Scroll zoom)
   const [showZoomTooltip, setShowZoomTooltip] = useState(false);
   const [zoomTooltipPos, setZoomTooltipPos] = useState({ x: 0, y: 0 });
@@ -68,7 +71,9 @@ export default function RoomCanvas({
   
   // Create fixed bounds with buffer for door arcs on ALL walls
   // This prevents the room from jumping when doors move between walls
-  const buffer = maxDoorLength; // Buffer extends in all directions
+  // Ensure minimum buffer for room dimension labels (positioned at -100 with text extending ~30-50px beyond)
+  const ROOM_LABEL_BUFFER = 150; // Space for room dimension labels on top and left walls
+  const buffer = Math.max(maxDoorLength, ROOM_LABEL_BUFFER); // Buffer extends in all directions
   let minX = -WALL_THICKNESS_PX / 2 - buffer;
   let minY = -WALL_THICKNESS_PX / 2 - buffer;
   let maxX = roomPxWidth + WALL_THICKNESS_PX / 2 + buffer;
@@ -330,15 +335,12 @@ export default function RoomCanvas({
     const stage = stageRef.current;
     if (!stage) return;
 
-    // Check if clicking on empty space or if Space key is pressed
-    const clickedOnEmpty = e.target === stage || e.target.getLayer;
-    
-    if (clickedOnEmpty || isSpacePressed) {
+    // Only enable panning when Space key is pressed (pan mode)
+    // Don't pan on regular clicks - those should select/deselect
+    if (isSpacePressed) {
       setIsPanning(true);
       const pos = stage.getPointerPosition();
       lastPointerPos.current = pos;
-      
-      // Change cursor
       stage.container().style.cursor = 'grabbing';
     }
   };
@@ -411,12 +413,61 @@ export default function RoomCanvas({
     }
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e: any) => {
     const stage = stageRef.current;
+    const targetName = e.target?.attrs?.name;
+    
     if (isPanning) {
       setIsPanning(false);
       if (stage) {
         stage.container().style.cursor = isSpacePressed ? 'grab' : 'default';
+      }
+      return;
+    }
+    
+    // Handle deselection
+    if (selectedId !== null && e && e.target) {
+      // Check if measurement was clicked within last 200ms
+      const timeSinceMeasurementClick = Date.now() - measurementClickTimeRef.current;
+      if (timeSinceMeasurementClick < 200) {
+        return;
+      }
+      
+      // Check if clicked on floor (empty space) or Stage directly
+      const isFloorClick = targetName === 'floor';
+      const isStageClick = e.target === e.target.getStage();
+      
+      if (isFloorClick || isStageClick) {
+        onSelect(null);
+        return;
+      }
+      
+      // Check if clicked on furniture or UI elements
+      let clickedOnFurnitureOrUI = false;
+      let current = e.target;
+      
+      while (current && current.getParent) {
+        const attrs = current.attrs || {};
+        
+        if (attrs.id && items.find((item) => item.id === attrs.id)) {
+          clickedOnFurnitureOrUI = true;
+          break;
+        }
+        
+        if (attrs.name && (
+          attrs.name.includes('measurement') || 
+          attrs.name.includes('dimension-label') ||
+          attrs.name === 'rotate-button'
+        )) {
+          clickedOnFurnitureOrUI = true;
+          break;
+        }
+        
+        current = current.getParent();
+      }
+
+      if (!clickedOnFurnitureOrUI) {
+        onSelect(null);
       }
     }
   };
@@ -506,6 +557,7 @@ export default function RoomCanvas({
         >
           <Group x={0} y={0}>
             <Rect
+              name="floor"
               x={-WALL_THICKNESS_PX / 2}
               y={-WALL_THICKNESS_PX / 2}
               width={roomConfig.width * PIXELS_PER_CM + WALL_THICKNESS_PX}
@@ -526,14 +578,25 @@ export default function RoomCanvas({
               />
               <Line points={[0, -105, 0, -95]} stroke="#0a0a0a" strokeWidth={2} />
               <Line points={[roomConfig.width * PIXELS_PER_CM, -105, roomConfig.width * PIXELS_PER_CM, -95]} stroke="#0a0a0a" strokeWidth={2} />
+              {/* White background for text */}
+              <Rect
+                x={roomConfig.width * PIXELS_PER_CM / 2 - (formatMeasurement(roomConfig.width, measurementUnit).length * 24 * 0.3) - 6}
+                y={-100 - 15 - 4}
+                width={formatMeasurement(roomConfig.width, measurementUnit).length * 24 * 0.6 + 12}
+                height={24 + 8}
+                fill="white"
+                stroke="#e5e5e5"
+                strokeWidth={1}
+                cornerRadius={4}
+              />
               <Text 
                 x={roomConfig.width * PIXELS_PER_CM / 2} 
                 y={-100 - 15} 
                 text={formatMeasurement(roomConfig.width, measurementUnit)}
-                fontSize={16}
+                fontSize={24}
                 fill="#0a0a0a"
                 align="center"
-                offsetX={formatMeasurement(roomConfig.width, measurementUnit).length * 16 * 0.3}
+                offsetX={formatMeasurement(roomConfig.width, measurementUnit).length * 24 * 0.3}
               />
               
               {/* Left wall - Room height */}
@@ -544,14 +607,25 @@ export default function RoomCanvas({
               />
               <Line points={[-105, 0, -95, 0]} stroke="#0a0a0a" strokeWidth={2} />
               <Line points={[-105, roomConfig.height * PIXELS_PER_CM, -95, roomConfig.height * PIXELS_PER_CM]} stroke="#0a0a0a" strokeWidth={2} />
+              {/* White background for text */}
+              <Rect
+                x={-100 - 30 - (formatMeasurement(roomConfig.height, measurementUnit).length * 24 * 0.6 + 12) / 2}
+                y={roomConfig.height * PIXELS_PER_CM / 2 - 16}
+                width={formatMeasurement(roomConfig.height, measurementUnit).length * 24 * 0.6 + 12}
+                height={32}
+                fill="white"
+                stroke="#e5e5e5"
+                strokeWidth={1}
+                cornerRadius={4}
+              />
               <Text 
                 x={-100 - 30} 
                 y={roomConfig.height * PIXELS_PER_CM / 2} 
                 text={formatMeasurement(roomConfig.height, measurementUnit)}
-                fontSize={16}
+                fontSize={24}
                 fill="#0a0a0a"
                 align="center"
-                offsetY={8}
+                offsetY={12}
               />
             </Group>
             
@@ -566,6 +640,7 @@ export default function RoomCanvas({
                 onSelect={onSelect}
                 onEdit={onEdit}
                 roomConfig={roomConfig}
+                zoom={userZoom}
               />
             ))}
             {items.map((item) => {
@@ -581,6 +656,12 @@ export default function RoomCanvas({
                     otherItems={neighbors}
                     zoom={userZoom}
                     unit={measurementUnit}
+                    onItemChange={onItemChange}
+                    stageRef={stageRef}
+                    scale={scale}
+                    stagePos={stagePos}
+                    layerOffset={{ x: baseCenterOffsetX, y: baseCenterOffsetY }}
+                    measurementClickTimeRef={measurementClickTimeRef}
                   />
                 );
               }

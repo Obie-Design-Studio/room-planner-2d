@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Group, Line, Text, Rect } from 'react-konva';
 import { FurnitureItem, RoomConfig } from '@/types';
 import { PIXELS_PER_CM } from '@/lib/constants';
@@ -10,9 +11,33 @@ interface Props {
   otherItems?: FurnitureItem[];
   zoom?: number;
   unit?: Unit;
+  onItemChange?: (id: string, updates: Partial<FurnitureItem>) => void;
+  stageRef?: React.RefObject<any>;
+  scale?: number;
+  stagePos?: { x: number; y: number };
+  layerOffset?: { x: number; y: number };
+  measurementClickTimeRef?: React.MutableRefObject<number>;
 }
 
-const MeasurementOverlay: React.FC<Props> = ({ item, room, otherItems = [], zoom = 1.0, unit = 'cm' }) => {
+type MeasurementDirection = 'left' | 'right' | 'top' | 'bottom' | null;
+
+const MeasurementOverlay: React.FC<Props> = ({ 
+  item, 
+  room, 
+  otherItems = [], 
+  zoom = 1.0, 
+  unit = 'cm', 
+  onItemChange,
+  stageRef,
+  scale = 1,
+  stagePos = { x: 0, y: 0 },
+  layerOffset = { x: 0, y: 0 },
+  measurementClickTimeRef
+}) => {
+  const [editingDirection, setEditingDirection] = useState<MeasurementDirection>(null);
+  const [editValue, setEditValue] = useState('');
+  const [inputPosition, setInputPosition] = useState({ x: 0, y: 0 });
+  const inputRef = useRef<HTMLInputElement>(null);
   const x = item.x * PIXELS_PER_CM;
   const y = item.y * PIXELS_PER_CM;
   
@@ -43,9 +68,9 @@ const MeasurementOverlay: React.FC<Props> = ({ item, room, otherItems = [], zoom
   const dash = [4, 4];
   
   // Zoom-aware font size: scales WITH zoom for readability
-  // At 100% zoom: 20px, at 300% zoom: 28px, at 10% zoom: 16px
-  const baseFontSize = 20;
-  const fontSize = Math.max(16, Math.min(30, baseFontSize + (zoom - 1) * 8));
+  // At 100% zoom: 24px, at 300% zoom: 32px, at 10% zoom: 20px
+  const baseFontSize = 24;
+  const fontSize = Math.max(20, Math.min(36, baseFontSize + (zoom - 1) * 8));
   
   // Zoom-aware offsets for better spacing at different zoom levels
   const outsideOffset = Math.max(15, Math.min(30, 20 / zoom)); // Distance outside room for wall object measurements
@@ -136,12 +161,218 @@ const MeasurementOverlay: React.FC<Props> = ({ item, room, otherItems = [], zoom
     return { x: adjustedX, y: adjustedY };
   };
 
+  // Helper: Start editing a measurement
+  const startEditing = (direction: MeasurementDirection, currentValue: number) => {
+    if (!onItemChange || !stageRef?.current) return;
+    
+    // Calculate canvas position for this direction
+    let canvasX = 0;
+    let canvasY = 0;
+    
+    const midX = x + w / 2;
+    const midY = y + h / 2;
+    
+    switch (direction) {
+      case 'left':
+        canvasX = (leftBound + x) / 2;
+        canvasY = midY + labelOffset + 5;
+        break;
+      case 'right':
+        canvasX = (x + w + rightBound) / 2;
+        canvasY = midY + labelOffset + 5;
+        break;
+      case 'top':
+        canvasX = midX - labelOffset - 10;
+        canvasY = (topBound + y) / 2;
+        break;
+      case 'bottom':
+        canvasX = midX - labelOffset - 10;
+        canvasY = (y + h + bottomBound) / 2;
+        break;
+    }
+    
+    // Convert canvas coordinates to screen coordinates
+    const stage = stageRef.current;
+    const stageBox = stage.container().getBoundingClientRect();
+    
+    const screenX = stageBox.left + (canvasX * scale) + layerOffset.x + stagePos.x;
+    const screenY = stageBox.top + (canvasY * scale) + layerOffset.y + stagePos.y;
+    
+    setInputPosition({ x: screenX, y: screenY });
+    setEditingDirection(direction);
+    setEditValue(currentValue.toString());
+  };
+
+  // Auto-focus input when editing starts
+  useEffect(() => {
+    if (editingDirection && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editingDirection]);
+
+  // Render edit input as side effect to completely avoid React-Konva reconciler
+  useEffect(() => {
+    if (!editingDirection || typeof window === 'undefined') {
+      return;
+    }
+
+    const container = document.createElement('div');
+    container.id = 'measurement-edit-container';
+    container.style.cssText = `
+      position: fixed;
+      left: ${inputPosition.x}px;
+      top: ${inputPosition.y}px;
+      transform: translate(-50%, -50%);
+      z-index: 10000;
+    `;
+
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.value = editValue;
+    input.id = 'measurement-edit-input';
+    input.style.cssText = `
+      width: 80px;
+      padding: 6px 10px;
+      font-size: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+      font-weight: 600;
+      text-align: center;
+      border: 3px solid #3b82f6;
+      border-radius: 6px;
+      outline: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      background-color: white;
+    `;
+
+    const hint = document.createElement('div');
+    hint.textContent = 'Enter to save • Esc to cancel';
+    hint.style.cssText = `
+      margin-top: 4px;
+      font-size: 12px;
+      color: #6b7280;
+      text-align: center;
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+    `;
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        // Read value directly from input to avoid stale closure
+        const value = input.value;
+        saveEditedMeasurement(value);
+      } else if (e.key === 'Escape') {
+        setEditingDirection(null);
+      }
+    });
+
+    input.addEventListener('blur', () => {
+      // Small delay to allow click events to process first
+      setTimeout(() => {
+        setEditingDirection(null);
+      }, 100);
+    });
+
+    container.appendChild(input);
+    container.appendChild(hint);
+    document.body.appendChild(container);
+
+    // Delay focus slightly to ensure element is in DOM
+    setTimeout(() => {
+      input.focus();
+      input.select();
+    }, 10);
+
+    return () => {
+      if (document.body.contains(container)) {
+        document.body.removeChild(container);
+      }
+    };
+  }, [editingDirection, inputPosition.x, inputPosition.y]);
+
+  // Helper: Save edited measurement and update furniture position
+  const saveEditedMeasurement = (inputValue: string) => {
+    if (!onItemChange || !editingDirection) {
+      return;
+    }
+
+    const newDistanceCm = parseFloat(inputValue);
+    if (isNaN(newDistanceCm) || newDistanceCm < 0) {
+      setEditingDirection(null);
+      setEditValue('');
+      return;
+    }
+
+    // Account for rotation when calculating visual dimensions
+    const rotation = item.rotation || 0;
+    const isRotated90 = rotation === 90 || rotation === 270;
+    const visualW = (isRotated90 ? item.height : item.width);
+    const visualH = (isRotated90 ? item.width : item.height);
+
+    // Need to recalculate bounds for position calculation
+    const currentX = item.x * PIXELS_PER_CM;
+    const currentY = item.y * PIXELS_PER_CM;
+    const visualWPx = visualW * PIXELS_PER_CM;
+    const visualHPx = visualH * PIXELS_PER_CM;
+
+    // Calculate nearest obstacles for each direction
+    let leftBoundCm = 0;
+    let rightBoundCm = room.width;
+    let topBoundCm = 0;
+    let bottomBoundCm = room.height;
+    
+    const midX = currentX + visualWPx / 2;
+    const midY = currentY + visualHPx / 2;
+
+    otherItems.forEach((other) => {
+      const oX = other.x * PIXELS_PER_CM;
+      const oY = other.y * PIXELS_PER_CM;
+      
+      const otherRotation = other.rotation || 0;
+      const otherIsRotated90 = otherRotation === 90 || otherRotation === 270;
+      const oW = (otherIsRotated90 ? other.height : other.width) * PIXELS_PER_CM;
+      const oH = (otherIsRotated90 ? other.width : other.height) * PIXELS_PER_CM;
+
+      if (isBetween(midY, oY, oY + oH)) {
+        if (oX + oW <= currentX) leftBoundCm = Math.max(leftBoundCm, (oX + oW) / PIXELS_PER_CM);
+        if (oX >= currentX + visualWPx) rightBoundCm = Math.min(rightBoundCm, oX / PIXELS_PER_CM);
+      }
+
+      if (isBetween(midX, oX, oX + oW)) {
+        if (oY + oH <= currentY) topBoundCm = Math.max(topBoundCm, (oY + oH) / PIXELS_PER_CM);
+        if (oY >= currentY + visualHPx) bottomBoundCm = Math.min(bottomBoundCm, oY / PIXELS_PER_CM);
+      }
+    });
+
+    let newX = item.x;
+    let newY = item.y;
+
+    // Calculate new position based on direction
+    switch (editingDirection) {
+      case 'left':
+        newX = leftBoundCm + newDistanceCm;
+        break;
+      case 'right':
+        newX = rightBoundCm - visualW - newDistanceCm;
+        break;
+      case 'top':
+        newY = topBoundCm + newDistanceCm;
+        break;
+      case 'bottom':
+        newY = bottomBoundCm - visualH - newDistanceCm;
+        break;
+    }
+
+    onItemChange(item.id, { x: newX, y: newY });
+    setEditingDirection(null);
+  };
+
   // Helper component: Dimension label with white background
-  const DimensionLabel = ({ x, y, text, color = '#1a1a1a' }: { x: number; y: number; text: string; color?: string }) => {
+  const DimensionLabel = ({ x, y, text, color = '#1a1a1a', customFontSize }: { x: number; y: number; text: string; color?: string; customFontSize?: number }) => {
+    const actualFontSize = customFontSize || fontSize;
     const padding = 4;
-    const charWidth = fontSize * 0.6; // Approximate character width based on font size
+    const charWidth = actualFontSize * 0.6; // Approximate character width based on font size
     const textWidth = text.length * charWidth;
-    const textHeight = fontSize;
+    const textHeight = actualFontSize;
     
     return (
       <Group>
@@ -160,7 +391,90 @@ const MeasurementOverlay: React.FC<Props> = ({ item, room, otherItems = [], zoom
           y={y - textHeight / 2}
           text={text}
           fill={color}
-          fontSize={fontSize}
+          fontSize={actualFontSize}
+        />
+      </Group>
+    );
+  };
+
+  // Helper component: Editable dimension label (for distance measurements)
+  const EditableDimensionLabel = ({ 
+    x, 
+    y, 
+    text, 
+    color = '#1a1a1a', 
+    customFontSize,
+    direction,
+    value
+  }: { 
+    x: number; 
+    y: number; 
+    text: string; 
+    color?: string; 
+    customFontSize?: number;
+    direction: MeasurementDirection;
+    value: number;
+  }) => {
+    const actualFontSize = customFontSize || fontSize;
+    const padding = 4;
+    const charWidth = actualFontSize * 0.6;
+    const textWidth = text.length * charWidth;
+    const textHeight = actualFontSize;
+    
+    const isEditable = onItemChange !== undefined;
+    
+    return (
+      <Group name="dimension-label">
+        <Rect
+          x={x - textWidth / 2 - padding}
+          y={y - textHeight / 2 - padding}
+          width={textWidth + padding * 2}
+          height={textHeight + padding * 2}
+          fill="white"
+          stroke={isEditable ? color : "#e5e5e5"}
+          strokeWidth={isEditable ? 2 : 1}
+          cornerRadius={3}
+          listening={isEditable}
+          name="dimension-label-rect"
+          onMouseDown={(e) => {
+            if (isEditable) {
+              e.evt.stopPropagation();
+              e.cancelBubble = true;
+              
+              // Set timestamp to prevent deselection on mouseup
+              if (measurementClickTimeRef) {
+                measurementClickTimeRef.current = Date.now();
+              }
+              
+              startEditing(direction, value);
+            }
+          }}
+          onMouseUp={(e) => {
+            if (isEditable) {
+              e.evt.stopPropagation();
+              e.cancelBubble = true;
+            }
+          }}
+          onMouseEnter={(e) => {
+            if (isEditable) {
+              const stage = e.target.getStage();
+              if (stage) stage.container().style.cursor = 'pointer';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (isEditable) {
+              const stage = e.target.getStage();
+              if (stage) stage.container().style.cursor = 'default';
+            }
+          }}
+        />
+        <Text
+          x={x - textWidth / 2}
+          y={y - textHeight / 2}
+          text={text}
+          fill={color}
+          fontSize={actualFontSize}
+          listening={false}
         />
       </Group>
     );
@@ -266,6 +580,7 @@ const MeasurementOverlay: React.FC<Props> = ({ item, room, otherItems = [], zoom
                 y={leftDistPos.y} 
                 text={leftDistText}
                 color={COLORS.edge}
+                customFontSize={fontSize + 2}
               />
             </>
           )}
@@ -284,6 +599,7 @@ const MeasurementOverlay: React.FC<Props> = ({ item, room, otherItems = [], zoom
                 y={rightDistPos.y} 
                 text={rightDistText}
                 color={COLORS.edge}
+                customFontSize={fontSize + 2}
               />
             </>
           )}
@@ -327,6 +643,7 @@ const MeasurementOverlay: React.FC<Props> = ({ item, room, otherItems = [], zoom
                 y={measureY + 15} 
                 text={formatMeasurement(leftDist, unit)}
                 color={COLORS.edge}
+                customFontSize={fontSize + 2}
               />
             </>
           )}
@@ -345,6 +662,7 @@ const MeasurementOverlay: React.FC<Props> = ({ item, room, otherItems = [], zoom
                 y={measureY + 15} 
                 text={formatMeasurement(rightDist, unit)}
                 color={COLORS.edge}
+                customFontSize={fontSize + 2}
               />
             </>
           )}
@@ -440,6 +758,7 @@ const MeasurementOverlay: React.FC<Props> = ({ item, room, otherItems = [], zoom
                 y={topDistPos.y} 
                 text={topDistText}
                 color={COLORS.edge}
+                customFontSize={fontSize + 2}
               />
             </>
           )}
@@ -458,6 +777,7 @@ const MeasurementOverlay: React.FC<Props> = ({ item, room, otherItems = [], zoom
                 y={bottomDistPos.y} 
                 text={bottomDistText}
                 color={COLORS.edge}
+                customFontSize={fontSize + 2}
               />
             </>
           )}
@@ -506,6 +826,7 @@ const MeasurementOverlay: React.FC<Props> = ({ item, room, otherItems = [], zoom
                 y={windowStartY / 2} 
                 text={formatMeasurement(topDist, unit)}
                 color={COLORS.edge}
+                customFontSize={fontSize + 2}
               />
             </>
           )}
@@ -524,6 +845,7 @@ const MeasurementOverlay: React.FC<Props> = ({ item, room, otherItems = [], zoom
                 y={windowEndY + (roomH - windowEndY) / 2} 
                 text={formatMeasurement(bottomDist, unit)}
                 color={COLORS.edge}
+                customFontSize={fontSize + 2}
               />
             </>
           )}
@@ -546,8 +868,12 @@ const MeasurementOverlay: React.FC<Props> = ({ item, room, otherItems = [], zoom
   otherItems.forEach((other) => {
     const oX = other.x * PIXELS_PER_CM;
     const oY = other.y * PIXELS_PER_CM;
-    const oW = other.width * PIXELS_PER_CM;
-    const oH = other.height * PIXELS_PER_CM;
+    
+    // Account for rotation when calculating visual dimensions
+    const otherRotation = other.rotation || 0;
+    const otherIsRotated90 = otherRotation === 90 || otherRotation === 270;
+    const oW = (otherIsRotated90 ? other.height : other.width) * PIXELS_PER_CM;
+    const oH = (otherIsRotated90 ? other.width : other.height) * PIXELS_PER_CM;
 
     if (isBetween(midY, oY, oY + oH)) {
       if (oX + oW <= x) leftBound = Math.max(leftBound, oX + oW);
@@ -560,8 +886,11 @@ const MeasurementOverlay: React.FC<Props> = ({ item, room, otherItems = [], zoom
     }
   });
 
-  // Gap around center for rotation button
-  const buttonRadius = 20; // Space to leave clear for rotation button
+  // Gap around center for rotation button (smart sized)
+  const minDim = Math.min(w, h);
+  const baseButtonRadius = Math.min(32, Math.max(16, minDim * 0.15));
+  const zoomAdjustedButtonRadius = baseButtonRadius * Math.sqrt(zoom);
+  const buttonRadius = Math.max(16, Math.min(48, zoomAdjustedButtonRadius)) + 10; // Button radius + margin
   
   // Determine which dimension to show on which axis based on rotation
   // At 0° or 180°: horizontal = width, vertical = height
@@ -570,7 +899,7 @@ const MeasurementOverlay: React.FC<Props> = ({ item, room, otherItems = [], zoom
   const verticalLabel = isRotated90 ? actualWidth : actualHeight;
   
   return (
-    <Group>
+    <Group listening={true} name="measurement-overlay">
       {/* Furniture dimensions - blue lines showing width and height, split to avoid rotation button */}
       {/* Horizontal dimension lines - split at center */}
       <Line points={[x, midY, midX - buttonRadius, midY]} stroke={COLORS.dimension} dash={dash} strokeWidth={1.5} />
@@ -594,38 +923,46 @@ const MeasurementOverlay: React.FC<Props> = ({ item, room, otherItems = [], zoom
       
       {/* Left gap - red line from wall/obstacle to furniture */}
       <Line points={[leftBound, midY, x, midY]} stroke={COLORS.distance} dash={dash} strokeWidth={1.5} />
-      <DimensionLabel 
+      <EditableDimensionLabel 
         x={adjustLabelX((leftBound + x) / 2, formatMeasurement(Math.round((x - leftBound) / PIXELS_PER_CM), unit).length * fontSize * 0.6)} 
         y={midY + labelOffset + 5} 
         text={formatMeasurement(Math.round((x - leftBound) / PIXELS_PER_CM), unit)}
         color={COLORS.distance}
+        direction="left"
+        value={Math.round((x - leftBound) / PIXELS_PER_CM)}
       />
 
       {/* Right gap - red line from furniture to wall/obstacle */}
       <Line points={[x + w, midY, rightBound, midY]} stroke={COLORS.distance} dash={dash} strokeWidth={1.5} />
-      <DimensionLabel 
+      <EditableDimensionLabel 
         x={adjustLabelX((x + w + rightBound) / 2, formatMeasurement(Math.round((rightBound - (x + w)) / PIXELS_PER_CM), unit).length * fontSize * 0.6)} 
         y={midY + labelOffset + 5} 
         text={formatMeasurement(Math.round((rightBound - (x + w)) / PIXELS_PER_CM), unit)}
         color={COLORS.distance}
+        direction="right"
+        value={Math.round((rightBound - (x + w)) / PIXELS_PER_CM)}
       />
 
       {/* Top gap - red line from wall/obstacle to furniture */}
       <Line points={[midX, topBound, midX, y]} stroke={COLORS.distance} dash={dash} strokeWidth={1.5} />
-      <DimensionLabel 
+      <EditableDimensionLabel 
         x={midX - labelOffset - 10} 
         y={adjustLabelY((topBound + y) / 2, fontSize)} 
         text={formatMeasurement(Math.round((y - topBound) / PIXELS_PER_CM), unit)}
         color={COLORS.distance}
+        direction="top"
+        value={Math.round((y - topBound) / PIXELS_PER_CM)}
       />
 
       {/* Bottom gap - red line from furniture to wall/obstacle */}
       <Line points={[midX, y + h, midX, bottomBound]} stroke={COLORS.distance} dash={dash} strokeWidth={1.5} />
-      <DimensionLabel 
+      <EditableDimensionLabel 
         x={midX - labelOffset - 10} 
         y={adjustLabelY((y + h + bottomBound) / 2, fontSize)} 
         text={formatMeasurement(Math.round((bottomBound - (y + h)) / PIXELS_PER_CM), unit)}
         color={COLORS.distance}
+        direction="bottom"
+        value={Math.round((bottomBound - (y + h)) / PIXELS_PER_CM)}
       />
     </Group>
   );

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { Rect, Group, Text, Transformer, Arc, Circle, Path } from 'react-konva';
 import { FurnitureItem, RoomConfig } from '@/types';
 import { PIXELS_PER_CM, WALL_THICKNESS_PX } from '@/lib/constants';
@@ -48,6 +48,7 @@ interface FurnitureShapeProps {
   onChangeEnd?: (id: string, updates: Partial<FurnitureItem>) => void;
   onDelete: (id: string) => void;
   roomConfig: RoomConfig;
+  zoom?: number;
 }
 
 const FurnitureShape: React.FC<FurnitureShapeProps> = ({
@@ -59,9 +60,12 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
   onChangeEnd,
   onDelete,
   roomConfig,
+  zoom = 1.0,
 }) => {
   const shapeRef = useRef<any>(null);
   const trRef = useRef<any>(null);
+  const [isRotateHovered, setIsRotateHovered] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   // Door physical dimensions (never change)
   const doorLengthPx = item.width * PIXELS_PER_CM;   // Door length (90cm = 180px)
@@ -91,6 +95,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
   const y = (item.y * PIXELS_PER_CM) + (visualHeightPx / 2);
 
   useEffect(() => {
+    // Only attach nodes when selected - Transformer is conditionally rendered
     if (isSelected && trRef.current && shapeRef.current) {
       trRef.current.nodes([shapeRef.current]);
       trRef.current.getLayer()?.batchDraw();
@@ -140,6 +145,12 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
       e.cancelBubble = true;
       onSelect(item.id);
       onEdit(item.id);
+    },
+    onMouseEnter: () => {
+      setIsHovered(true);
+    },
+    onMouseLeave: () => {
+      setIsHovered(false);
     },
     onDragMove: (e: any) => {
       // 1. Get current mouse position (Visual Center)
@@ -245,8 +256,9 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
       // Save to history after drag ends
       if (onChangeEnd) {
         const node = e.target;
-        const topLeftX = node.x() - widthPx / 2;
-        const topLeftY = node.y() - heightPx / 2;
+        // Use visual dimensions (accounts for rotation) not raw dimensions
+        const topLeftX = node.x() - visualWidthPx / 2;
+        const topLeftY = node.y() - visualHeightPx / 2;
         onChangeEnd(item.id, {
           x: Math.round(topLeftX / PIXELS_PER_CM),
           y: Math.round(topLeftY / PIXELS_PER_CM),
@@ -377,36 +389,58 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
     }
   };
 
-  // Render rotate button helper
-  const renderRotateButton = () => (
-    <Group
-      x={widthPx / 2}
-      y={heightPx / 2}
-      onClick={handleRotateClick}
-      onTap={handleRotateClick}
-    >
-      {/* Button background */}
-      <Circle
-        radius={16}
-        fill="#FFFFFF"
-        stroke="#0A0A0A"
-        strokeWidth={1.5}
-        shadowColor="rgba(0, 0, 0, 0.15)"
-        shadowBlur={8}
-        shadowOffset={{ x: 0, y: 2 }}
-        shadowOpacity={1}
-      />
-      {/* Rotate icon (↻) */}
-      <Path
-        data="M 0 -6 A 6 6 0 1 1 -5.2 3 L -3.5 1.5 M -5.2 3 L -7 1.5"
-        stroke="#0A0A0A"
-        strokeWidth={1.5}
-        fill="transparent"
-        lineCap="round"
-        lineJoin="round"
-      />
-    </Group>
-  );
+  // Render rotate button helper with smart sizing
+  const renderRotateButton = () => {
+    // Smart sizing based on furniture size and zoom
+    // Smaller furniture = smaller button, larger furniture = larger button
+    const minDim = Math.min(widthPx, heightPx);
+    const baseRadius = Math.min(32, Math.max(16, minDim * 0.15)); // 15% of smallest dimension
+    const zoomAdjustedRadius = baseRadius * Math.sqrt(zoom); // Scale with sqrt of zoom for better feel
+    const radius = Math.max(16, Math.min(48, zoomAdjustedRadius)); // Clamp between 16-48px
+    
+    const iconScale = radius / 24; // Scale icon proportionally
+    const strokeWidth = Math.max(2, iconScale * 2.5);
+    
+    return (
+      <Group
+        x={widthPx / 2}
+        y={heightPx / 2}
+        onClick={handleRotateClick}
+        onTap={handleRotateClick}
+        onMouseEnter={(e: any) => {
+          setIsRotateHovered(true);
+          const stage = e?.target?.getStage?.();
+          if (stage) stage.container().style.cursor = 'pointer';
+        }}
+        onMouseLeave={(e: any) => {
+          setIsRotateHovered(false);
+          const stage = e?.target?.getStage?.();
+          if (stage) stage.container().style.cursor = 'default';
+        }}
+      >
+        {/* Button background - smart sized */}
+        <Circle
+          radius={radius}
+          fill={isRotateHovered ? '#F5F5F5' : '#FFFFFF'}
+          stroke={isRotateHovered ? '#111827' : '#0A0A0A'}
+          strokeWidth={strokeWidth}
+          shadowColor="rgba(0, 0, 0, 0.18)"
+          shadowBlur={isRotateHovered ? radius * 0.5 : radius * 0.4}
+          shadowOffset={{ x: 0, y: 2 }}
+          shadowOpacity={1}
+        />
+        {/* Rotate icon (↻) - scaled */}
+        <Path
+          data={`M 0 ${-9 * iconScale} A ${9 * iconScale} ${9 * iconScale} 0 1 1 ${-7.8 * iconScale} ${4.5 * iconScale} L ${-5.25 * iconScale} ${2.25 * iconScale} M ${-7.8 * iconScale} ${4.5 * iconScale} L ${-10.5 * iconScale} ${2.25 * iconScale}`}
+          stroke={isRotateHovered ? '#111827' : '#0A0A0A'}
+          strokeWidth={strokeWidth}
+          fill="transparent"
+          lineCap="round"
+          lineJoin="round"
+        />
+      </Group>
+    );
+  };
 
   // RENDER: DOOR
   if (item.type?.toLowerCase() === 'door') {
@@ -641,9 +675,18 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
       arcRotation = rotation === 0 ? 0 : rotation === 90 ? 90 : rotation === 180 ? 270 : 180;
     }
     
+    const hitAreaPadding = 30; // 30px padding for easier clicking
     return (
       <>
         <Group {...groupProps}>
+          {/* Invisible larger hit area for easier selection */}
+          <Rect 
+            x={-hitAreaPadding / 2} 
+            y={-hitAreaPadding / 2} 
+            width={widthPx + hitAreaPadding} 
+            height={heightPx + hitAreaPadding} 
+            opacity={0}
+          />
           {/* Door frame (threshold) */}
           <Rect width={frameWidth} height={frameHeight} fill="#8d6e63" x={frameX} y={frameY} />
           {/* Door panel - shows hinge side and open/closed state */}
@@ -660,8 +703,6 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
             x={arcX}
             y={arcY}
           />
-          {/* Invisible hit box */}
-          <Rect width={widthPx} height={heightPx} opacity={0} />
           
           {/* Centered Rotate Button - only show when selected */}
           {isSelected && renderRotateButton()}
@@ -680,6 +721,11 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
             flipEnabled={false}
             rotateEnabled={false}
             enabledAnchors={['middle-left', 'middle-right']}
+            anchorSize={10}
+            anchorStroke="#0A0A0A"
+            anchorStrokeWidth={2}
+            anchorFill="#FFFFFF"
+            anchorCornerRadius={2}
           />
         )}
       </>
@@ -688,9 +734,19 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
 
   // RENDER: WINDOW
   if (item.type?.toLowerCase() === 'window') {
+    const hitAreaPadding = 30; // 30px padding for easier clicking
     return (
       <>
         <Group {...groupProps}>
+          {/* Invisible larger hit area for easier selection */}
+          <Rect 
+            x={-hitAreaPadding / 2} 
+            y={-hitAreaPadding / 2} 
+            width={widthPx + hitAreaPadding} 
+            height={heightPx + hitAreaPadding} 
+            opacity={0}
+          />
+          {/* Visible window */}
           <Rect width={widthPx} height={heightPx} fill="#e0f7fa" stroke="black" strokeWidth={1} />
           <Rect x={0} y={heightPx / 2 - 2} width={widthPx} height={4} fill="#81d4fa" />
         </Group>
@@ -708,6 +764,11 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
             flipEnabled={false}
             rotateEnabled={false} // Disable rotation for windows
             enabledAnchors={['middle-left', 'middle-right']} // Only allow horizontal resizing
+            anchorSize={10}
+            anchorStroke="#0A0A0A"
+            anchorStrokeWidth={2}
+            anchorFill="#FFFFFF"
+            anchorCornerRadius={2}
           />
         )}
       </>
@@ -794,36 +855,68 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
       <Group {...groupProps}>
         {renderSymbol()}
         
-        {/* Furniture Label - only show for non-wall objects */}
-        {!isWallObject && (
-          <>
-            {/* Label background for better readability */}
-            <Rect
-              x={widthPx / 2 - 40}
-              y={heightPx / 2 - 10}
-              width={80}
-              height={20}
-              fill="#FFFFFF"
-              opacity={0.9}
-              cornerRadius={4}
-            />
-            <Text
-              text={getFurnitureName()}
-              x={widthPx / 2}
-              y={heightPx / 2}
-              offsetX={0}
-              offsetY={7}
-              fontSize={14}
-              fontFamily="Inter, -apple-system, system-ui, sans-serif"
-              fontStyle="600"
-              fill="#0A0A0A"
-              align="center"
-            />
-          </>
-        )}
+        {/* Hover Overlay - Only show when hovering AND not selected */}
+        {!isWallObject && isHovered && !isSelected && (() => {
+          const labelText = getFurnitureName();
+          // Smart font sizing based on furniture size and zoom
+          const baseFontSize = Math.min(widthPx, heightPx) * 0.25;
+          const fontSize = Math.max(20, Math.min(56, baseFontSize * Math.sqrt(zoom)));
+          
+          return (
+            <>
+              {/* Strong semi-opaque overlay - covers everything */}
+              <Rect
+                x={0}
+                y={0}
+                width={widthPx}
+                height={heightPx}
+                fill="rgba(0, 0, 0, 0.85)"
+                strokeEnabled={false}
+                listening={false}
+              />
+              {/* Bold border highlight */}
+              <Rect
+                x={0}
+                y={0}
+                width={widthPx}
+                height={heightPx}
+                stroke="rgba(255, 255, 255, 0.3)"
+                strokeWidth={4}
+                fill="transparent"
+                listening={false}
+              />
+              {/* Label container with counter-rotation */}
+              <Group
+                x={widthPx / 2}
+                y={heightPx / 2}
+                rotation={-rotation}
+              >
+                {/* Large centered label - always horizontal */}
+                <Text
+                  text={labelText}
+                  x={0}
+                  y={0}
+                  offsetX={Math.max(widthPx, heightPx) / 2}
+                  offsetY={fontSize / 2}
+                  fontSize={fontSize}
+                  fontFamily="-apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Display', sans-serif"
+                  fontStyle="700"
+                  fill="#FFFFFF"
+                  align="center"
+                  width={Math.max(widthPx, heightPx)}
+                  listening={false}
+                />
+              </Group>
+            </>
+          );
+        })()}
         
-        {/* Centered Rotate Button - only show when selected */}
-        {isSelected && renderRotateButton()}
+        {/* Centered Rotate Button - renders on top, slightly faded when hovering */}
+        {isSelected && (
+          <Group opacity={isHovered ? 0.7 : 1}>
+            {renderRotateButton()}
+          </Group>
+        )}
       </Group>
       {isSelected && (
         <Transformer
@@ -834,6 +927,11 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
           }}
           flipEnabled={false}
           rotateEnabled={false}
+          anchorSize={10}
+          anchorStroke="#0A0A0A"
+          anchorStrokeWidth={2}
+          anchorFill="#FFFFFF"
+          anchorCornerRadius={2}
         />
       )}
     </>

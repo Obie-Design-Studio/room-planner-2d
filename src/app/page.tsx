@@ -149,11 +149,20 @@ export default function Home() {
   // Paste copied item
   const handlePaste = () => {
     if (copiedItem) {
+      // Calculate visual dimensions accounting for rotation
+      const rotation = copiedItem.rotation || 0;
+      const isRotated90 = rotation === 90 || rotation === 270;
+      const visualWidth = isRotated90 ? copiedItem.height : copiedItem.width;
+      const visualHeight = isRotated90 ? copiedItem.width : copiedItem.height;
+      
+      // Find empty spot for pasted item
+      const emptySpot = findEmptySpot(visualWidth, visualHeight);
+      
       const newItem: FurnitureItem = {
         ...copiedItem,
         id: crypto.randomUUID(),
-        x: copiedItem.x + 20, // Offset slightly
-        y: copiedItem.y + 20,
+        x: emptySpot.x,
+        y: emptySpot.y,
       };
       saveToHistory([...items, newItem]);
       setSelectedId(newItem.id);
@@ -165,11 +174,20 @@ export default function Home() {
     if (selectedId) {
       const item = items.find(i => i.id === selectedId);
       if (item) {
+        // Calculate visual dimensions accounting for rotation
+        const rotation = item.rotation || 0;
+        const isRotated90 = rotation === 90 || rotation === 270;
+        const visualWidth = isRotated90 ? item.height : item.width;
+        const visualHeight = isRotated90 ? item.width : item.height;
+        
+        // Find empty spot for duplicated item
+        const emptySpot = findEmptySpot(visualWidth, visualHeight);
+        
         const newItem: FurnitureItem = {
           ...item,
           id: crypto.randomUUID(),
-          x: item.x + 20,
-          y: item.y + 20,
+          x: emptySpot.x,
+          y: emptySpot.y,
         };
         saveToHistory([...items, newItem]);
         setSelectedId(newItem.id);
@@ -202,6 +220,115 @@ export default function Home() {
     handleAddItem(label, width, height, color);
   };
 
+  // Helper: Check if two rectangles overlap
+  const rectanglesOverlap = (
+    r1: { x: number; y: number; width: number; height: number },
+    r2: { x: number; y: number; width: number; height: number }
+  ): boolean => {
+    return !(
+      r1.x + r1.width <= r2.x ||
+      r2.x + r2.width <= r1.x ||
+      r1.y + r1.height <= r2.y ||
+      r2.y + r2.height <= r1.y
+    );
+  };
+
+  // Helper: Find an empty spot for new furniture
+  const findEmptySpot = (width: number, height: number): { x: number; y: number } => {
+    const margin = 10; // 10cm gap between furniture
+    
+    // Try default position first (top-left with margin)
+    let candidates: Array<{ x: number; y: number }> = [{ x: 20, y: 20 }];
+    
+    // Generate candidate positions: right of and below each existing furniture
+    items.forEach((item) => {
+      // Account for rotation
+      const itemRotation = item.rotation || 0;
+      const itemIsRotated90 = itemRotation === 90 || itemRotation === 270;
+      const itemWidth = itemIsRotated90 ? item.height : item.width;
+      const itemHeight = itemIsRotated90 ? item.width : item.height;
+      
+      // To the right of this item
+      candidates.push({
+        x: item.x + itemWidth + margin,
+        y: item.y
+      });
+      
+      // Below this item
+      candidates.push({
+        x: item.x,
+        y: item.y + itemHeight + margin
+      });
+      
+      // To the right and below
+      candidates.push({
+        x: item.x + itemWidth + margin,
+        y: item.y + itemHeight + margin
+      });
+    });
+    
+    // Try each candidate position
+    for (const candidate of candidates) {
+      const { x, y } = candidate;
+      
+      // Check if within room bounds
+      if (x < 0 || y < 0 || x + width > roomConfig.width || y + height > roomConfig.height) {
+        continue;
+      }
+      
+      // Check collision with all existing items
+      let hasCollision = false;
+      for (const item of items) {
+        // Account for rotation
+        const itemRotation = item.rotation || 0;
+        const itemIsRotated90 = itemRotation === 90 || itemRotation === 270;
+        const itemWidth = itemIsRotated90 ? item.height : item.width;
+        const itemHeight = itemIsRotated90 ? item.width : item.height;
+        
+        if (rectanglesOverlap(
+          { x, y, width, height },
+          { x: item.x, y: item.y, width: itemWidth, height: itemHeight }
+        )) {
+          hasCollision = true;
+          break;
+        }
+      }
+      
+      if (!hasCollision) {
+        return { x, y }; // Found empty spot!
+      }
+    }
+    
+    // Fallback: grid search (slower but comprehensive)
+    const step = 20; // Check every 20cm
+    for (let gridY = 20; gridY + height <= roomConfig.height; gridY += step) {
+      for (let gridX = 20; gridX + width <= roomConfig.width; gridX += step) {
+        let hasCollision = false;
+        for (const item of items) {
+          const itemRotation = item.rotation || 0;
+          const itemIsRotated90 = itemRotation === 90 || itemRotation === 270;
+          const itemWidth = itemIsRotated90 ? item.height : item.width;
+          const itemHeight = itemIsRotated90 ? item.width : item.height;
+          
+          if (rectanglesOverlap(
+            { x: gridX, y: gridY, width, height },
+            { x: item.x, y: item.y, width: itemWidth, height: itemHeight }
+          )) {
+            hasCollision = true;
+            break;
+          }
+        }
+        
+        if (!hasCollision) {
+          return { x: gridX, y: gridY };
+        }
+      }
+    }
+    
+    // Last resort: just use default and let user move it
+    return { x: 20, y: 20 };
+  };
+
   const handleAddItem = (type: string = 'Chair', w: number = 50, h: number = 50, c: string = '#3b82f6', wall?: 'top' | 'left') => {
     // Default start position (give walls breathing room)
     let x = 20;
@@ -230,6 +357,11 @@ export default function Home() {
       y = Math.max(0, Math.min(y, maxY));
       w = clampedWidth;
       h = clampedHeight;
+      
+      // Smart placement: find empty spot without overlapping existing furniture
+      const emptySpot = findEmptySpot(w, h);
+      x = emptySpot.x;
+      y = emptySpot.y;
     }
 
     const newItem: FurnitureItem = {
@@ -262,7 +394,7 @@ export default function Home() {
     saveToHistory(newItems);
   };
 
-  const handleSelect = (id: string) => {
+  const handleSelect = (id: string | null) => {
     setSelectedId(id);
   };
 
@@ -1047,7 +1179,7 @@ export default function Home() {
             onItemChangeEnd={handleItemChangeEnd}
             onItemDelete={handleDeleteItemById}
             selectedId={selectedId}
-            onSelect={setSelectedId}
+            onSelect={handleSelect}
             onEdit={handleOpenEditor}
             showAllMeasurements={showAllMeasurements}
             measurementUnit={measurementUnit}
@@ -1083,6 +1215,7 @@ export default function Home() {
         isOpen={isFurnitureLibraryOpen}
         onClose={() => setIsFurnitureLibraryOpen(false)}
         onAddFurniture={handleAddFurnitureFromLibrary}
+        defaultCategory={roomConfig.roomType || 'all'}
       />
 
       <CustomFurnitureModal

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Stage, Layer } from 'react-konva';
 import { FURNITURE_LIBRARY, type FurnitureDefinition } from '@/lib/furnitureLibrary';
@@ -32,6 +32,7 @@ interface FurnitureLibraryModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddFurniture: (furniture: FurnitureDefinition) => void;
+  defaultCategory?: string;
 }
 
 // Mapping from furniture type to symbol component
@@ -120,8 +121,16 @@ const FurnitureLibraryModal: React.FC<FurnitureLibraryModalProps> = ({
   isOpen,
   onClose,
   onAddFurniture,
+  defaultCategory = 'all',
 }) => {
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedCategory, setSelectedCategory] = useState<string>(defaultCategory);
+
+  // Reset to default category when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedCategory(defaultCategory);
+    }
+  }, [isOpen, defaultCategory]);
 
   if (!isOpen) return null;
 

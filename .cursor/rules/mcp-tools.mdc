@@ -10,6 +10,186 @@ You have direct access to MCP servers. USE THEM before asking me anything.
 
 **The principle:** If you can get the information yourself, get it yourself.
 
+# MANDATORY DEBUG LOGGING
+
+**When implementing ANY feature, you MUST add debug logging BEFORE testing.**
+
+## Why Debug Logging is Required
+
+Debug logging allows you to verify logic flow via console messages when browser tools can't interact with canvas/complex UI elements.
+
+## What to Log
+
+For every interactive feature, add console.log statements for:
+- ✅ Event handlers firing (mousedown, mouseup, click)
+- ✅ Function entry points with parameters
+- ✅ Conditional branches (which path was taken)
+- ✅ State changes (before/after values)
+- ✅ Early returns (why a function exited early)
+
+## Format
+
+Use prefixed labels for easy filtering:
+```javascript
+console.log('[FEATURE_NAME] Event fired:', eventData);
+console.log('[FEATURE_NAME] State before:', oldState);
+console.log('[FEATURE_NAME] State after:', newState);
+```
+
+## When to Remove Debug Logs
+
+NEVER remove debug logs immediately. Keep them until:
+1. Feature is confirmed working by user
+2. User explicitly asks you to clean up logs
+3. You're about to commit (ask first)
+
+**Why:** Debug logs cost nothing in development and save massive time when debugging issues.
+
+# MANDATORY TESTING PROTOCOL
+
+**After implementing ANY change, you MUST test it yourself before reporting success.**
+
+## Testing Workflow (REQUIRED)
+
+For EVERY code change:
+1. ✅ Wait for Fast Refresh/rebuild to complete
+2. ✅ Check console: `browser_console_messages` (look for errors)
+3. ✅ Take screenshot: `browser_take_screenshot` (verify visual result)
+4. ✅ Test the actual interaction using `browser_click`, `browser_type`, etc.
+5. ✅ Report what you tested and what the results were
+6. ✅ ONLY THEN ask user to confirm
+
+## Never Ask User To Test
+
+**FORBIDDEN:**
+- ❌ "Try clicking the button and let me know if it works"
+- ❌ "Can you test if this works?"
+- ❌ "Refresh and see if you see any errors"
+- ❌ "Check the console for me"
+
+**REQUIRED:**
+- ✅ "I clicked the button - it works correctly. Console shows no errors. Screenshot attached."
+- ✅ "I tested the form - submission works, data appears in the list. See screenshot."
+- ✅ "I clicked the measurement label - the edit input appears correctly. Ready for your confirmation."
+
+## Testing Scenarios
+
+| Change Type | Required Test Actions |
+|-------------|----------------------|
+| UI change | Screenshot before/after, verify visually |
+| Button/link | Click it, check console, verify result |
+| Form | Fill fields, submit, check console & result |
+| Interactive feature | Perform the interaction, verify behavior |
+| Bug fix | Reproduce original bug, verify it's fixed |
+| API call | Check network tab, verify request/response |
+
+## When Browser Tools Can't Test
+
+ONLY ask user to test if:
+- Feature requires hardware I don't have (camera, microphone)
+- Feature requires external service I can't access
+- Feature requires authentication flow only user can complete
+- Feature requires specific browser/device testing
+
+Otherwise: TEST IT YOURSELF.
+
+## MCP Fallback Chain for Testing
+
+**When testing browser interactions, use this EXACT sequence:**
+
+### Step 1: cursor-ide-browser (Primary)
+- Try `browser_click`, `browser_type`, `browser_press_key`
+- **If it works:** Continue testing
+- **If it fails:** Proceed to Step 2
+
+### Step 2: user-chrome-devtools (Canvas/Advanced)
+- Check for browser instance conflicts
+- **If conflict exists:** Try to resolve (check for running Chrome processes)
+- Use `evaluate_script` to inject JavaScript for canvas interactions
+- Use `click` with uid from snapshots
+- **If it works:** Continue testing
+- **If it fails:** Proceed to Step 3
+
+### Step 3: user-comet (AI-Powered Fallback)
+- Try `comet_connect` first
+- **If connection fails:** Diagnose why (error message, process conflicts)
+- **If you can fix it:** Apply fix and retry
+- **If you cannot fix it:** Document the limitation and provide manual test steps
+
+### Step 4: Manual Testing (Last Resort)
+- **ONLY use this if all 3 MCPs failed**
+- Provide specific step-by-step instructions
+- Request specific feedback (console logs, screenshots, behavior)
+
+**CRITICAL:** Never skip steps. Always try the next tool in the chain before giving up.
+
+### Known Limitations by Tool
+
+**cursor-ide-browser:**
+- ❌ Canvas coordinate clicks often fail with "Element not found"
+- ❌ Drag operations on canvas may not work reliably
+- ✅ Works well for HTML buttons, forms, links
+
+**user-chrome-devtools:**
+- ❌ Browser instance conflicts with cursor-ide-browser
+- ✅ Can execute JavaScript via `evaluate_script` for canvas interactions
+- ✅ Can click using element uid
+
+**user-comet:**
+- ✅ AI-powered, can handle complex interactions
+- ❌ Connection issues may occur
+
+**When you hit limitations:**
+1. ❌ DO NOT claim "ready for testing" or "should work now"
+2. ✅ DO report: "cursor-ide-browser failed (reason). Trying user-chrome-devtools..."
+3. ✅ DO report: "All 3 MCPs failed for X, Y, Z reasons. Providing manual test steps..."
+4. ✅ DO provide clear test steps for the user to follow
+5. ✅ DO ask for specific feedback about what happened
+
+**FORBIDDEN phrases when you cannot fully test:**
+- ❌ "Ready for your confirmation"
+- ❌ "Should work correctly now"
+- ❌ "Both features are implemented ✅"
+- ❌ "The code is ready and compiled successfully"
+
+**REQUIRED phrases when all testing fails:**
+- ✅ "cursor-ide-browser failed (canvas limitation). user-chrome-devtools has browser conflict. comet failed to connect. Needs manual testing."
+- ✅ "Fixed the code, but all 3 MCPs failed to test canvas interaction (reasons: X, Y, Z)"
+- ✅ "Please test and tell me exactly what happens when you click X"
+
+## Required Test Results Format
+
+After testing (or attempting to test), ALWAYS provide results in this format:
+
+```
+## MY ACTUAL TEST RESULTS:
+
+### What I Could Test:
+✅ [Specific thing tested] - [What happened]
+✅ [Another thing tested] - [Result]
+
+### What I CANNOT Test with Browser Tools:
+❌ **[Feature/interaction]** - [Why it failed / What limitation]
+❌ [Another untestable thing] - [Reason]
+
+---
+
+## HONEST ASSESSMENT:
+
+**[Feature/Bug] is [likely working / still broken / partially working]** 
+
+Reasons:
+1. [Evidence-based reason]
+2. [What still needs manual testing]
+3. [Known issues or concerns]
+```
+
+**Why this format matters:**
+- Forces you to distinguish between tested vs untested
+- Makes limitations explicit and visible
+- Prevents false confidence about "working" features
+- Gives user clear information about what to test themselves
+
 # Currently Connected MCPs
 
 | MCP Server | What It Does |
@@ -120,6 +300,58 @@ When something isn't working, DO THIS AUTOMATICALLY:
 ✅ "Fix applied. I checked the console — no errors. Network request to /api/users now returns 200. Can you confirm it looks right?"
 
 ❌ "Try refreshing and let me know if it works."
+
+# When Tools Fail: Debug, Don't Give Up
+
+**If an MCP tool fails, you MUST attempt to diagnose and fix the issue.**
+
+## Common Issues and Fixes
+
+| Error | Likely Cause | Action |
+|-------|-------------|--------|
+| "Browser already running" | Instance conflict between MCPs | Check which MCP is using the browser, consider using a different MCP |
+| "Element not found" (canvas) | Canvas doesn't expose accessibility tree | Switch to `evaluate_script` (user-chrome-devtools) or Comet |
+| "Cannot read properties of undefined" | Connection not established | Try `connect()` or check MCP configuration |
+| "Script failed to execute" | Timing issue or incorrect selector | Add wait, use snapshot to verify element exists |
+| "Not connected to Comet" | Comet connection not established | Call `comet_connect` first, diagnose why it failed |
+
+## Required Debugging Steps
+
+When a tool fails:
+1. ✅ Read the error message carefully
+2. ✅ Check if there's a known workaround in the table above
+3. ✅ Try the next tool in the fallback chain
+4. ✅ If all tools fail, document WHY each one failed (not just "it didn't work")
+5. ✅ Look for alternative approaches (JavaScript injection, different selectors, etc.)
+
+**FORBIDDEN:**
+- ❌ "Comet isn't connecting, so I can't test"
+- ❌ "Browser click doesn't work on canvas"
+- ❌ "The tool failed" (without explaining why or trying alternatives)
+
+**REQUIRED:**
+- ✅ "cursor-ide-browser fails on canvas coordinates (Element not found). Trying user-chrome-devtools evaluate_script..."
+- ✅ "user-chrome-devtools has browser instance conflict with cursor-ide-browser. Attempting comet_connect..."
+- ✅ "comet_connect failed with 'Cannot read properties of undefined'. This suggests Comet browser isn't running. Trying manual connection steps..."
+- ✅ "All 3 MCPs failed: cursor-ide-browser (canvas limitation), user-chrome-devtools (browser conflict), comet (connection error). Providing manual test steps..."
+
+## Example: Proper Fallback Execution
+
+```
+1. Try cursor-ide-browser browser_click → "Element not found" error
+   → This is expected for canvas. Moving to Step 2.
+
+2. Try user-chrome-devtools evaluate_script → "Browser already running" error
+   → Conflict with cursor-ide-browser. Cannot use simultaneously. Moving to Step 3.
+
+3. Try user-comet comet_connect → "Cannot read properties of undefined" error
+   → Connection issue. Checking if Comet process is running...
+   → No fix available. Moving to Step 4.
+
+4. Manual testing required - all 3 MCPs exhausted with documented reasons.
+```
+
+This is the MINIMUM effort expected before asking user to test manually.
 
 # What You MAY Ask Me For
 
