@@ -675,19 +675,20 @@ export default function RoomCanvas({
       <div
         style={{
           position: 'absolute',
-          bottom: '20px',
-          right: '20px',
+          bottom: '12px',
+          right: '12px',
           display: 'flex',
           flexDirection: 'column',
-          gap: '8px',
+          gap: '6px',
           zIndex: 10,
         }}
+        className="md:bottom-5 md:right-5 md:gap-2"
       >
         <button
           onClick={handleZoomIn}
           style={{
-            width: '40px',
-            height: '40px',
+            width: '36px',
+            height: '36px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -698,6 +699,7 @@ export default function RoomCanvas({
             boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
             transition: 'all 150ms',
           }}
+          className="md:w-10 md:h-10"
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = '#F5F5F5';
             e.currentTarget.style.borderColor = '#0A0A0A';
@@ -708,14 +710,14 @@ export default function RoomCanvas({
           }}
           title="Zoom In (+)"
         >
-          <Plus size={20} color="#0A0A0A" />
+          <Plus size={18} color="#0A0A0A" className="md:w-5 md:h-5" />
         </button>
         
         <button
           onClick={handleResetView}
           style={{
-            width: '40px',
-            height: '40px',
+            width: '36px',
+            height: '36px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -726,6 +728,7 @@ export default function RoomCanvas({
             boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
             transition: 'all 150ms',
           }}
+          className="md:w-10 md:h-10"
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = '#F5F5F5';
             e.currentTarget.style.borderColor = '#0A0A0A';
@@ -736,14 +739,14 @@ export default function RoomCanvas({
           }}
           title="Fit to View (F or 0) - Reset zoom and center room"
         >
-          <Maximize2 size={18} color="#0A0A0A" />
+          <Maximize2 size={16} color="#0A0A0A" className="md:w-[18px] md:h-[18px]" />
         </button>
         
         <button
           onClick={handleResetView}
           style={{
-            width: '40px',
-            height: '40px',
+            width: '36px',
+            height: '36px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -752,11 +755,12 @@ export default function RoomCanvas({
             borderRadius: '8px',
             cursor: 'pointer',
             boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-            fontSize: '12px',
+            fontSize: '11px',
             fontWeight: 600,
             color: '#0A0A0A',
             transition: 'all 150ms',
           }}
+          className="md:w-10 md:h-10 md:text-xs"
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = '#F5F5F5';
             e.currentTarget.style.borderColor = '#0A0A0A';
@@ -773,8 +777,8 @@ export default function RoomCanvas({
         <button
           onClick={handleZoomOut}
           style={{
-            width: '40px',
-            height: '40px',
+            width: '36px',
+            height: '36px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -785,6 +789,7 @@ export default function RoomCanvas({
             boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
             transition: 'all 150ms',
           }}
+          className="md:w-10 md:h-10"
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = '#F5F5F5';
             e.currentTarget.style.borderColor = '#0A0A0A';
@@ -795,7 +800,7 @@ export default function RoomCanvas({
           }}
           title="Zoom Out (-)"
         >
-          <Minus size={20} color="#0A0A0A" />
+          <Minus size={18} color="#0A0A0A" className="md:w-5 md:h-5" />
         </button>
       </div>
       

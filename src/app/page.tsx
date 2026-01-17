@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import type { RoomConfig, FurnitureItem } from "@/types";
 import ColorPicker from "@/components/ui/ColorPicker";
@@ -9,7 +9,7 @@ import ItemEditModal from "@/components/ui/ItemEditModal";
 import RoomSettingsModal from "@/components/ui/RoomSettingsModal";
 import FurnitureLibraryModal from "@/components/ui/FurnitureLibraryModal";
 import CustomFurnitureModal from "@/components/ui/CustomFurnitureModal";
-import { Armchair, Table, Bed, RectangleHorizontal, DoorOpen, Trash2, Settings, ChevronDown, ChevronUp, Plus, Grid3x3, Sofa, Lamp, Box, Circle, Square, Bath, UtensilsCrossed, BookOpen, Monitor, CookingPot, Refrigerator } from "lucide-react";
+import { Armchair, Table, Bed, RectangleHorizontal, DoorOpen, Trash2, Settings, ChevronDown, ChevronUp, Plus, Grid3x3, Sofa, Lamp, Box, Circle, Square, Bath, UtensilsCrossed, BookOpen, Monitor, CookingPot, Refrigerator, Menu, X } from "lucide-react";
 import { PIXELS_PER_CM, WALL_THICKNESS_PX } from "@/lib/constants";
 import { getDefaultFurnitureForRoom, FURNITURE_LIBRARY, getFurnitureByType, type RoomType, type FurnitureDefinition } from "@/lib/furnitureLibrary";
 import { type Unit, UNIT_LABELS } from "@/lib/unitConversion";
@@ -85,6 +85,8 @@ export default function Home() {
   const [isFurnitureOpen, setIsFurnitureOpen] = useState(true);
   const [isFurnitureLibraryOpen, setIsFurnitureLibraryOpen] = useState(false);
   const [isCustomFurnitureOpen, setIsCustomFurnitureOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile sidebar toggle
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
   
   // History state for undo/redo
   const [history, setHistory] = useState<FurnitureItem[][]>([[]]);
@@ -93,15 +95,28 @@ export default function Home() {
 
   useEffect(() => {
     const handleResize = () => {
-      setViewport({
-        width: window.innerWidth - 320, // reserved for sidebar
-        height: window.innerHeight - 64, // reserved for header
-      });
+      if (canvasContainerRef.current) {
+        const rect = canvasContainerRef.current.getBoundingClientRect();
+        setViewport({
+          width: rect.width,
+          height: rect.height,
+        });
+      }
     };
+
+    // Use ResizeObserver for more accurate sizing
+    const resizeObserver = new ResizeObserver(handleResize);
+    if (canvasContainerRef.current) {
+      resizeObserver.observe(canvasContainerRef.current);
+    }
 
     handleResize(); // Set initial size
     window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      resizeObserver.disconnect();
+    };
   }, []);
 
   // Save to history when items change
@@ -532,20 +547,53 @@ export default function Home() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0 32px',
+        padding: '0 16px',
         backgroundColor: '#FFFFFF',
         borderBottom: '1px solid #EFEFEF'
       }}>
-        {/* Left: Title */}
-        <h1 style={{ 
-          fontSize: '20px',
-          fontWeight: 600,
-          color: '#0A0A0A',
-          letterSpacing: '-0.02em',
-          margin: 0
-        }}>
-          Room Planner
-        </h1>
+        {/* Left: Hamburger (mobile) + Title */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {/* Mobile hamburger menu */}
+          <button
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="md:hidden"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '40px',
+              height: '40px',
+              padding: 0,
+              color: '#0A0A0A',
+              backgroundColor: 'transparent',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              transition: 'all 150ms',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#F5F5F5';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent';
+            }}
+            aria-label="Toggle menu"
+          >
+            {isSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+          
+          <h1 style={{ 
+            fontSize: '18px',
+            fontWeight: 600,
+            color: '#0A0A0A',
+            letterSpacing: '-0.02em',
+            margin: 0
+          }}
+          className="md:text-[20px]"
+          >
+            Room Planner
+          </h1>
+        </div>
         
         {/* Center: Room name + dimensions */}
         <div style={{ 
@@ -553,19 +601,26 @@ export default function Home() {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: '2px'
-        }}>
+          gap: '2px',
+          display: 'none'
+        }}
+        className="sm:flex"
+        >
           <span style={{ 
-            fontSize: '15px',
+            fontSize: '14px',
             fontWeight: 500,
             color: '#0A0A0A'
-          }}>
+          }}
+          className="md:text-[15px]"
+          >
             {roomName}
           </span>
           <span style={{ 
-            fontSize: '13px',
+            fontSize: '12px',
             color: '#999999'
-          }}>
+          }}
+          className="hidden sm:inline md:text-[13px]"
+          >
             {roomConfig.width} × {roomConfig.height} cm
           </span>
         </div>
@@ -574,7 +629,7 @@ export default function Home() {
         <div style={{ 
           display: 'flex', 
           gap: '4px',
-          padding: '4px',
+          padding: '3px',
           backgroundColor: '#F5F5F5',
           borderRadius: '8px'
         }}>
@@ -583,8 +638,8 @@ export default function Home() {
               key={unit}
               onClick={() => setMeasurementUnit(unit)}
               style={{
-                padding: '6px 12px',
-                fontSize: '13px',
+                padding: '5px 8px',
+                fontSize: '12px',
                 fontWeight: 500,
                 color: measurementUnit === unit ? '#FFFFFF' : '#666666',
                 backgroundColor: measurementUnit === unit ? '#0A0A0A' : 'transparent',
@@ -593,6 +648,7 @@ export default function Home() {
                 cursor: 'pointer',
                 transition: 'all 150ms',
               }}
+              className="md:px-3 md:py-1.5 md:text-[13px]"
             >
               {UNIT_LABELS[unit]}
             </button>
@@ -601,15 +657,26 @@ export default function Home() {
       </header>
 
       {/* Main Body */}
-      <div className="flex-1 flex overflow-hidden min-h-0">
+      <div className="flex-1 flex overflow-hidden min-h-0 relative">
         {/* Sidebar */}
-        <aside style={{ 
-          width: '320px', 
-          display: 'flex', 
-          flexDirection: 'column', 
-          borderRight: '1px solid #EFEFEF',
-          backgroundColor: '#FAFAFA'
-        }}>
+        <aside 
+          style={{ 
+            width: '320px', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            borderRight: '1px solid #EFEFEF',
+            backgroundColor: '#FAFAFA',
+            position: 'absolute',
+            top: '64px',
+            left: 0,
+            bottom: 0,
+            transform: isSidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
+            transition: 'transform 250ms ease-in-out',
+            zIndex: 50,
+            boxShadow: isSidebarOpen ? '4px 0 12px rgba(0, 0, 0, 0.1)' : 'none',
+          }}
+          className="md:relative md:top-auto md:left-auto md:bottom-auto md:translate-x-0 md:w-[280px] lg:w-[320px] md:z-auto md:shadow-none md:flex-shrink-0"
+        >
           <div style={{ 
             flex: 1, 
             minHeight: 0, 
@@ -1164,12 +1231,37 @@ export default function Home() {
           </div>
         </aside>
 
+        {/* Mobile backdrop overlay */}
+        {isSidebarOpen && (
+          <div
+            onClick={() => setIsSidebarOpen(false)}
+            style={{
+              position: 'fixed',
+              top: '64px',
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.4)',
+              zIndex: 40,
+              transition: 'opacity 250ms ease-in-out',
+            }}
+            className="md:hidden"
+          />
+        )}
+
         {/* Canvas Area */}
         <div
-          className="flex-1 relative min-h-0"
+          ref={canvasContainerRef}
+          className="flex-1 relative min-h-0 w-full md:w-auto overflow-hidden"
           style={{ backgroundColor: '#FAFAF8' }}
           onClick={(e) => {
-            if (e.target === e.currentTarget) setSelectedId(null);
+            if (e.target === e.currentTarget) {
+              setSelectedId(null);
+              // Close mobile sidebar when clicking on canvas
+              if (window.innerWidth < 768) {
+                setIsSidebarOpen(false);
+              }
+            }
           }}
         >
           <RoomCanvas

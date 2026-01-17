@@ -17,6 +17,12 @@ const dmSans = DM_Sans({
 export const metadata: Metadata = {
   title: "Room Planner 2D",
   description: "Drag and drop room planner",
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+  },
 };
 
 export default function RootLayout({

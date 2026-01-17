@@ -86,7 +86,11 @@ A web-based room planning application for designing and visualizing interior spa
 - ↩️ **Undo/Redo system** - Full history support
 - 📋 **Copy/Paste** - Duplicate items easily
 - 🎯 **Auto-select** - New items automatically selected
-- 📱 **Responsive design** - Adapts to window size
+- 📱 **Responsive design** - Works on mobile, tablet, and desktop
+  - Mobile: Collapsible sidebar with overlay
+  - Tablet: Optimized 280px sidebar
+  - Desktop: Full 320px sidebar
+  - Touch-optimized controls (44px minimum touch targets)
 - 💾 **In-memory state** - Work persists during session
 
 ## Tech Stack
@@ -249,6 +253,10 @@ room-planner-2d/
 See [git commits](../../commits/main) for detailed changelog.
 
 ### Recent Updates (v0.1.0)
+- ✅ **Responsive design** - Mobile, tablet, and desktop support
+  - Collapsible sidebar on mobile with hamburger menu
+  - Touch-optimized controls (44px minimum)
+  - Adaptive layout for different screen sizes
 - ✅ Zoom controls with center-locked behavior (25%-300%)
 - ✅ Pan controls with boundary constraints
 - ✅ 23-item furniture library with categories
