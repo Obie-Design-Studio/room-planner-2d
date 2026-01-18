@@ -289,7 +289,7 @@ export default function Home() {
       
       if (result.success && result.room) {
         setCurrentRoomId(result.room.id);
-        alert('Room saved successfully!');
+        console.log('[Save] Room saved successfully with ID:', result.room.id);
       } else {
         alert('Failed to save room. Please try again.');
       }
@@ -331,7 +331,7 @@ export default function Home() {
         setItems(loadedItems);
         
         setIsLoadModalOpen(false);
-        alert('Room loaded successfully!');
+        console.log('[Load] Room loaded successfully:', result.room.name);
       } else {
         alert('Failed to load room');
       }
