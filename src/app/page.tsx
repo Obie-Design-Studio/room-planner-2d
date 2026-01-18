@@ -338,6 +338,7 @@ export default function Home() {
           );
           break;
         case 'pdf-measurements':
+          console.log('[Export] Starting measurements PDF export with items:', items.length);
           success = await exportMeasurementsAsPDF(
             canvasContainerRef.current,
             roomName,
@@ -345,6 +346,7 @@ export default function Home() {
             ceilingHeight,
             items
           );
+          console.log('[Export] Measurements PDF export result:', success);
           break;
         case 'png':
           success = await exportAsPNG(canvasContainerRef.current, roomName);

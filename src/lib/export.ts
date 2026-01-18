@@ -161,18 +161,27 @@ export async function exportMeasurementsAsPDF(
   items: FurnitureItem[]
 ): Promise<boolean> {
   try {
+    console.log('[PDF Export] Starting measurements PDF export...');
+    console.log('[PDF Export] Canvas container:', canvasContainer);
+    
     const canvas = await html2canvas(canvasContainer, {
       backgroundColor: '#FFFFFF',
       scale: 2,
       logging: false,
     });
+    
+    console.log('[PDF Export] Canvas captured:', canvas.width, 'x', canvas.height);
 
     const imgData = canvas.toDataURL('image/png');
+    console.log('[PDF Export] Image data created');
+    
     const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
       format: 'a4',
     });
+    
+    console.log('[PDF Export] jsPDF instance created');
 
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
@@ -280,10 +289,15 @@ export async function exportMeasurementsAsPDF(
       { align: 'center' }
     );
 
-    pdf.save(`${roomName.replace(/\s+/g, '_')}_measurements_${Date.now()}.pdf`);
+    const filename = `${roomName.replace(/\s+/g, '_')}_measurements_${Date.now()}.pdf`;
+    console.log('[PDF Export] Attempting to save PDF as:', filename);
+    
+    pdf.save(filename);
+    
+    console.log('[PDF Export] PDF save() called successfully');
     return true;
   } catch (error) {
-    console.error('Error exporting measurements PDF:', error);
+    console.error('[PDF Export] Error exporting measurements PDF:', error);
     return false;
   }
 }
