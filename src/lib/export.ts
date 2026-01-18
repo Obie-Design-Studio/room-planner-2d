@@ -144,10 +144,43 @@ export async function exportBlueprintAsPDF(
       { align: 'center' }
     );
 
-    pdf.save(`${roomName.replace(/\s+/g, '_')}_blueprint_${Date.now()}.pdf`);
-    return true;
+    const filename = `${roomName.replace(/\s+/g, '_')}_blueprint_${Date.now()}.pdf`;
+    console.log('[PDF Export Blueprint] Attempting to save PDF as:', filename);
+    
+    try {
+      // Try multiple download methods for better browser compatibility
+      
+      // Method 1: Standard jsPDF save
+      pdf.save(filename);
+      console.log('[PDF Export Blueprint] Standard save() called');
+      
+      // Method 2: Blob download fallback
+      const blob = pdf.output('blob');
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      
+      // Trigger download
+      link.click();
+      
+      // Cleanup
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        console.log('[PDF Export Blueprint] Blob download triggered and cleaned up');
+      }, 100);
+      
+      console.log('[PDF Export Blueprint] PDF download triggered successfully');
+      return true;
+    } catch (downloadError) {
+      console.error('[PDF Export Blueprint] Download failed:', downloadError);
+      throw downloadError;
+    }
   } catch (error) {
-    console.error('Error exporting PDF:', error);
+    console.error('[PDF Export Blueprint] Error exporting PDF:', error);
     return false;
   }
 }
@@ -292,10 +325,38 @@ export async function exportMeasurementsAsPDF(
     const filename = `${roomName.replace(/\s+/g, '_')}_measurements_${Date.now()}.pdf`;
     console.log('[PDF Export] Attempting to save PDF as:', filename);
     
-    pdf.save(filename);
-    
-    console.log('[PDF Export] PDF save() called successfully');
-    return true;
+    try {
+      // Try multiple download methods for better browser compatibility
+      
+      // Method 1: Standard jsPDF save (works in most browsers)
+      pdf.save(filename);
+      console.log('[PDF Export] Standard save() called');
+      
+      // Method 2: Blob download fallback (more reliable in some browsers)
+      const blob = pdf.output('blob');
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      
+      // Trigger download
+      link.click();
+      
+      // Cleanup
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        console.log('[PDF Export] Blob download triggered and cleaned up');
+      }, 100);
+      
+      console.log('[PDF Export] PDF download triggered successfully');
+      return true;
+    } catch (downloadError) {
+      console.error('[PDF Export] Download failed:', downloadError);
+      throw downloadError;
+    }
   } catch (error) {
     console.error('[PDF Export] Error exporting measurements PDF:', error);
     return false;
