@@ -644,11 +644,11 @@ export default function Home() {
     <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
       {/* Header */}
       <header style={{ 
-        height: '64px',
+        height: '44px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0 16px',
+        padding: '0 12px',
         backgroundColor: '#FFFFFF',
         borderBottom: '1px solid #EFEFEF'
       }}>
@@ -662,8 +662,8 @@ export default function Home() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: '40px',
-              height: '40px',
+              width: '32px',
+              height: '32px',
               padding: 0,
               color: '#0A0A0A',
               backgroundColor: 'transparent',
@@ -684,7 +684,7 @@ export default function Home() {
           </button>
           
           <h1 style={{ 
-            fontSize: '18px',
+            fontSize: '16px',
             fontWeight: 600,
             color: '#0A0A0A',
             letterSpacing: '-0.02em',
@@ -767,7 +767,7 @@ export default function Home() {
             borderRight: '1px solid #EFEFEF',
             backgroundColor: '#FAFAFA',
             position: 'absolute',
-            top: '64px',
+            top: '44px',
             left: 0,
             bottom: 0,
             transform: isSidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
@@ -1374,7 +1374,7 @@ export default function Home() {
             onClick={() => setIsSidebarOpen(false)}
             style={{
               position: 'fixed',
-              top: '64px',
+              top: '44px',
               left: 0,
               right: 0,
               bottom: 0,
