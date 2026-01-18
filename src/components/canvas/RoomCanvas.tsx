@@ -221,26 +221,42 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
         
         let minPosX, maxPosX, minPosY, maxPosY;
         
-        // Horizontal bounds
-        if (contentScreenWidth <= viewportWidth) {
-          // Content fits: allow panning, but keep fully visible (edges within viewport)
-          minPosX = viewportWidth - (baseCenterOffsetX + maxX * scale); // Right edge at viewport right
-          maxPosX = -(baseCenterOffsetX + minX * scale); // Left edge at viewport left
+        if (isMinZoom) {
+          // At minimum zoom: constrain actual ROOM (not content with buffer) to stay visible
+          // Room bounds are from (-WALL_THICKNESS_PX/2, -WALL_THICKNESS_PX/2) to (roomPxWidth + WALL_THICKNESS_PX/2, roomPxHeight + WALL_THICKNESS_PX/2)
+          const roomMinX = -WALL_THICKNESS_PX / 2;
+          const roomMinY = -WALL_THICKNESS_PX / 2;
+          const roomMaxX = roomPxWidth + WALL_THICKNESS_PX / 2;
+          const roomMaxY = roomPxHeight + WALL_THICKNESS_PX / 2;
+          
+          // Constrain room edges to viewport edges
+          minPosX = viewportWidth - (baseCenterOffsetX + roomMaxX * scale); // Room right edge at viewport right
+          maxPosX = -(baseCenterOffsetX + roomMinX * scale); // Room left edge at viewport left
+          minPosY = viewportHeight - (baseCenterOffsetY + roomMaxY * scale); // Room bottom edge at viewport bottom
+          maxPosY = -(baseCenterOffsetY + roomMinY * scale); // Room top edge at viewport top
         } else {
-          // Content larger than viewport: clamp to edges
-          maxPosX = -(baseCenterOffsetX + minX * scale);
-          minPosX = viewportWidth - (baseCenterOffsetX + maxX * scale);
-        }
-        
-        // Vertical bounds
-        if (contentScreenHeight <= viewportHeight) {
-          // Content fits: allow panning, but keep fully visible (edges within viewport)
-          minPosY = viewportHeight - (baseCenterOffsetY + maxY * scale); // Bottom edge at viewport bottom
-          maxPosY = -(baseCenterOffsetY + minY * scale); // Top edge at viewport top
-        } else {
-          // Content larger than viewport: clamp to edges
-          maxPosY = -(baseCenterOffsetY + minY * scale);
-          minPosY = viewportHeight - (baseCenterOffsetY + maxY * scale);
+          // Normal zoom: use content bounds (includes buffer for doors/labels)
+          // Horizontal bounds
+          if (contentScreenWidth <= viewportWidth) {
+            // Content fits: allow panning, but keep fully visible (edges within viewport)
+            minPosX = viewportWidth - (baseCenterOffsetX + maxX * scale); // Right edge at viewport right
+            maxPosX = -(baseCenterOffsetX + minX * scale); // Left edge at viewport left
+          } else {
+            // Content larger than viewport: clamp to edges
+            maxPosX = -(baseCenterOffsetX + minX * scale);
+            minPosX = viewportWidth - (baseCenterOffsetX + maxX * scale);
+          }
+          
+          // Vertical bounds
+          if (contentScreenHeight <= viewportHeight) {
+            // Content fits: allow panning, but keep fully visible (edges within viewport)
+            minPosY = viewportHeight - (baseCenterOffsetY + maxY * scale); // Bottom edge at viewport bottom
+            maxPosY = -(baseCenterOffsetY + minY * scale); // Top edge at viewport top
+          } else {
+            // Content larger than viewport: clamp to edges
+            maxPosY = -(baseCenterOffsetY + minY * scale);
+            minPosY = viewportHeight - (baseCenterOffsetY + maxY * scale);
+          }
         }
         
         // Apply elastic boundaries (disabled at minimum zoom to ensure room stays fully visible)
@@ -403,26 +419,42 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
         
         let minPosX, maxPosX, minPosY, maxPosY;
         
-        // Horizontal bounds
-        if (contentScreenWidth <= viewportWidth) {
-          // Content fits: allow panning, but keep fully visible (edges within viewport)
-          minPosX = viewportWidth - (baseCenterOffsetX + maxX * scale); // Right edge at viewport right
-          maxPosX = -(baseCenterOffsetX + minX * scale); // Left edge at viewport left
+        if (isMinZoom) {
+          // At minimum zoom: constrain actual ROOM (not content with buffer) to stay visible
+          // Room bounds are from (-WALL_THICKNESS_PX/2, -WALL_THICKNESS_PX/2) to (roomPxWidth + WALL_THICKNESS_PX/2, roomPxHeight + WALL_THICKNESS_PX/2)
+          const roomMinX = -WALL_THICKNESS_PX / 2;
+          const roomMinY = -WALL_THICKNESS_PX / 2;
+          const roomMaxX = roomPxWidth + WALL_THICKNESS_PX / 2;
+          const roomMaxY = roomPxHeight + WALL_THICKNESS_PX / 2;
+          
+          // Constrain room edges to viewport edges
+          minPosX = viewportWidth - (baseCenterOffsetX + roomMaxX * scale); // Room right edge at viewport right
+          maxPosX = -(baseCenterOffsetX + roomMinX * scale); // Room left edge at viewport left
+          minPosY = viewportHeight - (baseCenterOffsetY + roomMaxY * scale); // Room bottom edge at viewport bottom
+          maxPosY = -(baseCenterOffsetY + roomMinY * scale); // Room top edge at viewport top
         } else {
-          // Content larger than viewport: clamp to edges
-          maxPosX = -(baseCenterOffsetX + minX * scale);
-          minPosX = viewportWidth - (baseCenterOffsetX + maxX * scale);
-        }
-        
-        // Vertical bounds
-        if (contentScreenHeight <= viewportHeight) {
-          // Content fits: allow panning, but keep fully visible (edges within viewport)
-          minPosY = viewportHeight - (baseCenterOffsetY + maxY * scale); // Bottom edge at viewport bottom
-          maxPosY = -(baseCenterOffsetY + minY * scale); // Top edge at viewport top
-        } else {
-          // Content larger than viewport: clamp to edges
-          maxPosY = -(baseCenterOffsetY + minY * scale);
-          minPosY = viewportHeight - (baseCenterOffsetY + maxY * scale);
+          // Normal zoom: use content bounds (includes buffer for doors/labels)
+          // Horizontal bounds
+          if (contentScreenWidth <= viewportWidth) {
+            // Content fits: allow panning, but keep fully visible (edges within viewport)
+            minPosX = viewportWidth - (baseCenterOffsetX + maxX * scale); // Right edge at viewport right
+            maxPosX = -(baseCenterOffsetX + minX * scale); // Left edge at viewport left
+          } else {
+            // Content larger than viewport: clamp to edges
+            maxPosX = -(baseCenterOffsetX + minX * scale);
+            minPosX = viewportWidth - (baseCenterOffsetX + maxX * scale);
+          }
+          
+          // Vertical bounds
+          if (contentScreenHeight <= viewportHeight) {
+            // Content fits: allow panning, but keep fully visible (edges within viewport)
+            minPosY = viewportHeight - (baseCenterOffsetY + maxY * scale); // Bottom edge at viewport bottom
+            maxPosY = -(baseCenterOffsetY + minY * scale); // Top edge at viewport top
+          } else {
+            // Content larger than viewport: clamp to edges
+            maxPosY = -(baseCenterOffsetY + minY * scale);
+            minPosY = viewportHeight - (baseCenterOffsetY + maxY * scale);
+          }
         }
         
         // Apply elastic boundaries (disabled at minimum zoom to ensure room stays fully visible)
