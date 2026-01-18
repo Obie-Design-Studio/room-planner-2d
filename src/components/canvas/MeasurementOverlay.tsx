@@ -119,6 +119,9 @@ const MeasurementOverlay: React.FC<Props> = ({
   let topBound = 0;
   let bottomBound = roomH;
 
+  // Helper: check if a value is inside a range
+  const isBetween = (val: number, min: number, max: number) => val >= min && val <= max;
+
   otherItems.forEach((other) => {
     const oX = other.x * PIXELS_PER_CM;
     const oY = other.y * PIXELS_PER_CM;
@@ -140,9 +143,6 @@ const MeasurementOverlay: React.FC<Props> = ({
     }
   });
 
-  // Helper: check if a value is inside a range
-  const isBetween = (val: number, min: number, max: number) => val >= min && val <= max;
-  
   // Helper: adjust label position to avoid going off-canvas
   const adjustLabelX = (x: number, textWidth: number) => {
     if (x - textWidth / 2 < 0) return textWidth / 2;
@@ -272,6 +272,83 @@ const MeasurementOverlay: React.FC<Props> = ({
     setEditValue(currentValue.toString());
   };
 
+  // Helper: Save edited measurement and update furniture position
+  const saveEditedMeasurement = (inputValue: string) => {
+    if (!onItemChange || !editingDirection) {
+      return;
+    }
+
+    const newDistanceCm = parseFloat(inputValue);
+    if (isNaN(newDistanceCm) || newDistanceCm < 0) {
+      setEditingDirection(null);
+      setEditValue('');
+      return;
+    }
+
+    // Account for rotation when calculating visual dimensions
+    const rotation = item.rotation || 0;
+    const isRotated90 = rotation === 90 || rotation === 270;
+    const visualW = (isRotated90 ? item.height : item.width);
+    const visualH = (isRotated90 ? item.width : item.height);
+
+    // Need to recalculate bounds for position calculation
+    const currentX = item.x * PIXELS_PER_CM;
+    const currentY = item.y * PIXELS_PER_CM;
+    const visualWPx = visualW * PIXELS_PER_CM;
+    const visualHPx = visualH * PIXELS_PER_CM;
+
+    // Calculate nearest obstacles for each direction
+    let leftBoundCm = 0;
+    let rightBoundCm = room.width;
+    let topBoundCm = 0;
+    let bottomBoundCm = room.height;
+    
+    const midX = currentX + visualWPx / 2;
+    const midY = currentY + visualHPx / 2;
+
+    otherItems.forEach((other) => {
+      const oX = other.x * PIXELS_PER_CM;
+      const oY = other.y * PIXELS_PER_CM;
+      
+      const otherRotation = other.rotation || 0;
+      const otherIsRotated90 = otherRotation === 90 || otherRotation === 270;
+      const oW = (otherIsRotated90 ? other.height : other.width) * PIXELS_PER_CM;
+      const oH = (otherIsRotated90 ? other.width : other.height) * PIXELS_PER_CM;
+
+      if (isBetween(midY, oY, oY + oH)) {
+        if (oX + oW <= currentX) leftBoundCm = Math.max(leftBoundCm, (oX + oW) / PIXELS_PER_CM);
+        if (oX >= currentX + visualWPx) rightBoundCm = Math.min(rightBoundCm, oX / PIXELS_PER_CM);
+      }
+
+      if (isBetween(midX, oX, oX + oW)) {
+        if (oY + oH <= currentY) topBoundCm = Math.max(topBoundCm, (oY + oH) / PIXELS_PER_CM);
+        if (oY >= currentY + visualHPx) bottomBoundCm = Math.min(bottomBoundCm, oY / PIXELS_PER_CM);
+      }
+    });
+
+    let newX = item.x;
+    let newY = item.y;
+
+    // Calculate new position based on direction
+    switch (editingDirection) {
+      case 'left':
+        newX = leftBoundCm + newDistanceCm;
+        break;
+      case 'right':
+        newX = rightBoundCm - visualW - newDistanceCm;
+        break;
+      case 'top':
+        newY = topBoundCm + newDistanceCm;
+        break;
+      case 'bottom':
+        newY = bottomBoundCm - visualH - newDistanceCm;
+        break;
+    }
+
+    onItemChange(item.id, { x: newX, y: newY });
+    setEditingDirection(null);
+  };
+
   // Auto-focus input when editing starts
   useEffect(() => {
     if (editingDirection && inputRef.current) {
@@ -357,83 +434,6 @@ const MeasurementOverlay: React.FC<Props> = ({
       }
     };
   }, [editingDirection, inputPosition.x, inputPosition.y]);
-
-  // Helper: Save edited measurement and update furniture position
-  const saveEditedMeasurement = (inputValue: string) => {
-    if (!onItemChange || !editingDirection) {
-      return;
-    }
-
-    const newDistanceCm = parseFloat(inputValue);
-    if (isNaN(newDistanceCm) || newDistanceCm < 0) {
-      setEditingDirection(null);
-      setEditValue('');
-      return;
-    }
-
-    // Account for rotation when calculating visual dimensions
-    const rotation = item.rotation || 0;
-    const isRotated90 = rotation === 90 || rotation === 270;
-    const visualW = (isRotated90 ? item.height : item.width);
-    const visualH = (isRotated90 ? item.width : item.height);
-
-    // Need to recalculate bounds for position calculation
-    const currentX = item.x * PIXELS_PER_CM;
-    const currentY = item.y * PIXELS_PER_CM;
-    const visualWPx = visualW * PIXELS_PER_CM;
-    const visualHPx = visualH * PIXELS_PER_CM;
-
-    // Calculate nearest obstacles for each direction
-    let leftBoundCm = 0;
-    let rightBoundCm = room.width;
-    let topBoundCm = 0;
-    let bottomBoundCm = room.height;
-    
-    const midX = currentX + visualWPx / 2;
-    const midY = currentY + visualHPx / 2;
-
-    otherItems.forEach((other) => {
-      const oX = other.x * PIXELS_PER_CM;
-      const oY = other.y * PIXELS_PER_CM;
-      
-      const otherRotation = other.rotation || 0;
-      const otherIsRotated90 = otherRotation === 90 || otherRotation === 270;
-      const oW = (otherIsRotated90 ? other.height : other.width) * PIXELS_PER_CM;
-      const oH = (otherIsRotated90 ? other.width : other.height) * PIXELS_PER_CM;
-
-      if (isBetween(midY, oY, oY + oH)) {
-        if (oX + oW <= currentX) leftBoundCm = Math.max(leftBoundCm, (oX + oW) / PIXELS_PER_CM);
-        if (oX >= currentX + visualWPx) rightBoundCm = Math.min(rightBoundCm, oX / PIXELS_PER_CM);
-      }
-
-      if (isBetween(midX, oX, oX + oW)) {
-        if (oY + oH <= currentY) topBoundCm = Math.max(topBoundCm, (oY + oH) / PIXELS_PER_CM);
-        if (oY >= currentY + visualHPx) bottomBoundCm = Math.min(bottomBoundCm, oY / PIXELS_PER_CM);
-      }
-    });
-
-    let newX = item.x;
-    let newY = item.y;
-
-    // Calculate new position based on direction
-    switch (editingDirection) {
-      case 'left':
-        newX = leftBoundCm + newDistanceCm;
-        break;
-      case 'right':
-        newX = rightBoundCm - visualW - newDistanceCm;
-        break;
-      case 'top':
-        newY = topBoundCm + newDistanceCm;
-        break;
-      case 'bottom':
-        newY = bottomBoundCm - visualH - newDistanceCm;
-        break;
-    }
-
-    onItemChange(item.id, { x: newX, y: newY });
-    setEditingDirection(null);
-  };
 
   // Helper component: Dimension label with white background (for furniture)
   const DimensionLabel = ({ x, y, text, color = '#1a1a1a', customFontSize }: { x: number; y: number; text: string; color?: string; customFontSize?: number }) => {

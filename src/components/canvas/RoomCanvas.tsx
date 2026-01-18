@@ -893,22 +893,21 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
         {/* Scale box - 10cm reference - visual only, size doesn't change with zoom */}
         <div
           style={{
-            width: '40px',
-            height: '40px',
-            backgroundColor: '#ffffff',
-            border: '2px solid #0a0a0a',
-            borderRadius: '4px',
+            width: '32px',
+            height: '32px',
+            backgroundColor: '#fafafa',
+            border: '1px solid #d4d4d4',
           }}
         />
         {/* Label below box */}
         <div
           style={{
-            fontSize: '14px',
+            fontSize: '11px',
             fontFamily: 'Arial, sans-serif',
-            fontWeight: 'bold',
-            color: '#0a0a0a',
+            fontWeight: '500',
+            color: '#a3a3a3',
             textAlign: 'center',
-            marginTop: '-4px',
+            marginTop: '-2px',
           }}
         >
           = {formatMeasurement(10, measurementUnit)}

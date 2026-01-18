@@ -91,9 +91,21 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
                            (Math.abs(item.x - (-WALL_THICKNESS_CM)) < 1 || 
                             Math.abs(item.x - roomConfig.width) < 1);
   
-  // Group dimensions - swap for vertical walls so the bounding box is correct
-  const widthPx = isOnVerticalWall ? wallThicknessPx : doorOrWindowLengthPx;
-  const heightPx = isOnVerticalWall ? doorOrWindowLengthPx : wallThicknessPx;
+  // Group dimensions - different for wall objects (doors/windows) vs standard furniture
+  // For wall objects: use doorOrWindowLengthPx and wallThicknessPx
+  // For standard furniture: use item dimensions directly
+  let widthPx: number;
+  let heightPx: number;
+  
+  if (isWallObject) {
+    // Doors/Windows - swap dimensions for vertical walls
+    widthPx = isOnVerticalWall ? wallThicknessPx : doorOrWindowLengthPx;
+    heightPx = isOnVerticalWall ? doorOrWindowLengthPx : wallThicknessPx;
+  } else {
+    // Standard furniture - use item dimensions
+    widthPx = item.width * PIXELS_PER_CM;
+    heightPx = item.height * PIXELS_PER_CM;
+  }
   
   // For boundary calculations, we need the VISUAL bounding box size after rotation
   const rotation = item.rotation || 0;
