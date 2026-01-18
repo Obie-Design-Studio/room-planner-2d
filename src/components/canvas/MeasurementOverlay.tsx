@@ -887,14 +887,14 @@ const MeasurementOverlay: React.FC<Props> = ({
                 color={COLORS.edge}
                 lineType="edge"
               />
-              <InteractiveDimensionLabel
-                measurementId={`${item.id}-top-left`}
+              <EditableDimensionLabel
                 x={leftDistPos.x} 
                 y={leftDistPos.y} 
                 text={leftDistText}
                 color={COLORS.edge}
                 customFontSize={wallFontSize}
-                isSecondary={true}
+                direction="left"
+                value={leftDist}
               />
             </>
           )}
@@ -908,14 +908,14 @@ const MeasurementOverlay: React.FC<Props> = ({
                 color={COLORS.edge}
                 lineType="edge"
               />
-              <InteractiveDimensionLabel
-                measurementId={`${item.id}-top-right`}
+              <EditableDimensionLabel
                 x={rightDistPos.x} 
                 y={rightDistPos.y} 
                 text={rightDistText}
                 color={COLORS.edge}
                 customFontSize={wallFontSize}
-                isSecondary={true}
+                direction="right"
+                value={rightDist}
               />
             </>
           )}
@@ -945,7 +945,7 @@ const MeasurementOverlay: React.FC<Props> = ({
             color={COLORS.dimension}
           />
           
-          {/* Left edge measurement - only show if > 0 */}
+          {/* Left edge measurement - only show if > 0 - EDITABLE */}
           {leftDist > 0 && (
             <>
               <Line 
@@ -954,16 +954,19 @@ const MeasurementOverlay: React.FC<Props> = ({
                 dash={dash} 
                 strokeWidth={1.5} 
               />
-              <WallDimensionLabel 
+              <EditableDimensionLabel 
                 x={x / 2} 
                 y={measureY + 25} 
                 text={formatMeasurement(leftDist, unit)}
                 color={COLORS.edge}
+                customFontSize={wallFontSize}
+                direction="left"
+                value={leftDist}
               />
             </>
           )}
           
-          {/* Right edge measurement - only show if > 0 */}
+          {/* Right edge measurement - only show if > 0 - EDITABLE */}
           {rightDist > 0 && (
             <>
               <Line 
@@ -972,11 +975,14 @@ const MeasurementOverlay: React.FC<Props> = ({
                 dash={dash} 
                 strokeWidth={1.5} 
               />
-              <WallDimensionLabel 
+              <EditableDimensionLabel 
                 x={x + w + (roomW - (x + w)) / 2} 
                 y={measureY + 25} 
                 text={formatMeasurement(rightDist, unit)}
                 color={COLORS.edge}
+                customFontSize={wallFontSize}
+                direction="right"
+                value={rightDist}
               />
             </>
           )}
@@ -1058,7 +1064,7 @@ const MeasurementOverlay: React.FC<Props> = ({
             color={COLORS.dimension}
           />
           
-          {/* Top edge measurement - only show if > 0 */}
+          {/* Top edge measurement - only show if > 0 - EDITABLE */}
           {topDist > 0 && (
             <>
               <Line 
@@ -1067,16 +1073,19 @@ const MeasurementOverlay: React.FC<Props> = ({
                 dash={dash} 
                 strokeWidth={1.5} 
               />
-              <WallDimensionLabel 
+              <EditableDimensionLabel 
                 x={topDistPos.x} 
                 y={topDistPos.y} 
                 text={topDistText}
                 color={COLORS.edge}
+                customFontSize={wallFontSize}
+                direction="top"
+                value={topDist}
               />
             </>
           )}
           
-          {/* Bottom edge measurement - only show if > 0 */}
+          {/* Bottom edge measurement - only show if > 0 - EDITABLE */}
           {bottomDist > 0 && (
             <>
               <Line 
@@ -1085,11 +1094,14 @@ const MeasurementOverlay: React.FC<Props> = ({
                 dash={dash} 
                 strokeWidth={1.5} 
               />
-              <WallDimensionLabel 
+              <EditableDimensionLabel 
                 x={bottomDistPos.x} 
                 y={bottomDistPos.y} 
                 text={bottomDistText}
                 color={COLORS.edge}
+                customFontSize={wallFontSize}
+                direction="bottom"
+                value={bottomDist}
               />
             </>
           )}
@@ -1124,7 +1136,7 @@ const MeasurementOverlay: React.FC<Props> = ({
             color={COLORS.dimension}
           />
           
-          {/* Top edge measurement - only show if > 0 */}
+          {/* Top edge measurement - only show if > 0 - EDITABLE */}
           {topDist > 0 && (
             <>
               <Line 
@@ -1133,16 +1145,19 @@ const MeasurementOverlay: React.FC<Props> = ({
                 dash={dash} 
                 strokeWidth={1.5} 
               />
-              <WallDimensionLabel 
+              <EditableDimensionLabel 
                 x={measureX + 50} 
                 y={windowStartY / 2} 
                 text={formatMeasurement(topDist, unit)}
                 color={COLORS.edge}
+                customFontSize={wallFontSize}
+                direction="top"
+                value={topDist}
               />
             </>
           )}
           
-          {/* Bottom edge measurement - only show if > 0 */}
+          {/* Bottom edge measurement - only show if > 0 - EDITABLE */}
           {bottomDist > 0 && (
             <>
               <Line 
@@ -1151,11 +1166,14 @@ const MeasurementOverlay: React.FC<Props> = ({
                 dash={dash} 
                 strokeWidth={1.5} 
               />
-              <WallDimensionLabel 
+              <EditableDimensionLabel 
                 x={measureX + 50} 
                 y={windowEndY + (roomH - windowEndY) / 2} 
                 text={formatMeasurement(bottomDist, unit)}
                 color={COLORS.edge}
+                customFontSize={wallFontSize}
+                direction="bottom"
+                value={bottomDist}
               />
             </>
           )}
