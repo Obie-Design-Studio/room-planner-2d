@@ -50,7 +50,7 @@ export default function Home() {
   const [roomType, setRoomType] = useState<string>('Living Room');
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
-  const [defaultWindowWidth, setDefaultWindowWidth] = useState(100);
+  const [defaultWindowWidth, setDefaultWindowWidth] = useState(140);
   const [defaultWindowHeight, setDefaultWindowHeight] = useState(140);
   const [defaultWindowFloorDistance, setDefaultWindowFloorDistance] = useState(90);
   const [defaultDoorWidth, setDefaultDoorWidth] = useState(90);
@@ -110,6 +110,12 @@ export default function Home() {
         setItems(parsed.items || []);
         setCurrentRoomId(parsed.currentRoomId || null);
         setRoomType(parsed.roomType || 'Living Room');
+        // Restore default dimensions
+        if (parsed.defaultWindowWidth) setDefaultWindowWidth(parsed.defaultWindowWidth);
+        if (parsed.defaultWindowHeight) setDefaultWindowHeight(parsed.defaultWindowHeight);
+        if (parsed.defaultWindowFloorDistance) setDefaultWindowFloorDistance(parsed.defaultWindowFloorDistance);
+        if (parsed.defaultDoorWidth) setDefaultDoorWidth(parsed.defaultDoorWidth);
+        if (parsed.defaultDoorHeight) setDefaultDoorHeight(parsed.defaultDoorHeight);
       } catch (error) {
         console.error('[Auto-restore] Error restoring room state:', error);
       }
@@ -125,12 +131,17 @@ export default function Home() {
       items,
       currentRoomId,
       roomType,
+      defaultWindowWidth,
+      defaultWindowHeight,
+      defaultWindowFloorDistance,
+      defaultDoorWidth,
+      defaultDoorHeight,
       lastSaved: new Date().toISOString(),
     };
     
     localStorage.setItem('roomPlanner_currentRoom', JSON.stringify(stateToSave));
     console.log('[Auto-save] Room state saved to localStorage');
-  }, [roomName, roomConfig, ceilingHeight, items, currentRoomId, roomType]);
+  }, [roomName, roomConfig, ceilingHeight, items, currentRoomId, roomType, defaultWindowWidth, defaultWindowHeight, defaultWindowFloorDistance, defaultDoorWidth, defaultDoorHeight]);
 
   const handleUpdateRoomSettings = (
     name: string, 
@@ -432,11 +443,11 @@ export default function Home() {
   const handleAddWindowOrDoor = (type: 'Window' | 'Door', wall: 'top' | 'left') => {
     if (type === 'Window') {
       // Window: width = length along wall, height = window height
-      handleAddItem('Window', defaultWindowWidth, 120, '#e0f7fa', wall);
+      handleAddItem('Window', defaultWindowWidth, defaultWindowHeight, '#e0f7fa', wall);
     } else if (type === 'Door') {
       // Door: width = door width (along wall), height = door height (floor to ceiling)
       // Thickness is fixed at WALL_THICKNESS_CM and not stored in item.height
-      handleAddItem('Door', defaultDoorWidth, 210, '#8d6e63', wall);
+      handleAddItem('Door', defaultDoorWidth, defaultDoorHeight, '#8d6e63', wall);
     }
   };
 
