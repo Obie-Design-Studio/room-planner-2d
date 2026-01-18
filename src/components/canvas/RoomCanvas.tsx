@@ -216,6 +216,11 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
         const contentScreenWidth = contentWidth * scale;
         const contentScreenHeight = contentHeight * scale;
         
+        // At minimum zoom (10%), enforce stricter boundaries to keep room visible
+        const MIN_VISIBILITY_RATIO = userZoom <= 0.15 ? 0.3 : 0.0; // Keep 30% visible at very low zoom
+        const minVisibilityWidth = contentScreenWidth * MIN_VISIBILITY_RATIO;
+        const minVisibilityHeight = contentScreenHeight * MIN_VISIBILITY_RATIO;
+        
         let minPosX, maxPosX, minPosY, maxPosY;
         
         if (contentScreenWidth <= viewportWidth) {
@@ -224,6 +229,12 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
         } else {
           maxPosX = -(baseCenterOffsetX + minX * scale);
           minPosX = viewportWidth - (baseCenterOffsetX + maxX * scale);
+          
+          // At minimum zoom, restrict panning to keep room partially visible
+          if (MIN_VISIBILITY_RATIO > 0) {
+            minPosX = Math.max(minPosX, -contentScreenWidth + minVisibilityWidth);
+            maxPosX = Math.min(maxPosX, viewportWidth - minVisibilityWidth);
+          }
         }
         
         if (contentScreenHeight <= viewportHeight) {
@@ -232,6 +243,12 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
         } else {
           maxPosY = -(baseCenterOffsetY + minY * scale);
           minPosY = viewportHeight - (baseCenterOffsetY + maxY * scale);
+          
+          // At minimum zoom, restrict panning to keep room partially visible
+          if (MIN_VISIBILITY_RATIO > 0) {
+            minPosY = Math.max(minPosY, -contentScreenHeight + minVisibilityHeight);
+            maxPosY = Math.min(maxPosY, viewportHeight - minVisibilityHeight);
+          }
         }
         
         // Apply elastic boundaries (±100px over-pan allowed)
@@ -388,9 +405,16 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
         // Content spans from (minX * scale) to (maxX * scale) in its own coordinate space
         // With Layer offset, the content's screen position is: stagePos + offsetX + (content coords * scale)
         
+        // At minimum zoom (10%), enforce stricter boundaries to keep room visible
+        // At higher zoom levels, use normal boundaries
+        const MIN_VISIBILITY_RATIO = userZoom <= 0.15 ? 0.3 : 0.0; // Keep 30% visible at very low zoom
+        const minVisibilityWidth = contentScreenWidth * MIN_VISIBILITY_RATIO;
+        const minVisibilityHeight = contentScreenHeight * MIN_VISIBILITY_RATIO;
+        
         // Boundary logic:
         // - If content is smaller than viewport, allow free movement within extra space
         // - If content is larger than viewport, only allow panning to see all parts
+        // - At minimum zoom, enforce minimum visibility to prevent losing the room
         
         let minPosX, maxPosX, minPosY, maxPosY;
         
@@ -401,9 +425,17 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
           // Left constraint: baseCenterOffsetX + minX * scale + stagePos.x >= 0
           maxPosX = -(baseCenterOffsetX + minX * scale);
         } else {
-          // Content larger than viewport - clamp to edges
+          // Content larger than viewport - clamp to edges, but ensure minimum visibility at low zoom
           maxPosX = -(baseCenterOffsetX + minX * scale); // Can pan left
           minPosX = viewportWidth - (baseCenterOffsetX + maxX * scale); // Can pan right
+          
+          // At minimum zoom, restrict panning to keep room partially visible
+          if (MIN_VISIBILITY_RATIO > 0) {
+            // Ensure at least minVisibilityWidth is visible on right side
+            minPosX = Math.max(minPosX, -contentScreenWidth + minVisibilityWidth);
+            // Ensure at least minVisibilityWidth is visible on left side
+            maxPosX = Math.min(maxPosX, viewportWidth - minVisibilityWidth);
+          }
         }
         
         if (contentScreenHeight <= viewportHeight) {
@@ -414,6 +446,14 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
           // Content larger than viewport
           maxPosY = -(baseCenterOffsetY + minY * scale);
           minPosY = viewportHeight - (baseCenterOffsetY + maxY * scale);
+          
+          // At minimum zoom, restrict panning to keep room partially visible
+          if (MIN_VISIBILITY_RATIO > 0) {
+            // Ensure at least minVisibilityHeight is visible on bottom
+            minPosY = Math.max(minPosY, -contentScreenHeight + minVisibilityHeight);
+            // Ensure at least minVisibilityHeight is visible on top
+            maxPosY = Math.min(maxPosY, viewportHeight - minVisibilityHeight);
+          }
         }
         
         // Apply elastic boundaries (±100px over-pan allowed)
