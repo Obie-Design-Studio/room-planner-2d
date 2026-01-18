@@ -107,6 +107,12 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
   };
 
   const handleApply = () => {
+    console.log('[ItemEditModal] handleApply called');
+    console.log('[ItemEditModal] isWallObject:', isWallObject);
+    console.log('[ItemEditModal] wallPosition:', wallPosition);
+    console.log('[ItemEditModal] localDistanceFromCorner:', localDistanceFromCorner);
+    console.log('[ItemEditModal] item.x:', item?.x, 'item.y:', item?.y);
+    
     const updates: Partial<FurnitureItem> = {
       type: localType,
       width: localWidth,
@@ -120,16 +126,19 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
         // On horizontal walls: X = distance from corner, Y stays the same
         updates.x = localDistanceFromCorner;
         updates.y = item?.y || 0;
+        console.log('[ItemEditModal] Horizontal wall - setting x:', updates.x, 'y:', updates.y);
       } else if (wallPosition === 'left' || wallPosition === 'right') {
         // On vertical walls: Y = distance from corner, X stays the same
         updates.x = item?.x || 0;
         updates.y = localDistanceFromCorner;
+        console.log('[ItemEditModal] Vertical wall - setting x:', updates.x, 'y:', updates.y);
       }
     } else {
       // For regular furniture, preserve existing X/Y coordinates
       // (They are positioned via drag-and-drop, not via this modal)
       updates.x = item?.x || 0;
       updates.y = item?.y || 0;
+      console.log('[ItemEditModal] Regular furniture - preserving x:', updates.x, 'y:', updates.y);
     }
 
     // For windows, include height and floor distance
@@ -146,6 +155,7 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
       updates.height = localHeight;
     }
 
+    console.log('[ItemEditModal] Final updates:', updates);
     onUpdate(item.id, updates);
     onClose();
   };
