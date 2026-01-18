@@ -801,7 +801,7 @@ export default function RoomCanvas({
           display: 'flex',
           flexDirection: 'column',
           gap: '6px',
-          zIndex: 10,
+          zIndex: 1000,
         }}
         className="md:bottom-5 md:right-5 md:gap-2"
       >
