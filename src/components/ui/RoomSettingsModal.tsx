@@ -278,7 +278,7 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
                   label="Width (cm)"
                   type="number"
                   value={localWindowWidth}
-                  onChange={(e) => setLocalWindowLength(Number(e.target.value))}
+                  onChange={(e) => setLocalWindowWidth(Number(e.target.value))}
                   min={10}
                 />
                 <Input
@@ -308,7 +308,7 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
                   label="Width (cm)"
                   type="number"
                   value={localDoorWidth}
-                  onChange={(e) => setLocalDoorLength(Number(e.target.value))}
+                  onChange={(e) => setLocalDoorWidth(Number(e.target.value))}
                   min={10}
                 />
                 <Input

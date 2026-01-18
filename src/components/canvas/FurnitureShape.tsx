@@ -956,7 +956,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
 
   // Format furniture name for display
   const getFurnitureName = () => {
-    const name = item.name || item.type || 'Item';
+    const name = item.type || 'Item';
     // Capitalize first letter of each word
     return name.split(' ').map(word => 
       word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
