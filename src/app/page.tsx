@@ -782,7 +782,7 @@ export default function Home() {
               flex: 1, 
               minHeight: 0, 
               overflowY: 'auto', 
-              padding: '80px 20px 20px 20px'
+              padding: '24px 20px 20px 20px'
             }}
             className="md:mt-0"
           >
@@ -1283,7 +1283,7 @@ export default function Home() {
                   ))
                 ) : (
                   <div style={{
-                    padding: '80px 20px 20px 20px',
+                    padding: '24px 20px 20px 20px',
                     textAlign: 'center',
                     color: '#999999',
                     fontSize: '13px',
