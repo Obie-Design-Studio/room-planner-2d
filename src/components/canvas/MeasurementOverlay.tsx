@@ -110,6 +110,36 @@ const MeasurementOverlay: React.FC<Props> = ({
   const outsideOffset = Math.max(20, Math.min(40, 30 / zoom)); // Distance outside room for wall object measurements
   const labelOffset = Math.max(10, Math.min(20, 15 / zoom)); // Offset for labels from measurement lines
 
+  // Calculate furniture center and nearest obstacles (needed for startEditing)
+  const midX = x + w / 2;
+  const midY = y + h / 2;
+
+  let leftBound = 0;
+  let rightBound = roomW;
+  let topBound = 0;
+  let bottomBound = roomH;
+
+  otherItems.forEach((other) => {
+    const oX = other.x * PIXELS_PER_CM;
+    const oY = other.y * PIXELS_PER_CM;
+    
+    // Account for rotation when calculating visual dimensions
+    const otherRotation = other.rotation || 0;
+    const otherIsRotated90 = otherRotation === 90 || otherRotation === 270;
+    const oW = (otherIsRotated90 ? other.height : other.width) * PIXELS_PER_CM;
+    const oH = (otherIsRotated90 ? other.width : other.height) * PIXELS_PER_CM;
+
+    if (isBetween(midY, oY, oY + oH)) {
+      if (oX + oW <= x) leftBound = Math.max(leftBound, oX + oW);
+      if (oX >= x + w) rightBound = Math.min(rightBound, oX);
+    }
+
+    if (isBetween(midX, oX, oX + oW)) {
+      if (oY + oH <= y) topBound = Math.max(topBound, oY + oH);
+      if (oY >= y + h) bottomBound = Math.min(bottomBound, oY);
+    }
+  });
+
   // Helper: check if a value is inside a range
   const isBetween = (val: number, min: number, max: number) => val >= min && val <= max;
   
@@ -1195,36 +1225,6 @@ const MeasurementOverlay: React.FC<Props> = ({
 
   // ===== STANDARD FURNITURE - Measure from center, with obstacle detection =====
   
-  const midX = x + w / 2;
-  const midY = y + h / 2;
-
-  // Calculate nearest obstacles
-  let leftBound = 0;
-  let rightBound = roomW;
-  let topBound = 0;
-  let bottomBound = roomH;
-
-  otherItems.forEach((other) => {
-    const oX = other.x * PIXELS_PER_CM;
-    const oY = other.y * PIXELS_PER_CM;
-    
-    // Account for rotation when calculating visual dimensions
-    const otherRotation = other.rotation || 0;
-    const otherIsRotated90 = otherRotation === 90 || otherRotation === 270;
-    const oW = (otherIsRotated90 ? other.height : other.width) * PIXELS_PER_CM;
-    const oH = (otherIsRotated90 ? other.width : other.height) * PIXELS_PER_CM;
-
-    if (isBetween(midY, oY, oY + oH)) {
-      if (oX + oW <= x) leftBound = Math.max(leftBound, oX + oW);
-      if (oX >= x + w) rightBound = Math.min(rightBound, oX);
-    }
-
-    if (isBetween(midX, oX, oX + oW)) {
-      if (oY + oH <= y) topBound = Math.max(topBound, oY + oH);
-      if (oY >= y + h) bottomBound = Math.min(bottomBound, oY);
-    }
-  });
-
   // Gap around center for rotation button (smart sized)
   const minDim = Math.min(w, h);
   const baseButtonRadius = Math.min(32, Math.max(16, minDim * 0.15));
