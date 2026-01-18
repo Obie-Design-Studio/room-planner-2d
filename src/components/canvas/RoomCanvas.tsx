@@ -489,6 +489,11 @@ export default function RoomCanvas({
   // Space key detection for pan mode
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't interfere with typing in input fields
+      const target = e.target as HTMLElement;
+      const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+      if (isInputField) return;
+      
       if (e.code === 'Space' && !isSpacePressed) {
         e.preventDefault();
         setIsSpacePressed(true);
@@ -500,6 +505,11 @@ export default function RoomCanvas({
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
+      // Don't interfere with typing in input fields
+      const target = e.target as HTMLElement;
+      const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+      if (isInputField) return;
+      
       if (e.code === 'Space') {
         e.preventDefault();
         setIsSpacePressed(false);
@@ -595,10 +605,11 @@ export default function RoomCanvas({
                 
                 // Get doors on this wall
                 const wallDoors = doors.filter(door => {
-                  if (wall === 'top') return Math.abs(door.y - (-WALL_THICKNESS_CM)) < 1;
-                  if (wall === 'bottom') return Math.abs(door.y - roomConfig.height) < 1;
-                  if (wall === 'left') return Math.abs(door.x - (-WALL_THICKNESS_CM)) < 1;
-                  if (wall === 'right') return Math.abs(door.x - roomConfig.width) < 1;
+                  // Doors are centered in walls, so check for y = -WALL_THICKNESS_CM/2 for top wall, etc.
+                  if (wall === 'top') return Math.abs(door.y - (-WALL_THICKNESS_CM / 2)) < 1;
+                  if (wall === 'bottom') return Math.abs(door.y - (roomConfig.height + WALL_THICKNESS_CM / 2)) < 1;
+                  if (wall === 'left') return Math.abs(door.x - (-WALL_THICKNESS_CM / 2)) < 1;
+                  if (wall === 'right') return Math.abs(door.x - (roomConfig.width + WALL_THICKNESS_CM / 2)) < 1;
                   return false;
                 });
                 

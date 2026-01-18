@@ -26,6 +26,7 @@ export default function Home() {
   const [roomConfig, setRoomConfig] = useState<RoomConfig>({
     width: 400,
     height: 300,
+    roomType: undefined, // Optional: users can set via room settings
   });
 
   const [items, setItems] = useState<FurnitureItem[]>([]);
@@ -123,9 +124,9 @@ export default function Home() {
     if (wall === 'top') {
       // Center horizontally on top wall
       x = (roomConfig.width - w) / 2; // Center the door/window
-      y = -5; // Center in wall (10px wall = 5cm, so -5cm centers 10cm object)
+      y = -5 / 4; // Center in 10px wall: -10px/2 = -5px = -5/4 cm = -1.25cm
     } else if (wall === 'left') {
-      x = -5; // Center in wall (10px wall = 5cm, so -5cm centers 10cm object)
+      x = -5 / 4; // Center in 10px wall: -10px/2 = -5px = -5/4 cm = -1.25cm
       // Center vertically on left wall
       y = (roomConfig.height - w) / 2; // Center the door/window (w is the length along the wall)
     }
@@ -201,10 +202,10 @@ export default function Home() {
         width_cm: roomConfig.width,
         length_cm: roomConfig.height,
         ceiling_height_cm: ceilingHeight,
-        default_window_width_cm: 100,
-        default_window_height_cm: 140,
-        default_door_width_cm: 90,
-        default_door_height_cm: 210,
+        default_window_width_cm: defaultWindowLength,
+        default_window_height_cm: defaultWindowHeight,
+        default_door_width_cm: defaultDoorLength,
+        default_door_height_cm: defaultDoorHeight,
         wall_color: '#E5E5E5',
         current_view: 'blueprint',
       };
@@ -355,9 +356,9 @@ export default function Home() {
 
   const handleAddWindowOrDoor = (type: 'Window' | 'Door', wall: 'top' | 'left') => {
     if (type === 'Window') {
-      handleAddItem('Window', 100, 10, '#e0f7fa', wall);
+      handleAddItem('Window', defaultWindowLength, 10, '#e0f7fa', wall);
     } else if (type === 'Door') {
-      handleAddItem('Door', 90, 10, '#8d6e63', wall);
+      handleAddItem('Door', defaultDoorLength, 10, '#8d6e63', wall);
     }
   };
 

@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Rect, Group, Text, Transformer, Arc, Circle, Path } from 'react-konva';
+import { Rect, Group, Text, Transformer, Arc, Circle, Path, Line } from 'react-konva';
 import { FurnitureItem, RoomConfig } from '@/types';
 import { PIXELS_PER_CM, WALL_THICKNESS_PX } from '@/lib/constants';
 
@@ -491,7 +491,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
         panelWidth = 5;
         panelHeight = doorLengthPx;
         arcX = 0;
-        arcY = wallThickPx;
+        arcY = wallThickPx / 2;  // Hinge at inner edge of wall
         arcRotation = 0;
       } else if (rotation === 90) {
         // In + Right: hinge at right, swings down-left into room
@@ -500,7 +500,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
         panelWidth = 5;
         panelHeight = doorLengthPx;
         arcX = doorLengthPx;
-        arcY = wallThickPx;
+        arcY = wallThickPx / 2;  // Hinge at inner edge of wall
         arcRotation = 90;
       } else if (rotation === 180) {
         // Out + Left: hinge at left, swings up-right outside room
@@ -509,7 +509,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
         panelWidth = 5;
         panelHeight = doorLengthPx;
         arcX = 0;
-        arcY = wallThickPx;
+        arcY = wallThickPx / 2;  // Hinge at inner edge of wall
         arcRotation = 270;
       } else {
         // 270: Out + Right: hinge at right, swings up-left outside room
@@ -518,7 +518,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
         panelWidth = 5;
         panelHeight = doorLengthPx;
         arcX = doorLengthPx;
-        arcY = wallThickPx;
+        arcY = wallThickPx / 2;  // Hinge at inner edge of wall
         arcRotation = 180;
       }
     } else if (isOnLeftWall) {
@@ -539,7 +539,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
         panelY = 0;
         panelWidth = doorLengthPx;
         panelHeight = 5;
-        arcX = wallThickPx;
+        arcX = wallThickPx / 2;  // Hinge at inner edge of wall
         arcY = 0;
         arcRotation = 0;
       } else if (rotation === 90) {
@@ -548,7 +548,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
         panelY = doorLengthPx - 5;
         panelWidth = doorLengthPx;
         panelHeight = 5;
-        arcX = wallThickPx;
+        arcX = wallThickPx / 2;  // Hinge at inner edge of wall
         arcY = doorLengthPx;
         arcRotation = 270;
       } else if (rotation === 180) {
@@ -557,7 +557,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
         panelY = 0;
         panelWidth = doorLengthPx;
         panelHeight = 5;
-        arcX = 0;
+        arcX = wallThickPx / 2;  // Hinge at inner edge of wall
         arcY = 0;
         arcRotation = 90;
       } else {
@@ -566,7 +566,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
         panelY = doorLengthPx - 5;
         panelWidth = doorLengthPx;
         panelHeight = 5;
-        arcX = 0;
+        arcX = wallThickPx / 2;  // Hinge at inner edge of wall
         arcY = doorLengthPx;
         arcRotation = 180;
       }
@@ -588,7 +588,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
         panelWidth = 5;
         panelHeight = doorLengthPx;
         arcX = 0;
-        arcY = 0;
+        arcY = wallThickPx / 2;  // Hinge at inner edge of wall
         arcRotation = 270;
       } else if (rotation === 90) {
         // In + Right: hinge at right, swings up-left into room
@@ -597,7 +597,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
         panelWidth = 5;
         panelHeight = doorLengthPx;
         arcX = doorLengthPx;
-        arcY = 0;
+        arcY = wallThickPx / 2;  // Hinge at inner edge of wall
         arcRotation = 180;
       } else if (rotation === 180) {
         // Out + Left: hinge at left, swings down-right outside room
@@ -606,7 +606,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
         panelWidth = 5;
         panelHeight = doorLengthPx;
         arcX = 0;
-        arcY = 0;
+        arcY = wallThickPx / 2;  // Hinge at inner edge of wall
         arcRotation = 0;
       } else {
         // 270: Out + Right: hinge at right, swings down-left outside room
@@ -615,7 +615,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
         panelWidth = 5;
         panelHeight = doorLengthPx;
         arcX = doorLengthPx;
-        arcY = 0;
+        arcY = wallThickPx / 2;  // Hinge at inner edge of wall
         arcRotation = 90;
       }
     } else if (isOnRightWall) {
@@ -636,7 +636,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
         panelY = 0;
         panelWidth = doorLengthPx;
         panelHeight = 5;
-        arcX = 0;
+        arcX = wallThickPx / 2;  // Hinge at inner edge of wall
         arcY = 0;
         arcRotation = 90;
       } else if (rotation === 90) {
@@ -645,7 +645,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
         panelY = doorLengthPx - 5;
         panelWidth = doorLengthPx;
         panelHeight = 5;
-        arcX = 0;
+        arcX = wallThickPx / 2;  // Hinge at inner edge of wall
         arcY = doorLengthPx;
         arcRotation = 180;
       } else if (rotation === 180) {
@@ -654,7 +654,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
         panelY = 0;
         panelWidth = doorLengthPx;
         panelHeight = 5;
-        arcX = 0;
+        arcX = wallThickPx / 2;  // Hinge at inner edge of wall
         arcY = 0;
         arcRotation = 0;
       } else {
@@ -663,7 +663,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
         panelY = doorLengthPx - 5;
         panelWidth = doorLengthPx;
         panelHeight = 5;
-        arcX = 0;
+        arcX = wallThickPx / 2;  // Hinge at inner edge of wall
         arcY = doorLengthPx;
         arcRotation = 270;
       }
@@ -678,121 +678,34 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
       panelWidth = 5;
       panelHeight = doorLengthPx;
       arcX = isLeftHinge ? 0 : doorLengthPx;
-      arcY = wallThickPx;
+      arcY = wallThickPx / 2;  // Hinge at inner edge of wall
       arcRotation = rotation === 0 ? 0 : rotation === 90 ? 90 : rotation === 180 ? 270 : 180;
     }
     
-    // Calculate door panel in open position (90 degrees from closed)
-    // Door panel will be a thin rectangle extending from the hinge point
-    let doorPanelX, doorPanelY, doorPanelWidth, doorPanelHeight;
+    // Calculate door blade line endpoints
+    // The blade should extend from the hinge point (arcX, arcY) for doorLengthPx
+    // in the direction perpendicular to the arc's initial rotation
+    let bladePoints: number[] = [];
     
-    if (isOnTopWall) {
-      // Horizontal door on top wall
-      if (rotation === 0) {
-        // Hinge at left, opens into room (door extends downward)
-        doorPanelX = 0;
-        doorPanelY = wallThickPx;
-        doorPanelWidth = 5;
-        doorPanelHeight = doorLengthPx;
-      } else if (rotation === 90) {
-        // Hinge at right, opens into room (door extends downward)
-        doorPanelX = doorLengthPx - 5;
-        doorPanelY = wallThickPx;
-        doorPanelWidth = 5;
-        doorPanelHeight = doorLengthPx;
-      } else if (rotation === 180) {
-        // Hinge at left, opens outside room (door extends upward)
-        doorPanelX = 0;
-        doorPanelY = -doorLengthPx;
-        doorPanelWidth = 5;
-        doorPanelHeight = doorLengthPx;
+    if (isOnTopWall || isOnBottomWall) {
+      // Horizontal walls: door blade is vertical
+      // Blade extends from hinge point (arcX, arcY) downward (into room) or upward (outside room)
+      if (rotation === 0 || rotation === 90) {
+        // Swings into room (downward from wall)
+        bladePoints = [arcX, arcY, arcX, arcY + doorLengthPx];
       } else {
-        // 270: Hinge at right, opens outside room (door extends upward)
-        doorPanelX = doorLengthPx - 5;
-        doorPanelY = -doorLengthPx;
-        doorPanelWidth = 5;
-        doorPanelHeight = doorLengthPx;
-      }
-    } else if (isOnLeftWall) {
-      // Vertical door on left wall
-      if (rotation === 0) {
-        // Hinge at top, opens into room (door extends rightward)
-        doorPanelX = wallThickPx;
-        doorPanelY = 0;
-        doorPanelWidth = doorLengthPx;
-        doorPanelHeight = 5;
-      } else if (rotation === 90) {
-        // Hinge at bottom, opens into room (door extends rightward)
-        doorPanelX = wallThickPx;
-        doorPanelY = doorLengthPx - 5;
-        doorPanelWidth = doorLengthPx;
-        doorPanelHeight = 5;
-      } else if (rotation === 180) {
-        // Hinge at top, opens outside room (door extends leftward)
-        doorPanelX = -doorLengthPx;
-        doorPanelY = 0;
-        doorPanelWidth = doorLengthPx;
-        doorPanelHeight = 5;
-      } else {
-        // 270: Hinge at bottom, opens outside room (door extends leftward)
-        doorPanelX = -doorLengthPx;
-        doorPanelY = doorLengthPx - 5;
-        doorPanelWidth = doorLengthPx;
-        doorPanelHeight = 5;
-      }
-    } else if (isOnBottomWall) {
-      // Horizontal door on bottom wall
-      if (rotation === 0) {
-        // Hinge at left, opens into room (door extends upward)
-        doorPanelX = 0;
-        doorPanelY = -doorLengthPx;
-        doorPanelWidth = 5;
-        doorPanelHeight = doorLengthPx;
-      } else if (rotation === 90) {
-        // Hinge at right, opens into room (door extends upward)
-        doorPanelX = doorLengthPx - 5;
-        doorPanelY = -doorLengthPx;
-        doorPanelWidth = 5;
-        doorPanelHeight = doorLengthPx;
-      } else if (rotation === 180) {
-        // Hinge at left, opens outside room (door extends downward)
-        doorPanelX = 0;
-        doorPanelY = wallThickPx;
-        doorPanelWidth = 5;
-        doorPanelHeight = doorLengthPx;
-      } else {
-        // 270: Hinge at right, opens outside room (door extends downward)
-        doorPanelX = doorLengthPx - 5;
-        doorPanelY = wallThickPx;
-        doorPanelWidth = 5;
-        doorPanelHeight = doorLengthPx;
+        // Swings outside room (upward from wall)
+        bladePoints = [arcX, arcY, arcX, arcY - doorLengthPx];
       }
     } else {
-      // Right wall
-      if (rotation === 0) {
-        // Hinge at top, opens into room (door extends leftward)
-        doorPanelX = -doorLengthPx;
-        doorPanelY = 0;
-        doorPanelWidth = doorLengthPx;
-        doorPanelHeight = 5;
-      } else if (rotation === 90) {
-        // Hinge at bottom, opens into room (door extends leftward)
-        doorPanelX = -doorLengthPx;
-        doorPanelY = doorLengthPx - 5;
-        doorPanelWidth = doorLengthPx;
-        doorPanelHeight = 5;
-      } else if (rotation === 180) {
-        // Hinge at top, opens outside room (door extends rightward)
-        doorPanelX = wallThickPx;
-        doorPanelY = 0;
-        doorPanelWidth = doorLengthPx;
-        doorPanelHeight = 5;
+      // Vertical walls: door blade is horizontal
+      // Blade extends from hinge point (arcX, arcY) rightward (into room) or leftward (outside room)
+      if (rotation === 0 || rotation === 90) {
+        // Swings into room (rightward from wall)
+        bladePoints = [arcX, arcY, arcX + doorLengthPx, arcY];
       } else {
-        // 270: Hinge at bottom, opens outside room (door extends rightward)
-        doorPanelX = wallThickPx;
-        doorPanelY = doorLengthPx - 5;
-        doorPanelWidth = doorLengthPx;
-        doorPanelHeight = 5;
+        // Swings outside room (leftward from wall)
+        bladePoints = [arcX, arcY, arcX - doorLengthPx, arcY];
       }
     }
     
@@ -808,13 +721,13 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
             height={heightPx + hitAreaPadding} 
             opacity={0}
           />
-          {/* Door panel in open position */}
-          <Rect 
-            width={doorPanelWidth} 
-            height={doorPanelHeight} 
-            fill="#8B4513" 
-            x={doorPanelX} 
-            y={doorPanelY} 
+          
+          {/* Door blade - thin line from hinge point showing the door in open position */}
+          <Line
+            points={bladePoints}
+            stroke="#8B4513"
+            strokeWidth={3}
+            lineCap="round"
           />
           
           {/* Door swing arc - shows path of swing */}
@@ -822,9 +735,9 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
             innerRadius={0}
             outerRadius={doorLengthPx} 
             angle={90} 
-            stroke="#666666" 
-            strokeWidth={1}
-            dash={[5, 5]} 
+            stroke="#333333" 
+            strokeWidth={2}
+            dash={[6, 4]} 
             rotation={arcRotation}
             x={arcX}
             y={arcY}
