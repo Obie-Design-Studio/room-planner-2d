@@ -152,27 +152,12 @@ export async function exportBlueprintAsPDF(
     );
 
     const filename = `${roomName.replace(/\s+/g, '_')}_blueprint_${Date.now()}.pdf`;
-    console.log('[PDF Export Blueprint] Creating blob for download:', filename);
+    console.log('[PDF Export Blueprint] Saving PDF:', filename);
     
-    // Create blob with proper MIME type and trigger download
-    const blob = pdf.output('blob');
-    const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    link.style.display = 'none';
-    document.body.appendChild(link);
+    // Use jsPDF's built-in save method (most reliable)
+    pdf.save(filename);
     
-    console.log('[PDF Export Blueprint] Triggering download...');
-    link.click();
-    
-    // Cleanup
-    setTimeout(() => {
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      console.log('[PDF Export Blueprint] Download triggered and cleaned up');
-    }, 100);
-    
+    console.log('[PDF Export Blueprint] PDF save triggered');
     return true;
   } catch (error) {
     console.error('[PDF Export Blueprint] Error exporting PDF:', error);
@@ -319,28 +304,12 @@ export async function exportMeasurementsAsPDF(
     );
 
     const filename = `${roomName.replace(/\s+/g, '_')}_measurements_${Date.now()}.pdf`;
-    console.log('[PDF Export] Creating blob for download:', filename);
+    console.log('[PDF Export] Saving PDF:', filename);
     
-    // Create blob with proper MIME type and trigger download
-    const blob = pdf.output('blob');
-    const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    link.style.display = 'none';
-    document.body.appendChild(link);
+    // Use jsPDF's built-in save method (most reliable)
+    pdf.save(filename);
     
-    console.log('[PDF Export] Triggering download...');
-    link.click();
-    
-    // Cleanup
-    setTimeout(() => {
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      console.log('[PDF Export] Download triggered and cleaned up');
-    }, 100);
-    
-    console.log('[PDF Export] PDF download completed successfully');
+    console.log('[PDF Export] PDF save triggered');
     return true;
   } catch (error) {
     console.error('[PDF Export] Error exporting measurements PDF:', error);
