@@ -826,40 +826,28 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
               })()}
             </Group>
             
-            {/* Scale Reference - Bottom-left corner */}
+            {/* Scale Reference - Bottom-left corner, cleaner design */}
             <Group x={20} y={roomConfig.height * PIXELS_PER_CM + 40} listening={false}>
-              {/* Scale box - 10cm (40px) */}
+              {/* Scale box - 10cm (40px) - simple outline only */}
               <Rect
                 x={0}
                 y={0}
                 width={10 * PIXELS_PER_CM}
                 height={10 * PIXELS_PER_CM}
-                fill="#f5f5f5"
-                stroke="#666"
-                strokeWidth={1}
+                fill="#ffffff"
+                stroke="#0a0a0a"
+                strokeWidth={2}
                 listening={false}
               />
-              {/* Inner detail lines for visual interest */}
-              <Line
-                points={[5 * PIXELS_PER_CM, 0, 5 * PIXELS_PER_CM, 10 * PIXELS_PER_CM]}
-                stroke="#ddd"
-                strokeWidth={1}
-                listening={false}
-              />
-              <Line
-                points={[0, 5 * PIXELS_PER_CM, 10 * PIXELS_PER_CM, 5 * PIXELS_PER_CM]}
-                stroke="#ddd"
-                strokeWidth={1}
-                listening={false}
-              />
-              {/* Label below box - respects measurementUnit */}
+              {/* Label below box - larger, bolder, more readable */}
               <Text
                 x={0}
-                y={10 * PIXELS_PER_CM + 8}
+                y={10 * PIXELS_PER_CM + 10}
                 text={`= ${formatMeasurement(10, measurementUnit)}`}
-                fontSize={14}
+                fontSize={18}
                 fontFamily="Arial, sans-serif"
-                fill="#666"
+                fontStyle="bold"
+                fill="#0a0a0a"
                 listening={false}
               />
             </Group>
