@@ -15,7 +15,7 @@ interface RoomSettingsModalProps {
   defaultDoorWidth?: number;
   defaultDoorHeight?: number;
   onClose: () => void;
-  onUpdate: (name: string, config: RoomConfig, ceiling: number, windowWidth: number, windowHeight: number, windowFloorDistance: number, doorWidth: number, doorHeight: number) => void;
+  onUpdate: (name: string, config: RoomConfig, ceiling: number, windowWidth?: number, windowHeight?: number, windowFloorDistance?: number, doorWidth?: number, doorHeight?: number) => void;
 }
 
 const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
