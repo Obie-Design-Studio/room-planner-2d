@@ -658,99 +658,6 @@ export default function Home() {
             overflowY: 'auto', 
             padding: '20px'
           }}>
-            {/* Mobile-only Save/Load/Export Section */}
-            {isMobile && (
-              <div style={{ marginBottom: '24px' }}>
-              <h3 style={{ 
-                fontSize: '13px', 
-                fontWeight: 600,
-                color: '#666666',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                margin: '0 0 12px 0'
-              }}>
-                Actions
-              </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <button
-                  onClick={() => {
-                    handleSaveRoom();
-                    if (isMobile) setIsSidebarOpen(false);
-                  }}
-                  disabled={isSaving}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    padding: '12px',
-                    fontSize: '14px',
-                    fontWeight: 500,
-                    color: isSaving ? '#999999' : '#FFFFFF',
-                    backgroundColor: isSaving ? '#E5E5E5' : '#0A0A0A',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: isSaving ? 'not-allowed' : 'pointer',
-                    transition: 'all 150ms',
-                  }}
-                >
-                  <Save className="w-4 h-4" />
-                  <span>{isSaving ? 'Saving...' : 'Save Room'}</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    setIsLoadModalOpen(true);
-                    if (isMobile) setIsSidebarOpen(false);
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    padding: '12px',
-                    fontSize: '14px',
-                    fontWeight: 500,
-                    color: '#0A0A0A',
-                    backgroundColor: '#FFFFFF',
-                    border: '1px solid #E5E5E5',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    transition: 'all 150ms',
-                  }}
-                >
-                  <FolderOpen className="w-4 h-4" />
-                  <span>Load Room</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    setIsExportModalOpen(true);
-                    if (isMobile) setIsSidebarOpen(false);
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    padding: '12px',
-                    fontSize: '14px',
-                    fontWeight: 500,
-                    color: '#0A0A0A',
-                    backgroundColor: '#FFFFFF',
-                    border: '1px solid #E5E5E5',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    transition: 'all 150ms',
-                  }}
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Export</span>
-                </button>
-              </div>
-            </div>
-            )}
-
             {/* Room Settings Section */}
             <div style={{ marginBottom: '24px' }}>
               <h3 style={{ 
@@ -1284,6 +1191,99 @@ export default function Home() {
                 </div>
               )}
               </>
+            )}
+
+            {/* Mobile-only Save/Load/Export Section - At bottom of sidebar */}
+            {isMobile && (
+              <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid #EFEFEF' }}>
+                <h3 style={{ 
+                  fontSize: '13px', 
+                  fontWeight: 600,
+                  color: '#666666',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  margin: '0 0 12px 0'
+                }}>
+                  Actions
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <button
+                    onClick={() => {
+                      handleSaveRoom();
+                      if (isMobile) setIsSidebarOpen(false);
+                    }}
+                    disabled={isSaving}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      padding: '12px',
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      color: isSaving ? '#999999' : '#FFFFFF',
+                      backgroundColor: isSaving ? '#E5E5E5' : '#0A0A0A',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: isSaving ? 'not-allowed' : 'pointer',
+                      transition: 'all 150ms',
+                    }}
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>{isSaving ? 'Saving...' : 'Save Room'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsLoadModalOpen(true);
+                      if (isMobile) setIsSidebarOpen(false);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      padding: '12px',
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      color: '#0A0A0A',
+                      backgroundColor: '#FFFFFF',
+                      border: '1px solid #E5E5E5',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      transition: 'all 150ms',
+                    }}
+                  >
+                    <FolderOpen className="w-4 h-4" />
+                    <span>Load Room</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsExportModalOpen(true);
+                      if (isMobile) setIsSidebarOpen(false);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      padding: '12px',
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      color: '#0A0A0A',
+                      backgroundColor: '#FFFFFF',
+                      border: '1px solid #E5E5E5',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      transition: 'all 150ms',
+                    }}
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Export</span>
+                  </button>
+                </div>
+              </div>
             )}
           </div>
           </div>
