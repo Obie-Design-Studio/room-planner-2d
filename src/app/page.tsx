@@ -373,6 +373,11 @@ export default function Home() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if typing in input field
+      const target = e.target as HTMLElement;
+      const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+      if (isInputField) return;
+      
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId !== null) {
         handleDeleteItem();
       }

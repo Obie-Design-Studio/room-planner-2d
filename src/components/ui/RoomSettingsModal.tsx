@@ -34,9 +34,9 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
   const [localHeight, setLocalHeight] = useState(roomConfig.height);
   const [localCeiling, setLocalCeiling] = useState(ceilingHeight);
   const [localRoomType, setLocalRoomType] = useState<RoomType | undefined>(roomConfig.roomType);
-  const [localWindowWidth, setLocalWindowLength] = useState(defaultWindowWidth);
+  const [localWindowWidth, setLocalWindowWidth] = useState(defaultWindowWidth);
   const [localWindowHeight, setLocalWindowHeight] = useState(defaultWindowHeight);
-  const [localDoorWidth, setLocalDoorLength] = useState(defaultDoorWidth);
+  const [localDoorWidth, setLocalDoorWidth] = useState(defaultDoorWidth);
   const [localDoorHeight, setLocalDoorHeight] = useState(defaultDoorHeight);
 
   // Sync local state when props change
@@ -47,9 +47,9 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
       setLocalHeight(roomConfig.height);
       setLocalCeiling(ceilingHeight);
       setLocalRoomType(roomConfig.roomType);
-      setLocalWindowLength(defaultWindowWidth);
+      setLocalWindowWidth(defaultWindowWidth);
       setLocalWindowHeight(defaultWindowHeight);
-      setLocalDoorLength(defaultDoorWidth);
+      setLocalDoorWidth(defaultDoorWidth);
       setLocalDoorHeight(defaultDoorHeight);
     }
   }, [isOpen, roomName, roomConfig, ceilingHeight, defaultWindowWidth, defaultWindowHeight, defaultDoorWidth, defaultDoorHeight]);
