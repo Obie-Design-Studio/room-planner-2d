@@ -315,7 +315,7 @@ export async function exportMeasurementsAsPDF(
     }
     
     const pdf = new jsPDF({
-      orientation: 'portrait',
+      orientation: roomConfig.width > roomConfig.height ? 'landscape' : 'portrait',
       unit: 'mm',
       format: 'a4',
     });
