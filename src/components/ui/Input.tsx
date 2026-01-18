@@ -42,6 +42,10 @@ const Input: React.FC<InputProps> = ({ label, className, id, ...props }) => {
         onFocus={(e) => {
           e.currentTarget.style.borderColor = '#0A0A0A';
           e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0, 0, 0, 0.05)';
+          // Auto-select all text for easier editing (especially for number inputs)
+          if (props.type === 'number' || props.type === 'text') {
+            e.currentTarget.select();
+          }
         }}
         onBlur={(e) => {
           e.currentTarget.style.borderColor = '#E5E5E5';

@@ -52,6 +52,7 @@ export default function Home() {
   const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
   const [defaultWindowWidth, setDefaultWindowWidth] = useState(100);
   const [defaultWindowHeight, setDefaultWindowHeight] = useState(140);
+  const [defaultWindowFloorDistance, setDefaultWindowFloorDistance] = useState(90);
   const [defaultDoorWidth, setDefaultDoorWidth] = useState(90);
   const [defaultDoorHeight, setDefaultDoorHeight] = useState(210);
   
@@ -95,12 +96,22 @@ export default function Home() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const handleUpdateRoomSettings = (name: string, config: RoomConfig, ceiling: number, windowWidth: number, windowHeight: number, doorWidth: number, doorHeight: number) => {
+  const handleUpdateRoomSettings = (
+    name: string, 
+    config: RoomConfig, 
+    ceiling: number, 
+    windowWidth: number, 
+    windowHeight: number, 
+    windowFloorDistance: number,
+    doorWidth: number, 
+    doorHeight: number
+  ) => {
     setRoomName(name);
     setRoomConfig(config);
     setCeilingHeight(ceiling);
     setDefaultWindowWidth(windowWidth);
     setDefaultWindowHeight(windowHeight);
+    setDefaultWindowFloorDistance(windowFloorDistance);
     setDefaultDoorWidth(doorWidth);
     setDefaultDoorHeight(doorHeight);
   };
@@ -156,9 +167,9 @@ export default function Home() {
       color: c,
     };
     
-    // Add floorDistance for windows (default 90cm from floor)
+    // Add floorDistance for windows (use default value)
     if (typeLower === 'window') {
-      newItem.floorDistance = 90;
+      newItem.floorDistance = defaultWindowFloorDistance;
     }
     
     setItems((prev) => [...prev, newItem]);
@@ -1194,6 +1205,7 @@ export default function Home() {
         ceilingHeight={ceilingHeight}
         defaultWindowWidth={defaultWindowWidth}
         defaultWindowHeight={defaultWindowHeight}
+        defaultWindowFloorDistance={defaultWindowFloorDistance}
         defaultDoorWidth={defaultDoorWidth}
         defaultDoorHeight={defaultDoorHeight}
         onClose={() => setIsRoomSettingsModalOpen(false)}

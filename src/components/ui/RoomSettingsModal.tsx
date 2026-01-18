@@ -11,10 +11,11 @@ interface RoomSettingsModalProps {
   ceilingHeight: number;
   defaultWindowWidth: number;
   defaultWindowHeight: number;
+  defaultWindowFloorDistance: number;
   defaultDoorWidth: number;
   defaultDoorHeight: number;
   onClose: () => void;
-  onUpdate: (name: string, config: RoomConfig, ceiling: number, windowWidth: number, windowHeight: number, doorWidth: number, doorHeight: number) => void;
+  onUpdate: (name: string, config: RoomConfig, ceiling: number, windowWidth: number, windowHeight: number, windowFloorDistance: number, doorWidth: number, doorHeight: number) => void;
 }
 
 const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
@@ -24,6 +25,7 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
   ceilingHeight,
   defaultWindowWidth,
   defaultWindowHeight,
+  defaultWindowFloorDistance,
   defaultDoorWidth,
   defaultDoorHeight,
   onClose,
@@ -36,6 +38,7 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
   const [localRoomType, setLocalRoomType] = useState<RoomType | undefined>(roomConfig.roomType);
   const [localWindowWidth, setLocalWindowWidth] = useState(defaultWindowWidth);
   const [localWindowHeight, setLocalWindowHeight] = useState(defaultWindowHeight);
+  const [localWindowFloorDistance, setLocalWindowFloorDistance] = useState(defaultWindowFloorDistance);
   const [localDoorWidth, setLocalDoorWidth] = useState(defaultDoorWidth);
   const [localDoorHeight, setLocalDoorHeight] = useState(defaultDoorHeight);
 
@@ -49,10 +52,11 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
       setLocalRoomType(roomConfig.roomType);
       setLocalWindowWidth(defaultWindowWidth);
       setLocalWindowHeight(defaultWindowHeight);
+      setLocalWindowFloorDistance(defaultWindowFloorDistance);
       setLocalDoorWidth(defaultDoorWidth);
       setLocalDoorHeight(defaultDoorHeight);
     }
-  }, [isOpen, roomName, roomConfig, ceilingHeight, defaultWindowWidth, defaultWindowHeight, defaultDoorWidth, defaultDoorHeight]);
+  }, [isOpen, roomName, roomConfig, ceilingHeight, defaultWindowWidth, defaultWindowHeight, defaultWindowFloorDistance, defaultDoorWidth, defaultDoorHeight]);
 
   if (!isOpen) return null;
 
@@ -63,7 +67,16 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
   };
 
   const handleApply = () => {
-    onUpdate(localName, { width: localWidth, height: localHeight, roomType: localRoomType }, localCeiling, localWindowWidth, localWindowHeight, localDoorWidth, localDoorHeight);
+    onUpdate(
+      localName, 
+      { width: localWidth, height: localHeight, roomType: localRoomType }, 
+      localCeiling, 
+      localWindowWidth, 
+      localWindowHeight, 
+      localWindowFloorDistance,
+      localDoorWidth, 
+      localDoorHeight
+    );
     onClose();
   };
 
@@ -289,6 +302,13 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
                   min={10}
                 />
               </div>
+              <Input
+                label="From Floor (cm)"
+                type="number"
+                value={localWindowFloorDistance}
+                onChange={(e) => setLocalWindowFloorDistance(Number(e.target.value))}
+                min={0}
+              />
             </div>
 
             {/* Door Defaults */}

@@ -25,6 +25,8 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
   const [localRotation, setLocalRotation] = useState(0);
   const [localColor, setLocalColor] = useState('#e0e0e0');
   const [localFloorDistance, setLocalFloorDistance] = useState(90);
+  const [localX, setLocalX] = useState(0);
+  const [localY, setLocalY] = useState(0);
 
   // Sync local state when item changes
   useEffect(() => {
@@ -35,6 +37,8 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
       setLocalRotation(item.rotation || 0);
       setLocalColor(item.color || '#e0e0e0');
       setLocalFloorDistance(item.floorDistance || 90);
+      setLocalX(item.x);
+      setLocalY(item.y);
     }
   }, [item]);
 
@@ -79,6 +83,8 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
       width: localWidth,
       rotation: localRotation,
       color: localColor,
+      x: localX,
+      y: localY,
     };
 
     // For windows, include height and floor distance
@@ -247,6 +253,24 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
                 value={localFloorDistance}
                 onChange={(e) => setLocalFloorDistance(Number(e.target.value))}
               />
+            )}
+
+            {/* Position Controls for Doors and Windows */}
+            {isWallObject && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <Input
+                  label="Position X (cm)"
+                  type="number"
+                  value={localX}
+                  onChange={(e) => setLocalX(Number(e.target.value))}
+                />
+                <Input
+                  label="Position Y (cm)"
+                  type="number"
+                  value={localY}
+                  onChange={(e) => setLocalY(Number(e.target.value))}
+                />
+              </div>
             )}
 
             {/* Rotation Control */}

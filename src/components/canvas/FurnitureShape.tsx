@@ -700,9 +700,8 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
     // in the direction perpendicular to the arc's initial rotation
     let bladePoints: number[] = [];
     
-    if (isOnTopWall || isOnBottomWall) {
-      // Horizontal walls: door blade is vertical
-      // Blade extends from hinge point (arcX, arcY) downward (into room) or upward (outside room)
+    if (isOnTopWall) {
+      // Top wall: blade is vertical
       if (rotation === 0 || rotation === 90) {
         // Swings into room (downward from wall)
         bladePoints = [arcX, arcY, arcX, arcY + doorOrWindowLengthPx];
@@ -710,15 +709,39 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
         // Swings outside room (upward from wall)
         bladePoints = [arcX, arcY, arcX, arcY - doorOrWindowLengthPx];
       }
-    } else {
-      // Vertical walls: door blade is horizontal
-      // Blade extends from hinge point (arcX, arcY) rightward (into room) or leftward (outside room)
+    } else if (isOnBottomWall) {
+      // Bottom wall: blade is vertical but direction reversed from top wall
+      if (rotation === 0 || rotation === 90) {
+        // Swings into room (upward from wall, INTO the room which is above the bottom wall)
+        bladePoints = [arcX, arcY, arcX, arcY - doorOrWindowLengthPx];
+      } else {
+        // Swings outside room (downward from wall, OUTSIDE the room which is below the bottom wall)
+        bladePoints = [arcX, arcY, arcX, arcY + doorOrWindowLengthPx];
+      }
+    } else if (isOnLeftWall) {
+      // Left wall: blade is horizontal
       if (rotation === 0 || rotation === 90) {
         // Swings into room (rightward from wall)
         bladePoints = [arcX, arcY, arcX + doorOrWindowLengthPx, arcY];
       } else {
         // Swings outside room (leftward from wall)
         bladePoints = [arcX, arcY, arcX - doorOrWindowLengthPx, arcY];
+      }
+    } else if (isOnRightWall) {
+      // Right wall: blade is horizontal but direction reversed from left wall
+      if (rotation === 0 || rotation === 90) {
+        // Swings into room (leftward from wall, INTO the room which is to the left of the right wall)
+        bladePoints = [arcX, arcY, arcX - doorOrWindowLengthPx, arcY];
+      } else {
+        // Swings outside room (rightward from wall, OUTSIDE the room which is to the right of the right wall)
+        bladePoints = [arcX, arcY, arcX + doorOrWindowLengthPx, arcY];
+      }
+    } else {
+      // Fallback: assume top wall behavior
+      if (rotation === 0 || rotation === 90) {
+        bladePoints = [arcX, arcY, arcX, arcY + doorOrWindowLengthPx];
+      } else {
+        bladePoints = [arcX, arcY, arcX, arcY - doorOrWindowLengthPx];
       }
     }
     
@@ -833,33 +856,6 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
             height={2} 
             fill="#81d4fa" 
           />
-          
-          {/* Window actual height indicator (extends into room to show window height)
-              This shows the user how tall the window actually is */}
-          {(isOnTopWall || isOnBottomWall) && (
-            <Rect
-              x={widthPx / 2 - 2}
-              y={isOnTopWall ? wallThicknessPx : -windowHeightPx}
-              width={4}
-              height={windowHeightPx}
-              fill="rgba(129, 212, 250, 0.3)"
-              stroke="#81d4fa"
-              strokeWidth={1}
-              dash={[5, 5]}
-            />
-          )}
-          {(isOnLeftWall || isOnRightWall) && (
-            <Rect
-              x={isOnLeftWall ? wallThicknessPx : -windowHeightPx}
-              y={heightPx / 2 - 2}
-              width={windowHeightPx}
-              height={4}
-              fill="rgba(129, 212, 250, 0.3)"
-              stroke="#81d4fa"
-              strokeWidth={1}
-              dash={[5, 5]}
-            />
-          )}
         </Group>
         {isSelected && isDraggable && (
           <Transformer
