@@ -44,7 +44,7 @@ export function exportAsJSON(
   URL.revokeObjectURL(url);
 }
 
-// Export canvas as PNG
+// Export canvas as PNG (for screenshot of entire UI)
 export async function exportAsPNG(
   canvasContainer: HTMLElement,
   roomName: string
@@ -52,7 +52,7 @@ export async function exportAsPNG(
   try {
     const canvas = await html2canvas(canvasContainer, {
       backgroundColor: '#FAFAFA',
-      scale: 2, // Higher quality
+      scale: 2,
       logging: false,
     });
 
@@ -76,9 +76,9 @@ export async function exportAsPNG(
   }
 }
 
-// Export as PDF (Blueprint view)
+// Export as PDF (Blueprint view) - uses Konva stage for clean room-only export
 export async function exportBlueprintAsPDF(
-  canvasContainer: HTMLElement,
+  stageRef: any, // Konva Stage ref
   roomName: string,
   roomConfig: RoomConfig,
   ceilingHeight: number
@@ -86,47 +86,50 @@ export async function exportBlueprintAsPDF(
   try {
     console.log('[PDF Export Blueprint] Starting blueprint PDF export...');
     
-    const canvas = await html2canvas(canvasContainer, {
-      backgroundColor: '#FFFFFF',
-      scale: 1, // Reduced from 2 for smaller file size
-      logging: false,
-    });
-    
-    console.log('[PDF Export Blueprint] Canvas captured:', canvas.width, 'x', canvas.height);
+    if (!stageRef?.current) {
+      console.error('[PDF Export Blueprint] Stage ref not available');
+      return false;
+    }
 
-    // Use JPEG with compression for smaller file size
-    const imgData = canvas.toDataURL('image/jpeg', 0.8);
-    console.log('[PDF Export Blueprint] Image data created (JPEG, 80% quality)');
+    // Get the Konva stage and export as data URL
+    const stage = stageRef.current;
+    const dataURL = stage.toDataURL({ pixelRatio: 2 }); // High quality export
     
+    console.log('[PDF Export Blueprint] Canvas captured from Konva stage');
+
     const pdf = new jsPDF({
-      orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+      orientation: roomConfig.width > roomConfig.height ? 'landscape' : 'portrait',
       unit: 'mm',
       format: 'a4',
     });
 
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
-    const margin = 20;
-    const contentWidth = pageWidth - 2 * margin;
+    const margin = 15;
 
     // Add title
-    pdf.setFontSize(20);
+    pdf.setFontSize(18);
     pdf.setFont('helvetica', 'bold');
     pdf.text(roomName, pageWidth / 2, margin, { align: 'center' });
 
     // Add room info
-    pdf.setFontSize(12);
+    pdf.setFontSize(10);
     pdf.setFont('helvetica', 'normal');
     pdf.text(
-      `Dimensions: ${roomConfig.width} × ${roomConfig.height} cm | Ceiling: ${ceilingHeight} cm`,
+      `${roomConfig.width} × ${roomConfig.height} cm | Ceiling: ${ceilingHeight} cm`,
       pageWidth / 2,
-      margin + 10,
+      margin + 7,
       { align: 'center' }
     );
 
-    // Calculate image dimensions
-    const imgAspectRatio = canvas.width / canvas.height;
-    const availableHeight = pageHeight - margin - 40; // Leave space for title and footer
+    // Calculate image dimensions to fit page
+    const stageWidth = stage.width();
+    const stageHeight = stage.height();
+    const imgAspectRatio = stageWidth / stageHeight;
+    
+    const contentWidth = pageWidth - 2 * margin;
+    const availableHeight = pageHeight - margin - 35; // Space for title and footer
+    
     let imgWidth = contentWidth;
     let imgHeight = imgWidth / imgAspectRatio;
 
@@ -135,26 +138,25 @@ export async function exportBlueprintAsPDF(
       imgWidth = imgHeight * imgAspectRatio;
     }
 
-    // Center image
+    // Center image on page
     const imgX = (pageWidth - imgWidth) / 2;
-    const imgY = margin + 20;
+    const imgY = margin + 12;
 
-    pdf.addImage(imgData, 'JPEG', imgX, imgY, imgWidth, imgHeight);
+    pdf.addImage(dataURL, 'PNG', imgX, imgY, imgWidth, imgHeight);
 
-    // Add footer
-    pdf.setFontSize(10);
-    pdf.setTextColor(150);
+    // Add footer with timestamp
+    pdf.setFontSize(8);
+    pdf.setTextColor(120);
     pdf.text(
-      `Generated on ${new Date().toLocaleDateString()} | Room Planner 2D`,
-      pageWidth / 2,
-      pageHeight - 10,
-      { align: 'center' }
+      `Generated ${new Date().toLocaleString()}`,
+      pageWidth - margin,
+      pageHeight - 5,
+      { align: 'right' }
     );
 
     const filename = `${roomName.replace(/\s+/g, '_')}_blueprint_${Date.now()}.pdf`;
     console.log('[PDF Export Blueprint] Saving PDF:', filename);
     
-    // Use jsPDF's built-in save method (most reliable)
     pdf.save(filename);
     
     console.log('[PDF Export Blueprint] PDF save triggered');
@@ -165,9 +167,9 @@ export async function exportBlueprintAsPDF(
   }
 }
 
-// Export measurements view as PDF
+// Export measurements view as PDF - uses Konva stage for clean room-only export
 export async function exportMeasurementsAsPDF(
-  canvasContainer: HTMLElement,
+  stageRef: any, // Konva Stage ref
   roomName: string,
   roomConfig: RoomConfig,
   ceilingHeight: number,
@@ -175,19 +177,17 @@ export async function exportMeasurementsAsPDF(
 ): Promise<boolean> {
   try {
     console.log('[PDF Export] Starting measurements PDF export...');
-    console.log('[PDF Export] Canvas container:', canvasContainer);
     
-    const canvas = await html2canvas(canvasContainer, {
-      backgroundColor: '#FFFFFF',
-      scale: 1, // Reduced from 2 for smaller file size
-      logging: false,
-    });
-    
-    console.log('[PDF Export] Canvas captured:', canvas.width, 'x', canvas.height);
+    if (!stageRef?.current) {
+      console.error('[PDF Export] Stage ref not available');
+      return false;
+    }
 
-    // Use JPEG with compression for smaller file size
-    const imgData = canvas.toDataURL('image/jpeg', 0.8);
-    console.log('[PDF Export] Image data created (JPEG, 80% quality)');
+    // Get the Konva stage and export as data URL
+    const stage = stageRef.current;
+    const dataURL = stage.toDataURL({ pixelRatio: 2 }); // High quality export
+    
+    console.log('[PDF Export] Canvas captured from Konva stage');
     
     const pdf = new jsPDF({
       orientation: 'portrait',
@@ -199,28 +199,32 @@ export async function exportMeasurementsAsPDF(
 
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
-    const margin = 20;
+    const margin = 15;
 
     // Page 1: Visual with measurements
-    pdf.setFontSize(20);
+    pdf.setFontSize(18);
     pdf.setFont('helvetica', 'bold');
     pdf.text(`${roomName} - Measurements`, pageWidth / 2, margin, {
       align: 'center',
     });
 
-    pdf.setFontSize(12);
+    pdf.setFontSize(10);
     pdf.setFont('helvetica', 'normal');
     pdf.text(
       `Room: ${roomConfig.width} × ${roomConfig.height} cm | Ceiling: ${ceilingHeight} cm`,
       pageWidth / 2,
-      margin + 10,
+      margin + 7,
       { align: 'center' }
     );
 
     // Add canvas image
-    const imgAspectRatio = canvas.width / canvas.height;
+    const stageWidth = stage.width();
+    const stageHeight = stage.height();
+    const imgAspectRatio = stageWidth / stageHeight;
+    
     const contentWidth = pageWidth - 2 * margin;
-    const availableHeight = pageHeight - margin - 80;
+    const availableHeight = pageHeight - margin - 65;
+    
     let imgWidth = contentWidth;
     let imgHeight = imgWidth / imgAspectRatio;
 
@@ -230,47 +234,47 @@ export async function exportMeasurementsAsPDF(
     }
 
     const imgX = (pageWidth - imgWidth) / 2;
-    const imgY = margin + 20;
+    const imgY = margin + 12;
 
-    pdf.addImage(imgData, 'JPEG', imgX, imgY, imgWidth, imgHeight);
+    pdf.addImage(dataURL, 'PNG', imgX, imgY, imgWidth, imgHeight);
 
     // Page 2: Detailed measurements list
     pdf.addPage();
-    pdf.setFontSize(18);
+    pdf.setFontSize(16);
     pdf.setFont('helvetica', 'bold');
     pdf.text('Item List & Measurements', margin, margin);
 
-    let yPos = margin + 15;
-    pdf.setFontSize(11);
+    let yPos = margin + 12;
+    pdf.setFontSize(10);
     pdf.setFont('helvetica', 'normal');
 
     // Room measurements
     pdf.setFont('helvetica', 'bold');
     pdf.text('Room:', margin, yPos);
-    yPos += 7;
+    yPos += 6;
     pdf.setFont('helvetica', 'normal');
     pdf.text(`• Width: ${roomConfig.width} cm`, margin + 5, yPos);
-    yPos += 6;
+    yPos += 5;
     pdf.text(`• Length: ${roomConfig.height} cm`, margin + 5, yPos);
-    yPos += 6;
+    yPos += 5;
     pdf.text(`• Ceiling Height: ${ceilingHeight} cm`, margin + 5, yPos);
-    yPos += 12;
+    yPos += 10;
 
     // Items list
     if (items.length > 0) {
       pdf.setFont('helvetica', 'bold');
       pdf.text('Items:', margin, yPos);
-      yPos += 7;
+      yPos += 6;
 
       items.forEach((item, index) => {
-        if (yPos > pageHeight - 30) {
+        if (yPos > pageHeight - 25) {
           pdf.addPage();
           yPos = margin;
         }
 
         pdf.setFont('helvetica', 'bold');
         pdf.text(`${index + 1}. ${item.type}`, margin + 5, yPos);
-        yPos += 6;
+        yPos += 5;
 
         pdf.setFont('helvetica', 'normal');
         pdf.text(
@@ -278,35 +282,34 @@ export async function exportMeasurementsAsPDF(
           margin + 5,
           yPos
         );
-        yPos += 6;
+        yPos += 5;
         pdf.text(
           `   Position: X: ${Math.round(item.x)} cm, Y: ${Math.round(item.y)} cm`,
           margin + 5,
           yPos
         );
-        yPos += 6;
+        yPos += 5;
         if (item.rotation !== 0) {
           pdf.text(`   Rotation: ${item.rotation}°`, margin + 5, yPos);
-          yPos += 6;
+          yPos += 5;
         }
         yPos += 3; // Extra spacing between items
       });
     }
 
-    // Footer on last page
-    pdf.setFontSize(10);
-    pdf.setTextColor(150);
+    // Footer with timestamp on last page
+    pdf.setFontSize(8);
+    pdf.setTextColor(120);
     pdf.text(
-      `Generated on ${new Date().toLocaleDateString()} | Room Planner 2D`,
-      pageWidth / 2,
-      pageHeight - 10,
-      { align: 'center' }
+      `Generated ${new Date().toLocaleString()}`,
+      pageWidth - margin,
+      pageHeight - 5,
+      { align: 'right' }
     );
 
     const filename = `${roomName.replace(/\s+/g, '_')}_measurements_${Date.now()}.pdf`;
     console.log('[PDF Export] Saving PDF:', filename);
     
-    // Use jsPDF's built-in save method (most reliable)
     pdf.save(filename);
     
     console.log('[PDF Export] PDF save triggered');

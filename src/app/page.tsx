@@ -63,6 +63,7 @@ export default function Home() {
   // Export state
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<any>(null); // Konva stage ref for clean PDF export
 
   useEffect(() => {
     const handleResize = () => {
@@ -355,7 +356,7 @@ export default function Home() {
 
   // Export handler
   const handleExport = async (format: 'pdf-blueprint' | 'pdf-measurements' | 'png' | 'json') => {
-    if (!canvasContainerRef.current) {
+    if (!canvasContainerRef.current || !stageRef.current) {
       alert('Canvas not ready for export');
       return;
     }
@@ -366,7 +367,7 @@ export default function Home() {
       switch (format) {
         case 'pdf-blueprint':
           success = await exportBlueprintAsPDF(
-            canvasContainerRef.current,
+            stageRef,
             roomName,
             roomConfig,
             ceilingHeight
@@ -375,7 +376,7 @@ export default function Home() {
         case 'pdf-measurements':
           console.log('[Export] Starting measurements PDF export with items:', items.length);
           success = await exportMeasurementsAsPDF(
-            canvasContainerRef.current,
+            stageRef,
             roomName,
             roomConfig,
             ceilingHeight,
@@ -1218,6 +1219,7 @@ export default function Home() {
 
         >
           <RoomCanvas
+            ref={stageRef}
             roomConfig={roomConfig}
             items={items}
             onItemChange={handleItemChange}

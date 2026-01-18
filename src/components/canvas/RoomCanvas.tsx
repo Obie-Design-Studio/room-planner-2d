@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, forwardRef, useImperativeHandle } from "react";
 import { Stage, Layer, Rect, Group, Line, Text } from "react-konva";
 import { PIXELS_PER_CM, WALL_THICKNESS_PX } from "@/lib/constants";
 import { RoomConfig, FurnitureItem, ViewMode } from "@/types";
@@ -30,7 +30,7 @@ interface RoomCanvasProps {
   onItemHover?: (itemId: string | null) => void;
 }
 
-export default function RoomCanvas({
+const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
   roomConfig,
   items,
   onItemChange,
@@ -50,8 +50,11 @@ export default function RoomCanvas({
   pinnedMeasurements = new Set(),
   hoveredItemId = null,
   onItemHover,
-}: RoomCanvasProps) {
+}, ref) => {
   const stageRef = useRef<any>(null);
+  
+  // Expose stageRef to parent via ref
+  useImperativeHandle(ref, () => stageRef.current);
   
   // Zoom state: 1.0 = 100%, range 0.1 to 3.0
   const [userZoom, setUserZoom] = useState(1.0);
@@ -968,4 +971,8 @@ export default function RoomCanvas({
       )}
     </div>
   );
-}
+});
+
+RoomCanvas.displayName = 'RoomCanvas';
+
+export default RoomCanvas;
