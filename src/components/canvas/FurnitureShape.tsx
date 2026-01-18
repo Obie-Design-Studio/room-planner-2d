@@ -779,30 +779,32 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
             y={arcY}
           />
           
-          {/* Measurement labels when selected */}
+          {/* Measurement labels when selected - positioned based on wall */}
           {isSelected && (
             <>
-              {/* Width label (along wall) */}
-              <Text
-                x={doorOrWindowLengthPx / 2}
-                y={-20 / zoom}
-                text={`${item.width}cm`}
-                fontSize={14 / zoom}
-                fontFamily="system-ui, -apple-system, sans-serif"
-                fontStyle="600"
-                fill="#0A0A0A"
-                align="center"
-                offsetX={30 / zoom}
-              />
-              {/* Height label */}
-              <Text
-                x={doorOrWindowLengthPx + 15 / zoom}
-                y={wallThicknessPx / 2}
-                text={`H: ${item.height}cm`}
-                fontSize={12 / zoom}
-                fontFamily="system-ui, -apple-system, sans-serif"
-                fill="#666666"
-              />
+              {(isOnTopWall || isOnBottomWall) ? (
+                // Horizontal walls: show width label centered above/below
+                <Text
+                  x={doorOrWindowLengthPx / 2}
+                  y={isOnTopWall ? -25 / zoom : wallThicknessPx + 10 / zoom}
+                  text={`${item.width}cm`}
+                  fontSize={13 / zoom}
+                  fontFamily="system-ui, -apple-system, sans-serif"
+                  fill="#0A0A0A"
+                  align="center"
+                  offsetX={20 / zoom}
+                />
+              ) : (
+                // Vertical walls: show width label to the side
+                <Text
+                  x={isOnLeftWall ? wallThicknessPx + 10 / zoom : -40 / zoom}
+                  y={doorOrWindowLengthPx / 2}
+                  text={`${item.width}cm`}
+                  fontSize={13 / zoom}
+                  fontFamily="system-ui, -apple-system, sans-serif"
+                  fill="#0A0A0A"
+                />
+              )}
             </>
           )}
           
@@ -884,39 +886,32 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
             fill="#81d4fa" 
           />
           
-          {/* Measurement labels when selected */}
+          {/* Measurement labels when selected - positioned based on wall */}
           {isSelected && (
             <>
-              {/* Width label (along wall) */}
-              <Text
-                x={widthPx / 2}
-                y={-20 / zoom}
-                text={`${item.width}cm`}
-                fontSize={14 / zoom}
-                fontFamily="system-ui, -apple-system, sans-serif"
-                fontStyle="600"
-                fill="#0A0A0A"
-                align="center"
-                offsetX={30 / zoom}
-              />
-              {/* Height label */}
-              <Text
-                x={widthPx + 15 / zoom}
-                y={heightPx / 2}
-                text={`H: ${item.height}cm`}
-                fontSize={12 / zoom}
-                fontFamily="system-ui, -apple-system, sans-serif"
-                fill="#666666"
-              />
-              {/* Floor distance label */}
-              <Text
-                x={widthPx + 15 / zoom}
-                y={heightPx / 2 + 20 / zoom}
-                text={`Floor: ${item.floorDistance || 90}cm`}
-                fontSize={12 / zoom}
-                fontFamily="system-ui, -apple-system, sans-serif"
-                fill="#666666"
-              />
+              {(isOnTopWall || isOnBottomWall) ? (
+                // Horizontal walls: show width label centered above/below
+                <Text
+                  x={widthPx / 2}
+                  y={isOnTopWall ? -25 / zoom : heightPx + 10 / zoom}
+                  text={`${item.width}cm`}
+                  fontSize={13 / zoom}
+                  fontFamily="system-ui, -apple-system, sans-serif"
+                  fill="#0A0A0A"
+                  align="center"
+                  offsetX={20 / zoom}
+                />
+              ) : (
+                // Vertical walls: show width label to the side
+                <Text
+                  x={isOnLeftWall ? widthPx + 10 / zoom : -40 / zoom}
+                  y={heightPx / 2}
+                  text={`${item.width}cm`}
+                  fontSize={13 / zoom}
+                  fontFamily="system-ui, -apple-system, sans-serif"
+                  fill="#0A0A0A"
+                />
+              )}
             </>
           )}
         </Group>
