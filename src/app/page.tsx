@@ -767,7 +767,7 @@ export default function Home() {
             borderRight: '1px solid #EFEFEF',
             backgroundColor: '#FAFAFA',
             position: 'absolute',
-            top: '0',
+            top: '64px',
             left: 0,
             bottom: 0,
             transform: isSidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
@@ -784,7 +784,7 @@ export default function Home() {
               overflowY: 'auto', 
               padding: '20px'
             }}
-            className="mt-[65px] md:mt-0"
+            className="md:mt-0"
           >
             {/* Room Settings Section */}
             <div style={{ marginBottom: '24px' }}>
@@ -1374,7 +1374,7 @@ export default function Home() {
             onClick={() => setIsSidebarOpen(false)}
             style={{
               position: 'fixed',
-              top: '0',
+              top: '64px',
               left: 0,
               right: 0,
               bottom: 0,
