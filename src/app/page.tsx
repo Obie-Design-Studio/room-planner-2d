@@ -644,11 +644,11 @@ export default function Home() {
     <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
       {/* Header */}
       <header style={{ 
-        height: '44px',
+        height: '64px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0 12px',
+        padding: '0 16px',
         backgroundColor: '#FFFFFF',
         borderBottom: '1px solid #EFEFEF'
       }}>
@@ -662,8 +662,8 @@ export default function Home() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: '32px',
-              height: '32px',
+              width: '40px',
+              height: '40px',
               padding: 0,
               color: '#0A0A0A',
               backgroundColor: 'transparent',
@@ -684,7 +684,7 @@ export default function Home() {
           </button>
           
           <h1 style={{ 
-            fontSize: '16px',
+            fontSize: '18px',
             fontWeight: 600,
             color: '#0A0A0A',
             letterSpacing: '-0.02em',
@@ -767,7 +767,7 @@ export default function Home() {
             borderRight: '1px solid #EFEFEF',
             backgroundColor: '#FAFAFA',
             position: 'absolute',
-            top: '44px',
+            top: '64px',
             left: 0,
             bottom: 0,
             transform: isSidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
@@ -782,19 +782,19 @@ export default function Home() {
               flex: 1, 
               minHeight: 0, 
               overflowY: 'auto', 
-              padding: '20px'
+              padding: '16px 20px 20px 20px'
             }}
             className="md:mt-0"
           >
             {/* Room Settings Section */}
-            <div style={{ marginBottom: '24px' }}>
+            <div style={{ marginBottom: '20px' }}>
               <h3 style={{ 
                 fontSize: '13px', 
                 fontWeight: 600,
                 color: '#666666',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
-                margin: '0 0 12px 0'
+                margin: '0 0 8px 0'
               }}>
                 Room
               </h3>
@@ -828,8 +828,8 @@ export default function Home() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    width: '32px',
-                    height: '32px',
+                    width: '40px',
+                    height: '40px',
                     padding: 0,
                     color: '#666666',
                     backgroundColor: 'transparent',
@@ -854,7 +854,7 @@ export default function Home() {
             </div>
 
           {/* Windows & Doors Section */}
-          <div style={{ marginBottom: '24px' }}>
+          <div style={{ marginBottom: '20px' }}>
             <button
               onClick={() => setIsWindowsDoorsOpen(!isWindowsDoorsOpen)}
               style={{
@@ -934,8 +934,8 @@ export default function Home() {
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              width: '32px',
-                              height: '32px',
+                              width: '40px',
+                              height: '40px',
                               padding: 0,
                               color: '#666666',
                               backgroundColor: 'transparent',
@@ -965,8 +965,8 @@ export default function Home() {
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              width: '32px',
-                              height: '32px',
+                              width: '40px',
+                              height: '40px',
                               padding: 0,
                               color: '#DC2626',
                               backgroundColor: 'transparent',
@@ -1091,7 +1091,7 @@ export default function Home() {
           </div>
 
           {/* Add Furniture Section */}
-          <div style={{ marginBottom: '24px' }}>
+          <div style={{ marginBottom: '20px' }}>
             <button
               onClick={() => setIsFurnitureOpen(!isFurnitureOpen)}
               style={{
@@ -1187,8 +1187,8 @@ export default function Home() {
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              width: '32px',
-                              height: '32px',
+                              width: '40px',
+                              height: '40px',
                               padding: 0,
                               color: '#666666',
                               backgroundColor: 'transparent',
@@ -1218,8 +1218,8 @@ export default function Home() {
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              width: '32px',
-                              height: '32px',
+                              width: '40px',
+                              height: '40px',
                               padding: 0,
                               color: '#DC2626',
                               backgroundColor: 'transparent',
@@ -1283,7 +1283,7 @@ export default function Home() {
                   ))
                 ) : (
                   <div style={{
-                    padding: '20px',
+                    padding: '16px 20px 20px 20px',
                     textAlign: 'center',
                     color: '#999999',
                     fontSize: '13px',
@@ -1374,7 +1374,7 @@ export default function Home() {
             onClick={() => setIsSidebarOpen(false)}
             style={{
               position: 'fixed',
-              top: '44px',
+              top: '64px',
               left: 0,
               right: 0,
               bottom: 0,
