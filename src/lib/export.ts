@@ -323,6 +323,19 @@ export async function exportMeasurementsAsPDF(
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
     const margin = 15;
+    const timestamp = new Date().toLocaleString();
+
+    // Helper function to add footer to current page
+    const addFooter = () => {
+      pdf.setFontSize(8);
+      pdf.setTextColor(120);
+      pdf.text(
+        `Generated ${timestamp}`,
+        pageWidth - margin,
+        pageHeight - 5,
+        { align: 'right' }
+      );
+    };
 
     // Page 1: Visual with measurements
     pdf.setFontSize(18);
@@ -361,6 +374,9 @@ export async function exportMeasurementsAsPDF(
 
     pdf.addImage(dataURL, 'PNG', imgX, imgY, imgWidth, imgHeight);
 
+    // Add footer to page 1
+    addFooter();
+
     // Page 2: Detailed measurements list
     pdf.addPage();
     pdf.setFontSize(16);
@@ -392,43 +408,83 @@ export async function exportMeasurementsAsPDF(
       items.forEach((item, index) => {
         if (yPos > pageHeight - 25) {
           pdf.addPage();
+          addFooter(); // Add footer to new page
           yPos = margin;
         }
+
+        const typeLower = item.type.toLowerCase();
+        const isWindow = typeLower === 'window';
+        const isDoor = typeLower === 'door';
+        const isWallObject = isWindow || isDoor;
 
         pdf.setFont('helvetica', 'bold');
         pdf.text(`${index + 1}. ${item.type}`, margin + 5, yPos);
         yPos += 5;
 
         pdf.setFont('helvetica', 'normal');
-        pdf.text(
-          `   Dimensions: ${item.width} × ${item.height} cm`,
-          margin + 5,
-          yPos
-        );
-        yPos += 5;
-        pdf.text(
-          `   Position: X: ${Math.round(item.x)} cm, Y: ${Math.round(item.y)} cm`,
-          margin + 5,
-          yPos
-        );
-        yPos += 5;
-        if (item.rotation !== 0) {
-          pdf.text(`   Rotation: ${item.rotation}°`, margin + 5, yPos);
+        
+        if (isWindow) {
+          // Windows: Show width, height, and floor distance
+          pdf.text(
+            `   Width: ${item.width} cm`,
+            margin + 5,
+            yPos
+          );
           yPos += 5;
+          pdf.text(
+            `   Height: ${item.height} cm`,
+            margin + 5,
+            yPos
+          );
+          yPos += 5;
+          if (item.floorDistance !== undefined) {
+            pdf.text(
+              `   Distance from floor: ${item.floorDistance} cm`,
+              margin + 5,
+              yPos
+            );
+            yPos += 5;
+          }
+        } else if (isDoor) {
+          // Doors: Show width and height only
+          pdf.text(
+            `   Width: ${item.width} cm`,
+            margin + 5,
+            yPos
+          );
+          yPos += 5;
+          pdf.text(
+            `   Height: ${item.height} cm`,
+            margin + 5,
+            yPos
+          );
+          yPos += 5;
+        } else {
+          // Regular furniture: Show dimensions, position, and rotation
+          pdf.text(
+            `   Dimensions: ${item.width} × ${item.height} cm`,
+            margin + 5,
+            yPos
+          );
+          yPos += 5;
+          pdf.text(
+            `   Position: X: ${Math.round(item.x)} cm, Y: ${Math.round(item.y)} cm`,
+            margin + 5,
+            yPos
+          );
+          yPos += 5;
+          if (item.rotation !== 0) {
+            pdf.text(`   Rotation: ${item.rotation}°`, margin + 5, yPos);
+            yPos += 5;
+          }
         }
+        
         yPos += 3;
       });
     }
 
-    // Footer with timestamp
-    pdf.setFontSize(8);
-    pdf.setTextColor(120);
-    pdf.text(
-      `Generated ${new Date().toLocaleString()}`,
-      pageWidth - margin,
-      pageHeight - 5,
-      { align: 'right' }
-    );
+    // Add footer to last page
+    addFooter();
 
     const filename = `${roomName.replace(/\s+/g, '_')}_measurements.pdf`;
     console.log('[PDF Export Measurements] PDF created, triggering download:', filename);
