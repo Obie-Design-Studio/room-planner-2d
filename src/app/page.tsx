@@ -2,13 +2,17 @@
 
 import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
-import type { RoomConfig, FurnitureItem } from "@/types";
+import type { RoomConfig, FurnitureItem, ViewMode } from "@/types";
 import ColorPicker from "@/components/ui/ColorPicker";
 import Input from '@/components/ui/Input';
 import ItemEditModal from "@/components/ui/ItemEditModal";
 import RoomSettingsModal from "@/components/ui/RoomSettingsModal";
 import FurnitureLibraryModal from "@/components/ui/FurnitureLibraryModal";
 import CustomFurnitureModal from "@/components/ui/CustomFurnitureModal";
+import ViewSwitcher from "@/components/ui/ViewSwitcher";
+import MeasurementCategories, { type MeasurementCategory } from "@/components/ui/MeasurementCategories";
+import MeasurementLegend from "@/components/ui/MeasurementLegend";
+import MeasurementModeToggle, { type MeasurementMode } from "@/components/ui/MeasurementModeToggle";
 import { Armchair, Table, Bed, RectangleHorizontal, DoorOpen, Trash2, Settings, ChevronDown, ChevronUp, Plus, Grid3x3, Sofa, Lamp, Box, Circle, Square, Bath, UtensilsCrossed, BookOpen, Monitor, CookingPot, Refrigerator, Menu, X } from "lucide-react";
 import { PIXELS_PER_CM, WALL_THICKNESS_PX } from "@/lib/constants";
 import { getDefaultFurnitureForRoom, FURNITURE_LIBRARY, getFurnitureByType, type RoomType, type FurnitureDefinition } from "@/lib/furnitureLibrary";
@@ -72,6 +76,102 @@ export default function Home() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showAllMeasurements, setShowAllMeasurements] = useState(false);
   const [measurementUnit, setMeasurementUnit] = useState<Unit>('cm');
+  const [viewMode, setViewMode] = useState<ViewMode>('blueprint');
+  const [hiddenMeasurements, setHiddenMeasurements] = useState<Set<string>>(new Set());
+  const [measurementCategories, setMeasurementCategories] = useState({
+    room: true,    // Always visible (disabled in UI)
+    items: true,   // Default ON
+    spacing: false, // Default OFF (reduces clutter)
+    edges: true,   // Default ON (window/door positions)
+  });
+  const [measurementMode, setMeasurementMode] = useState<MeasurementMode>('all');
+  const [pinnedMeasurements, setPinnedMeasurements] = useState<Set<string>>(new Set());
+  const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
+  
+  // Auto-hide spacing measurements when switching to measurements view
+  useEffect(() => {
+    if (viewMode === 'measurements') {
+      const spacingMeasurements = new Set<string>();
+      items.forEach(item => {
+        // Hide spacing measurements by default if category is off
+        if (!measurementCategories.spacing) {
+          spacingMeasurements.add(`${item.id}-furniture-left`);
+          spacingMeasurements.add(`${item.id}-furniture-right`);
+          spacingMeasurements.add(`${item.id}-furniture-top`);
+          spacingMeasurements.add(`${item.id}-furniture-bottom`);
+        }
+      });
+      setHiddenMeasurements(spacingMeasurements);
+    } else {
+      // Clear hidden measurements when switching back to blueprint
+      setHiddenMeasurements(new Set());
+    }
+  }, [viewMode, items.length, measurementCategories.spacing]); // Re-run when category changes
+  
+  const handleToggleCategory = (category: MeasurementCategory) => {
+    setMeasurementCategories(prev => ({
+      ...prev,
+      [category]: !prev[category]
+    }));
+    
+    // Update hidden measurements based on category toggle
+    setHiddenMeasurements(prev => {
+      const newHidden = new Set(prev);
+      
+      items.forEach(item => {
+        if (category === 'spacing') {
+          const spacingIds = [
+            `${item.id}-furniture-left`,
+            `${item.id}-furniture-right`,
+            `${item.id}-furniture-top`,
+            `${item.id}-furniture-bottom`,
+          ];
+          
+          if (!measurementCategories.spacing) {
+            // Turning ON - remove from hidden
+            spacingIds.forEach(id => newHidden.delete(id));
+          } else {
+            // Turning OFF - add to hidden
+            spacingIds.forEach(id => newHidden.add(id));
+          }
+        } else if (category === 'items') {
+          const itemIds = [
+            `${item.id}-furniture-width`,
+            `${item.id}-furniture-width-1`,
+            `${item.id}-furniture-width-2`,
+            `${item.id}-furniture-height`,
+            `${item.id}-furniture-height-1`,
+            `${item.id}-furniture-height-2`,
+          ];
+          
+          if (!measurementCategories.items) {
+            itemIds.forEach(id => newHidden.delete(id));
+          } else {
+            itemIds.forEach(id => newHidden.add(id));
+          }
+        } else if (category === 'edges') {
+          const edgeIds = [
+            `${item.id}-top-left`,
+            `${item.id}-top-right`,
+            `${item.id}-bottom-left`,
+            `${item.id}-bottom-right`,
+            `${item.id}-left-top`,
+            `${item.id}-left-bottom`,
+            `${item.id}-right-top`,
+            `${item.id}-right-bottom`,
+          ];
+          
+          if (!measurementCategories.edges) {
+            edgeIds.forEach(id => newHidden.delete(id));
+          } else {
+            edgeIds.forEach(id => newHidden.add(id));
+          }
+        }
+      });
+      
+      return newHidden;
+    });
+  };
   const [viewport, setViewport] = useState({ width: 800, height: 600 });
   const [ceilingHeight, setCeilingHeight] = useState(250);
   const [roomName, setRoomName] = useState('Untitled Room');
@@ -87,6 +187,7 @@ export default function Home() {
   const [isCustomFurnitureOpen, setIsCustomFurnitureOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile sidebar toggle
   const canvasContainerRef = useRef<HTMLDivElement>(null);
+  const canvasAreaRef = useRef<HTMLDivElement>(null);
   
   // History state for undo/redo
   const [history, setHistory] = useState<FurnitureItem[][]>([[]]);
@@ -95,8 +196,8 @@ export default function Home() {
 
   useEffect(() => {
     const handleResize = () => {
-      if (canvasContainerRef.current) {
-        const rect = canvasContainerRef.current.getBoundingClientRect();
+      if (canvasAreaRef.current) {
+        const rect = canvasAreaRef.current.getBoundingClientRect();
         setViewport({
           width: rect.width,
           height: rect.height,
@@ -106,8 +207,8 @@ export default function Home() {
 
     // Use ResizeObserver for more accurate sizing
     const resizeObserver = new ResizeObserver(handleResize);
-    if (canvasContainerRef.current) {
-      resizeObserver.observe(canvasContainerRef.current);
+    if (canvasAreaRef.current) {
+      resizeObserver.observe(canvasAreaRef.current);
     }
 
     handleResize(); // Set initial size
@@ -598,11 +699,10 @@ export default function Home() {
         {/* Center: Room name + dimensions */}
         <div style={{ 
           flex: 1,
-          display: 'flex',
+          display: 'none',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: '2px',
-          display: 'none'
+          gap: '2px'
         }}
         className="sm:flex"
         >
@@ -1290,7 +1390,11 @@ export default function Home() {
         <div
           ref={canvasContainerRef}
           className="flex-1 relative min-h-0 w-full md:w-auto overflow-hidden"
-          style={{ backgroundColor: '#FAFAF8' }}
+          style={{ 
+            backgroundColor: '#FAFAF8',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               setSelectedId(null);
@@ -1301,7 +1405,9 @@ export default function Home() {
             }
           }}
         >
-          <RoomCanvas
+          {/* Canvas */}
+          <div ref={canvasAreaRef} style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+            <RoomCanvas
             roomConfig={roomConfig}
             items={items}
             onItemChange={handleItemChange}
@@ -1310,11 +1416,102 @@ export default function Home() {
             selectedId={selectedId}
             onSelect={handleSelect}
             onEdit={handleOpenEditor}
-            showAllMeasurements={showAllMeasurements}
+            showAllMeasurements={viewMode === 'measurements'}
             measurementUnit={measurementUnit}
             viewportWidth={viewport.width}
             viewportHeight={viewport.height}
+            viewMode={viewMode}
+            hiddenMeasurements={hiddenMeasurements}
+            onToggleMeasurement={(measurementId: string) => {
+              // In manual/hover mode, clicking toggles pin state
+              // In all mode, clicking toggles hidden state
+              if (measurementMode === 'all') {
+                setHiddenMeasurements(prev => {
+                  const newSet = new Set(prev);
+                  if (newSet.has(measurementId)) {
+                    newSet.delete(measurementId);
+                  } else {
+                    newSet.add(measurementId);
+                  }
+                  return newSet;
+                });
+              } else {
+                // Hover or manual mode - toggle pin
+                setPinnedMeasurements(prev => {
+                  const newSet = new Set(prev);
+                  if (newSet.has(measurementId)) {
+                    newSet.delete(measurementId);
+                  } else {
+                    newSet.add(measurementId);
+                  }
+                  return newSet;
+                });
+              }
+            }}
+            measurementMode={measurementMode}
+            pinnedMeasurements={pinnedMeasurements}
+            hoveredItemId={hoveredItemId}
+            onItemHover={setHoveredItemId}
           />
+          
+          {/* Measurement Controls Panel - Compact floating toolbar */}
+          {viewMode === 'measurements' && (
+            <div
+              style={{
+                position: 'absolute',
+                bottom: '12px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '6px 12px',
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                border: '1px solid #E5E5E5',
+                borderRadius: '6px',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                backdropFilter: 'blur(8px)',
+                fontSize: '12px',
+              }}
+            >
+              <MeasurementCategories
+                categories={measurementCategories}
+                onToggle={handleToggleCategory}
+              />
+              <div style={{ width: '1px', height: '16px', backgroundColor: '#E5E5E5' }} />
+              <MeasurementModeToggle
+                allChecked={measurementCategories.items && measurementCategories.spacing && measurementCategories.edges}
+                someChecked={(measurementCategories.items || measurementCategories.spacing || measurementCategories.edges) && 
+                            !(measurementCategories.items && measurementCategories.spacing && measurementCategories.edges)}
+                onToggleAll={() => {
+                  const allCurrentlyChecked = measurementCategories.items && measurementCategories.spacing && measurementCategories.edges;
+                  const newValue = !allCurrentlyChecked;
+                  setMeasurementCategories({
+                    ...measurementCategories,
+                    items: newValue,
+                    spacing: newValue,
+                    edges: newValue,
+                  });
+                }}
+              />
+            </div>
+          )}
+          </div>
+          
+          {/* Footer Toolbar - View Mode Selector Only */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '10px 20px',
+              backgroundColor: '#FFFFFF',
+              borderTop: '1px solid #E5E5E5',
+              boxShadow: '0 -2px 8px rgba(0, 0, 0, 0.04)',
+            }}
+          >
+            <ViewSwitcher currentView={viewMode} onViewChange={setViewMode} compact />
+          </div>
         </div>
       </div>
 

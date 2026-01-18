@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Group, Line, Text, Rect } from 'react-konva';
-import { FurnitureItem, RoomConfig } from '@/types';
+import { FurnitureItem, RoomConfig, ViewMode } from '@/types';
 import { PIXELS_PER_CM } from '@/lib/constants';
 import { type Unit, formatMeasurement, formatDimensions } from '@/lib/unitConversion';
+
+export type MeasurementMode = 'all' | 'hover' | 'manual';
 
 interface Props {
   item: FurnitureItem;
@@ -17,6 +19,12 @@ interface Props {
   stagePos?: { x: number; y: number };
   layerOffset?: { x: number; y: number };
   measurementClickTimeRef?: React.MutableRefObject<number>;
+  hiddenMeasurements?: Set<string>;
+  onToggleMeasurement?: (measurementId: string) => void;
+  viewMode?: ViewMode;
+  measurementMode?: MeasurementMode;
+  pinnedMeasurements?: Set<string>;
+  hoveredItemId?: string | null;
 }
 
 type MeasurementDirection = 'left' | 'right' | 'top' | 'bottom' | null;
@@ -32,11 +40,18 @@ const MeasurementOverlay: React.FC<Props> = ({
   scale = 1,
   stagePos = { x: 0, y: 0 },
   layerOffset = { x: 0, y: 0 },
-  measurementClickTimeRef
+  measurementClickTimeRef,
+  hiddenMeasurements = new Set(),
+  onToggleMeasurement,
+  viewMode = 'blueprint',
+  measurementMode = 'all',
+  pinnedMeasurements = new Set(),
+  hoveredItemId = null,
 }) => {
   const [editingDirection, setEditingDirection] = useState<MeasurementDirection>(null);
   const [editValue, setEditValue] = useState('');
   const [inputPosition, setInputPosition] = useState({ x: 0, y: 0 });
+  const [hoveredMeasurement, setHoveredMeasurement] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const x = item.x * PIXELS_PER_CM;
   const y = item.y * PIXELS_PER_CM;
@@ -58,11 +73,25 @@ const MeasurementOverlay: React.FC<Props> = ({
 
   const isWallObject = item.type.toLowerCase() === 'window' || item.type.toLowerCase() === 'door';
   
-  // Color-coded measurement types
+  // Color-coded measurement types - Updated palette
   const COLORS = {
     dimension: '#3b82f6',    // Blue for item dimensions (W × H)
-    edge: '#f97316',         // Orange for room edge distances (wall objects)
-    distance: '#ef4444',     // Red for furniture-to-obstacle distances
+    edge: '#6b7280',         // Gray for room edge distances (wall objects) - less prominent
+    distance: '#f59e0b',     // Amber for furniture-to-obstacle distances - less alarming
+  };
+  
+  // Line styles by measurement type - Visual hierarchy
+  const getLineStyle = (type: 'room' | 'item' | 'edge' | 'spacing') => {
+    switch(type) {
+      case 'room': 
+        return { dash: undefined, strokeWidth: 3, opacity: 1.0 };
+      case 'item': 
+        return { dash: [4, 4], strokeWidth: 2, opacity: 0.8 };
+      case 'edge': 
+        return { dash: [4, 4], strokeWidth: 1.5, opacity: 0.6 };
+      case 'spacing': 
+        return { dash: [2, 8], strokeWidth: 1, opacity: 0.4 };
+    }
   };
   
   const dash = [4, 4];
@@ -546,6 +575,220 @@ const MeasurementOverlay: React.FC<Props> = ({
     );
   };
 
+  // Helper component: Interactive measurement line with click-to-hide and hover
+  const InteractiveMeasurementLine = ({
+    measurementId,
+    points,
+    color,
+    lineType = 'item',
+    ...props
+  }: {
+    measurementId: string;
+    points: number[];
+    color: string;
+    lineType?: 'room' | 'item' | 'edge' | 'spacing';
+    [key: string]: any;
+  }) => {
+    const isHidden = hiddenMeasurements.has(measurementId);
+    const isHovered = hoveredMeasurement === measurementId;
+    const isPinned = pinnedMeasurements.has(measurementId);
+    const isInMeasurementsView = viewMode === 'measurements';
+    const isThisItemHovered = hoveredItemId === item.id;
+    
+    // Get line style based on type
+    const lineStyle = getLineStyle(lineType);
+    
+    // Progressive disclosure logic
+    let opacity = lineStyle.opacity;
+    
+    if (isInMeasurementsView && measurementMode !== 'all') {
+      // In hover or manual mode
+      if (measurementMode === 'hover') {
+        // Show only if item is hovered or measurement is pinned
+        if (isPinned) {
+          opacity = lineStyle.opacity; // Full opacity for pinned
+        } else if (isThisItemHovered || lineType === 'room') {
+          opacity = lineStyle.opacity; // Show when hovering this item (or always show room)
+        } else {
+          opacity = 0.1; // Very faded when not hovered
+        }
+      } else if (measurementMode === 'manual') {
+        // Show only if pinned or room dimension
+        if (isPinned || lineType === 'room') {
+          opacity = lineStyle.opacity;
+        } else {
+          opacity = 0.1; // Very faded until clicked
+        }
+      }
+    }
+    
+    // Apply hidden state
+    if (isHidden) {
+      opacity = 0.15;
+    }
+    
+    const strokeColor = isInMeasurementsView && isHovered ? '#3b82f6' : color;
+    const strokeWidth = lineStyle.strokeWidth;
+    const dashPattern = lineStyle.dash || props.dash;
+    
+    return (
+      <Line
+        points={points}
+        stroke={strokeColor}
+        strokeWidth={strokeWidth}
+        dash={dashPattern}
+        opacity={opacity}
+        listening={isInMeasurementsView}
+        onClick={(e) => {
+          if (isInMeasurementsView && onToggleMeasurement) {
+            e.cancelBubble = true;
+            if (measurementClickTimeRef) {
+              measurementClickTimeRef.current = Date.now();
+            }
+            onToggleMeasurement(measurementId);
+          }
+        }}
+        onMouseEnter={(e) => {
+          if (isInMeasurementsView) {
+            setHoveredMeasurement(measurementId);
+            const stage = e.target.getStage();
+            if (stage) stage.container().style.cursor = 'pointer';
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (isInMeasurementsView) {
+            setHoveredMeasurement(null);
+            const stage = e.target.getStage();
+            if (stage) stage.container().style.cursor = 'default';
+          }
+        }}
+        {...props}
+      />
+    );
+  };
+
+  // Helper component: Interactive dimension label with click-to-hide and hover
+  const InteractiveDimensionLabel = ({
+    measurementId,
+    x,
+    y,
+    text,
+    color = '#1a1a1a',
+    customFontSize,
+    isSecondary = false,
+  }: {
+    measurementId: string;
+    x: number;
+    y: number;
+    text: string;
+    color?: string;
+    customFontSize?: number;
+    isSecondary?: boolean;
+  }) => {
+    const actualFontSize = isSecondary ? (customFontSize || fontSize) * 0.85 : (customFontSize || fontSize);
+    const padding = 12;
+    
+    const estimatedWidth = text.length * actualFontSize * 0.7 + 30;
+    const boxWidth = Math.max(estimatedWidth, 80);
+    const boxHeight = actualFontSize + padding * 2;
+    
+    const boxX = x - boxWidth / 2;
+    const boxY = y - boxHeight / 2;
+    
+    const isHidden = hiddenMeasurements.has(measurementId);
+    const isHovered = hoveredMeasurement === measurementId;
+    const isPinned = pinnedMeasurements.has(measurementId);
+    const isInMeasurementsView = viewMode === 'measurements';
+    const isThisItemHovered = hoveredItemId === item.id;
+    
+    // Progressive disclosure for labels
+    let opacity = 1.0;
+    
+    if (isInMeasurementsView && measurementMode !== 'all') {
+      if (measurementMode === 'hover') {
+        if (isPinned) {
+          opacity = 1.0;
+        } else if (isThisItemHovered) {
+          opacity = 1.0;
+        } else {
+          opacity = 0.1;
+        }
+      } else if (measurementMode === 'manual') {
+        if (isPinned) {
+          opacity = 1.0;
+        } else {
+          opacity = 0.1;
+        }
+      }
+    }
+    
+    if (isHidden) {
+      opacity = 0.15;
+    }
+    
+    const strokeColor = isInMeasurementsView && isHovered ? '#3b82f6' : '#e5e5e5';
+    const fillColor = isInMeasurementsView && isHovered ? color : '#1a1a1a';
+    const bgOpacity = isSecondary ? 0.9 : 1.0;
+    
+    return (
+      <Group
+        listening={isInMeasurementsView}
+        onClick={(e) => {
+          if (isInMeasurementsView && onToggleMeasurement) {
+            e.cancelBubble = true;
+            if (measurementClickTimeRef) {
+              measurementClickTimeRef.current = Date.now();
+            }
+            onToggleMeasurement(measurementId);
+          }
+        }}
+        onMouseEnter={(e) => {
+          if (isInMeasurementsView) {
+            setHoveredMeasurement(measurementId);
+            const stage = e.target.getStage();
+            if (stage) stage.container().style.cursor = 'pointer';
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (isInMeasurementsView) {
+            setHoveredMeasurement(null);
+            const stage = e.target.getStage();
+            if (stage) stage.container().style.cursor = 'default';
+          }
+        }}
+        opacity={opacity}
+      >
+        <Rect
+          x={boxX}
+          y={boxY}
+          width={boxWidth}
+          height={boxHeight}
+          fill="white"
+          opacity={bgOpacity}
+          stroke={strokeColor}
+          strokeWidth={isInMeasurementsView && isHovered ? 2 : 1}
+          cornerRadius={4}
+          shadowEnabled={!isSecondary && opacity > 0.5}
+          shadowColor="rgba(0,0,0,0.1)"
+          shadowBlur={2}
+          shadowOffset={{ x: 0, y: 1 }}
+        />
+        <Text
+          x={boxX}
+          y={y - actualFontSize / 2}
+          text={text}
+          fill={fillColor}
+          fontSize={actualFontSize}
+          fontFamily="Arial, sans-serif"
+          fontStyle="bold"
+          align="center"
+          width={boxWidth}
+          listening={false}
+        />
+      </Group>
+    );
+  };
+
   if (isWallObject) {
     // ===== WALL OBJECTS (Doors/Windows) - Measure from edges, draw outside =====
     
@@ -619,33 +862,39 @@ const MeasurementOverlay: React.FC<Props> = ({
       return (
         <Group>
           {/* Item width measurement - blue dashed line across the item */}
-          <Line 
+          <InteractiveMeasurementLine
+            measurementId={`${item.id}-top-width`}
             points={[x, measureY, x + w, measureY]} 
-            stroke={COLORS.dimension} 
-            dash={dash} 
-            strokeWidth={1.5} 
+            color={COLORS.dimension}
+            lineType="item"
           />
-          <WallDimensionLabel 
+          <InteractiveDimensionLabel
+            measurementId={`${item.id}-top-width`}
             x={itemWidthPos.x} 
             y={itemWidthPos.y} 
             text={itemWidthText}
             color={COLORS.dimension}
+            customFontSize={wallFontSize}
+            isSecondary={false}
           />
           
           {/* Left edge measurement - only show if > 0 */}
           {leftDist > 0 && (
             <>
-              <Line 
+              <InteractiveMeasurementLine
+                measurementId={`${item.id}-top-left`}
                 points={[0, measureY, x, measureY]} 
-                stroke={COLORS.edge} 
-                dash={dash} 
-                strokeWidth={1.5} 
+                color={COLORS.edge}
+                lineType="edge"
               />
-              <WallDimensionLabel 
+              <InteractiveDimensionLabel
+                measurementId={`${item.id}-top-left`}
                 x={leftDistPos.x} 
                 y={leftDistPos.y} 
                 text={leftDistText}
                 color={COLORS.edge}
+                customFontSize={wallFontSize}
+                isSecondary={true}
               />
             </>
           )}
@@ -653,17 +902,20 @@ const MeasurementOverlay: React.FC<Props> = ({
           {/* Right edge measurement - only show if > 0 */}
           {rightDist > 0 && (
             <>
-              <Line 
+              <InteractiveMeasurementLine
+                measurementId={`${item.id}-top-right`}
                 points={[x + w, measureY, roomW, measureY]} 
-                stroke={COLORS.edge} 
-                dash={dash} 
-                strokeWidth={1.5} 
+                color={COLORS.edge}
+                lineType="edge"
               />
-              <WallDimensionLabel 
+              <InteractiveDimensionLabel
+                measurementId={`${item.id}-top-right`}
                 x={rightDistPos.x} 
                 y={rightDistPos.y} 
                 text={rightDistText}
                 color={COLORS.edge}
+                customFontSize={wallFontSize}
+                isSecondary={true}
               />
             </>
           )}
@@ -960,67 +1212,111 @@ const MeasurementOverlay: React.FC<Props> = ({
     <Group listening={true} name="measurement-overlay">
       {/* Furniture dimensions - blue lines showing width and height, split to avoid rotation button */}
       {/* Horizontal dimension lines - split at center */}
-      <Line points={[x, midY, midX - buttonRadius, midY]} stroke={COLORS.dimension} dash={dash} strokeWidth={1.5} />
-      <Line points={[midX + buttonRadius, midY, x + w, midY]} stroke={COLORS.dimension} dash={dash} strokeWidth={1.5} />
-      <DimensionLabel 
+      <InteractiveMeasurementLine
+        measurementId={`${item.id}-furniture-width-1`}
+        points={[x, midY, midX - buttonRadius, midY]}
+        color={COLORS.dimension}
+        lineType="item"
+      />
+      <InteractiveMeasurementLine
+        measurementId={`${item.id}-furniture-width-2`}
+        points={[midX + buttonRadius, midY, x + w, midY]}
+        color={COLORS.dimension}
+        lineType="item"
+      />
+      <InteractiveDimensionLabel
+        measurementId={`${item.id}-furniture-width`}
         x={x + w / 4} 
         y={midY - labelOffset} 
         text={formatMeasurement(horizontalLabel, unit)}
         color={COLORS.dimension}
+        isSecondary={false}
       />
       
       {/* Vertical dimension lines - split at center */}
-      <Line points={[midX, y, midX, midY - buttonRadius]} stroke={COLORS.dimension} dash={dash} strokeWidth={1.5} />
-      <Line points={[midX, midY + buttonRadius, midX, y + h]} stroke={COLORS.dimension} dash={dash} strokeWidth={1.5} />
-      <DimensionLabel 
+      <InteractiveMeasurementLine
+        measurementId={`${item.id}-furniture-height-1`}
+        points={[midX, y, midX, midY - buttonRadius]}
+        color={COLORS.dimension}
+        lineType="item"
+      />
+      <InteractiveMeasurementLine
+        measurementId={`${item.id}-furniture-height-2`}
+        points={[midX, midY + buttonRadius, midX, y + h]}
+        color={COLORS.dimension}
+        lineType="item"
+      />
+      <InteractiveDimensionLabel
+        measurementId={`${item.id}-furniture-height`}
         x={midX + labelOffset + 10} 
         y={y + h / 4} 
         text={formatMeasurement(verticalLabel, unit)}
         color={COLORS.dimension}
+        isSecondary={false}
       />
       
-      {/* Left gap - red line from wall/obstacle to furniture */}
-      <Line points={[leftBound, midY, x, midY]} stroke={COLORS.distance} dash={dash} strokeWidth={1.5} />
-      <EditableDimensionLabel 
+      {/* Left gap - amber line from wall/obstacle to furniture */}
+      <InteractiveMeasurementLine
+        measurementId={`${item.id}-furniture-left`}
+        points={[leftBound, midY, x, midY]}
+        color={COLORS.distance}
+        lineType="spacing"
+      />
+      <InteractiveDimensionLabel
+        measurementId={`${item.id}-furniture-left`}
         x={adjustLabelX((leftBound + x) / 2, formatMeasurement(Math.round((x - leftBound) / PIXELS_PER_CM), unit).length * fontSize * 0.6)} 
         y={midY + labelOffset + 5} 
         text={formatMeasurement(Math.round((x - leftBound) / PIXELS_PER_CM), unit)}
         color={COLORS.distance}
-        direction="left"
-        value={Math.round((x - leftBound) / PIXELS_PER_CM)}
+        isSecondary={true}
       />
 
-      {/* Right gap - red line from furniture to wall/obstacle */}
-      <Line points={[x + w, midY, rightBound, midY]} stroke={COLORS.distance} dash={dash} strokeWidth={1.5} />
-      <EditableDimensionLabel 
+      {/* Right gap - amber line from furniture to wall/obstacle */}
+      <InteractiveMeasurementLine
+        measurementId={`${item.id}-furniture-right`}
+        points={[x + w, midY, rightBound, midY]}
+        color={COLORS.distance}
+        lineType="spacing"
+      />
+      <InteractiveDimensionLabel
+        measurementId={`${item.id}-furniture-right`}
         x={adjustLabelX((x + w + rightBound) / 2, formatMeasurement(Math.round((rightBound - (x + w)) / PIXELS_PER_CM), unit).length * fontSize * 0.6)} 
         y={midY + labelOffset + 5} 
         text={formatMeasurement(Math.round((rightBound - (x + w)) / PIXELS_PER_CM), unit)}
         color={COLORS.distance}
-        direction="right"
-        value={Math.round((rightBound - (x + w)) / PIXELS_PER_CM)}
+        isSecondary={true}
       />
 
-      {/* Top gap - red line from wall/obstacle to furniture */}
-      <Line points={[midX, topBound, midX, y]} stroke={COLORS.distance} dash={dash} strokeWidth={1.5} />
-      <EditableDimensionLabel 
+      {/* Top gap - amber line from wall/obstacle to furniture */}
+      <InteractiveMeasurementLine
+        measurementId={`${item.id}-furniture-top`}
+        points={[midX, topBound, midX, y]}
+        color={COLORS.distance}
+        lineType="spacing"
+      />
+      <InteractiveDimensionLabel
+        measurementId={`${item.id}-furniture-top`}
         x={midX - labelOffset - 10} 
         y={adjustLabelY((topBound + y) / 2, fontSize)} 
         text={formatMeasurement(Math.round((y - topBound) / PIXELS_PER_CM), unit)}
         color={COLORS.distance}
-        direction="top"
-        value={Math.round((y - topBound) / PIXELS_PER_CM)}
+        isSecondary={true}
       />
 
-      {/* Bottom gap - red line from furniture to wall/obstacle */}
-      <Line points={[midX, y + h, midX, bottomBound]} stroke={COLORS.distance} dash={dash} strokeWidth={1.5} />
-      <EditableDimensionLabel 
+      {/* Bottom gap - amber line from furniture to wall/obstacle */}
+      <InteractiveMeasurementLine
+        measurementId={`${item.id}-furniture-bottom`}
+        points={[midX, y + h, midX, bottomBound]}
+        color={COLORS.distance}
+        lineType="spacing"
+      />
+      <InteractiveDimensionLabel
+        measurementId={`${item.id}-furniture-bottom`}
         x={midX - labelOffset - 10} 
         y={adjustLabelY((y + h + bottomBound) / 2, fontSize)} 
         text={formatMeasurement(Math.round((bottomBound - (y + h)) / PIXELS_PER_CM), unit)}
         color={COLORS.distance}
-        direction="bottom"
-        value={Math.round((bottomBound - (y + h)) / PIXELS_PER_CM)}
+        isSecondary={true}
       />
     </Group>
   );

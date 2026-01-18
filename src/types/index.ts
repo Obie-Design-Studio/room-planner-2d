@@ -24,3 +24,5 @@ export interface WallObject {
   width: number; // in cm
   openDirection?: 'in' | 'out'; // optional, for doors later
 }
+
+export type ViewMode = 'blueprint' | 'measurements' | 'materials';

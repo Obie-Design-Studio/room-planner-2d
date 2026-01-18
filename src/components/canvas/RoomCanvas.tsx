@@ -1,10 +1,10 @@
 import React, { useRef, useEffect, useState } from "react";
 import { Stage, Layer, Rect, Group, Line, Text } from "react-konva";
 import { PIXELS_PER_CM, WALL_THICKNESS_PX } from "@/lib/constants";
-import { RoomConfig, FurnitureItem } from "@/types";
+import { RoomConfig, FurnitureItem, ViewMode } from "@/types";
 import { type Unit, formatMeasurement } from "@/lib/unitConversion";
 import FurnitureShape from "./FurnitureShape";
-import MeasurementOverlay from "./MeasurementOverlay";
+import MeasurementOverlay, { type MeasurementMode } from "./MeasurementOverlay";
 import GridBackground from "./GridBackground";
 import { Plus, Minus, Maximize2 } from "lucide-react";
 
@@ -21,6 +21,13 @@ interface RoomCanvasProps {
   measurementUnit?: Unit;
   viewportWidth: number;
   viewportHeight: number;
+  viewMode: ViewMode;
+  hiddenMeasurements: Set<string>;
+  onToggleMeasurement: (measurementId: string) => void;
+  measurementMode?: MeasurementMode;
+  pinnedMeasurements?: Set<string>;
+  hoveredItemId?: string | null;
+  onItemHover?: (itemId: string | null) => void;
 }
 
 export default function RoomCanvas({
@@ -36,6 +43,13 @@ export default function RoomCanvas({
   measurementUnit = 'cm',
   viewportWidth,
   viewportHeight,
+  viewMode,
+  hiddenMeasurements,
+  onToggleMeasurement,
+  measurementMode = 'all',
+  pinnedMeasurements = new Set(),
+  hoveredItemId = null,
+  onItemHover,
 }: RoomCanvasProps) {
   const stageRef = useRef<any>(null);
   
@@ -740,6 +754,8 @@ export default function RoomCanvas({
                 onEdit={onEdit}
                 roomConfig={roomConfig}
                 zoom={userZoom}
+                isDraggable={viewMode === 'blueprint'}
+                onHover={onItemHover}
               />
             ))}
             {items.map((item) => {
@@ -761,6 +777,12 @@ export default function RoomCanvas({
                     stagePos={stagePos}
                     layerOffset={{ x: baseCenterOffsetX, y: baseCenterOffsetY }}
                     measurementClickTimeRef={measurementClickTimeRef}
+                    hiddenMeasurements={hiddenMeasurements}
+                    onToggleMeasurement={onToggleMeasurement}
+                    viewMode={viewMode}
+                    measurementMode={measurementMode}
+                    pinnedMeasurements={pinnedMeasurements}
+                    hoveredItemId={hoveredItemId}
                   />
                 );
               }
@@ -786,8 +808,10 @@ export default function RoomCanvas({
         <button
           onClick={handleZoomIn}
           style={{
-            width: '36px',
-            height: '36px',
+            width: '40px',
+            height: '40px',
+            minWidth: '40px',
+            minHeight: '40px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -797,8 +821,9 @@ export default function RoomCanvas({
             cursor: 'pointer',
             boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
             transition: 'all 150ms',
+            boxSizing: 'border-box',
+            padding: 0,
           }}
-          className="md:w-10 md:h-10"
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = '#F5F5F5';
             e.currentTarget.style.borderColor = '#0A0A0A';
@@ -809,14 +834,16 @@ export default function RoomCanvas({
           }}
           title="Zoom In (+)"
         >
-          <Plus size={18} color="#0A0A0A" className="md:w-5 md:h-5" />
+          <Plus size={18} color="#0A0A0A" />
         </button>
         
         <button
           onClick={handleResetView}
           style={{
-            width: '36px',
-            height: '36px',
+            width: '40px',
+            height: '40px',
+            minWidth: '40px',
+            minHeight: '40px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -826,8 +853,9 @@ export default function RoomCanvas({
             cursor: 'pointer',
             boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
             transition: 'all 150ms',
+            boxSizing: 'border-box',
+            padding: 0,
           }}
-          className="md:w-10 md:h-10"
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = '#F5F5F5';
             e.currentTarget.style.borderColor = '#0A0A0A';
@@ -838,46 +866,44 @@ export default function RoomCanvas({
           }}
           title="Fit to View (F or 0) - Reset zoom and center room"
         >
-          <Maximize2 size={16} color="#0A0A0A" className="md:w-[18px] md:h-[18px]" />
+          <Maximize2 size={16} color="#0A0A0A" />
         </button>
         
-        <button
-          onClick={handleResetView}
+        {/* Zoom percentage display (read-only) */}
+        <div
           style={{
-            width: '36px',
-            height: '36px',
+            width: '40px',
+            height: '40px',
+            minWidth: '40px',
+            minHeight: '40px',
+            maxWidth: '40px',
+            maxHeight: '40px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: '#FFFFFF',
+            backgroundColor: '#FAFAFA',
             border: '1px solid #E5E5E5',
             borderRadius: '8px',
-            cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-            fontSize: '11px',
+            fontSize: '10px',
             fontWeight: 600,
-            color: '#0A0A0A',
-            transition: 'all 150ms',
+            color: '#666666',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+            userSelect: 'none',
+            boxSizing: 'border-box',
+            lineHeight: '1',
           }}
-          className="md:w-10 md:h-10 md:text-xs"
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#F5F5F5';
-            e.currentTarget.style.borderColor = '#0A0A0A';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#FFFFFF';
-            e.currentTarget.style.borderColor = '#E5E5E5';
-          }}
-          title="Fit to View (F) - Reset zoom and center room"
+          title={`Current zoom: ${Math.round(userZoom * 100)}%`}
         >
           {Math.round(userZoom * 100)}%
-        </button>
+        </div>
         
         <button
           onClick={handleZoomOut}
           style={{
-            width: '36px',
-            height: '36px',
+            width: '40px',
+            height: '40px',
+            minWidth: '40px',
+            minHeight: '40px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -887,8 +913,9 @@ export default function RoomCanvas({
             cursor: 'pointer',
             boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
             transition: 'all 150ms',
+            boxSizing: 'border-box',
+            padding: 0,
           }}
-          className="md:w-10 md:h-10"
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = '#F5F5F5';
             e.currentTarget.style.borderColor = '#0A0A0A';
@@ -899,7 +926,7 @@ export default function RoomCanvas({
           }}
           title="Zoom Out (-)"
         >
-          <Minus size={18} color="#0A0A0A" className="md:w-5 md:h-5" />
+          <Minus size={18} color="#0A0A0A" />
         </button>
       </div>
       

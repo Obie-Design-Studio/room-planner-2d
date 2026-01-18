@@ -50,6 +50,8 @@ interface FurnitureShapeProps {
   onDelete: (id: string) => void;
   roomConfig: RoomConfig;
   zoom?: number;
+  isDraggable?: boolean;
+  onHover?: (itemId: string | null) => void;
 }
 
 const FurnitureShape: React.FC<FurnitureShapeProps> = ({
@@ -62,6 +64,8 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
   onDelete,
   roomConfig,
   zoom = 1.0,
+  isDraggable = true,
+  onHover,
 }) => {
   const shapeRef = useRef<any>(null);
   const trRef = useRef<any>(null);
@@ -125,7 +129,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
     y,
     width: widthPx,
     height: heightPx,
-    draggable: true,
+    draggable: isDraggable,
     rotation: isWallObject ? 0 : rotation, // Apply rotation for furniture
     offsetX: widthPx / 2,
     offsetY: heightPx / 2,
@@ -149,9 +153,11 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
     },
     onMouseEnter: () => {
       setIsHovered(true);
+      if (onHover) onHover(item.id);
     },
     onMouseLeave: () => {
       setIsHovered(false);
+      if (onHover) onHover(null);
     },
     onDragMove: (e: any) => {
       // 1. Get current mouse position (Visual Center)
@@ -827,7 +833,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
           {/* Centered Rotate Button - only show when selected */}
           {isSelected && renderRotateButton()}
         </Group>
-        {isSelected && (
+        {isSelected && isDraggable && (
           <Transformer
             ref={trRef}
             boundBoxFunc={(oldBox, newBox) => {
@@ -870,7 +876,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
           <Rect width={widthPx} height={heightPx} fill="#e0f7fa" stroke="black" strokeWidth={1} />
           <Rect x={0} y={heightPx / 2 - 2} width={widthPx} height={4} fill="#81d4fa" />
         </Group>
-        {isSelected && (
+        {isSelected && isDraggable && (
           <Transformer
             ref={trRef}
             boundBoxFunc={(oldBox, newBox) => {
@@ -1040,7 +1046,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
           </Group>
         )}
       </Group>
-      {isSelected && (
+      {isSelected && isDraggable && (
         <Transformer
           ref={trRef}
           boundBoxFunc={(oldBox, newBox) => {
