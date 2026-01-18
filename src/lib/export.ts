@@ -84,13 +84,20 @@ export async function exportBlueprintAsPDF(
   ceilingHeight: number
 ): Promise<boolean> {
   try {
+    console.log('[PDF Export Blueprint] Starting blueprint PDF export...');
+    
     const canvas = await html2canvas(canvasContainer, {
       backgroundColor: '#FFFFFF',
-      scale: 2,
+      scale: 1, // Reduced from 2 for smaller file size
       logging: false,
     });
+    
+    console.log('[PDF Export Blueprint] Canvas captured:', canvas.width, 'x', canvas.height);
 
-    const imgData = canvas.toDataURL('image/png');
+    // Use JPEG with compression for smaller file size
+    const imgData = canvas.toDataURL('image/jpeg', 0.8);
+    console.log('[PDF Export Blueprint] Image data created (JPEG, 80% quality)');
+    
     const pdf = new jsPDF({
       orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
       unit: 'mm',
@@ -132,7 +139,7 @@ export async function exportBlueprintAsPDF(
     const imgX = (pageWidth - imgWidth) / 2;
     const imgY = margin + 20;
 
-    pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth, imgHeight);
+    pdf.addImage(imgData, 'JPEG', imgX, imgY, imgWidth, imgHeight);
 
     // Add footer
     pdf.setFontSize(10);
@@ -145,40 +152,28 @@ export async function exportBlueprintAsPDF(
     );
 
     const filename = `${roomName.replace(/\s+/g, '_')}_blueprint_${Date.now()}.pdf`;
-    console.log('[PDF Export Blueprint] Attempting to save PDF as:', filename);
+    console.log('[PDF Export Blueprint] Creating blob for download:', filename);
     
-    try {
-      // Try multiple download methods for better browser compatibility
-      
-      // Method 1: Standard jsPDF save
-      pdf.save(filename);
-      console.log('[PDF Export Blueprint] Standard save() called');
-      
-      // Method 2: Blob download fallback
-      const blob = pdf.output('blob');
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = filename;
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      
-      // Trigger download
-      link.click();
-      
-      // Cleanup
-      setTimeout(() => {
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        console.log('[PDF Export Blueprint] Blob download triggered and cleaned up');
-      }, 100);
-      
-      console.log('[PDF Export Blueprint] PDF download triggered successfully');
-      return true;
-    } catch (downloadError) {
-      console.error('[PDF Export Blueprint] Download failed:', downloadError);
-      throw downloadError;
-    }
+    // Create blob with proper MIME type and trigger download
+    const blob = pdf.output('blob');
+    const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    
+    console.log('[PDF Export Blueprint] Triggering download...');
+    link.click();
+    
+    // Cleanup
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      console.log('[PDF Export Blueprint] Download triggered and cleaned up');
+    }, 100);
+    
+    return true;
   } catch (error) {
     console.error('[PDF Export Blueprint] Error exporting PDF:', error);
     return false;
@@ -199,14 +194,15 @@ export async function exportMeasurementsAsPDF(
     
     const canvas = await html2canvas(canvasContainer, {
       backgroundColor: '#FFFFFF',
-      scale: 2,
+      scale: 1, // Reduced from 2 for smaller file size
       logging: false,
     });
     
     console.log('[PDF Export] Canvas captured:', canvas.width, 'x', canvas.height);
 
-    const imgData = canvas.toDataURL('image/png');
-    console.log('[PDF Export] Image data created');
+    // Use JPEG with compression for smaller file size
+    const imgData = canvas.toDataURL('image/jpeg', 0.8);
+    console.log('[PDF Export] Image data created (JPEG, 80% quality)');
     
     const pdf = new jsPDF({
       orientation: 'portrait',
@@ -251,7 +247,7 @@ export async function exportMeasurementsAsPDF(
     const imgX = (pageWidth - imgWidth) / 2;
     const imgY = margin + 20;
 
-    pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth, imgHeight);
+    pdf.addImage(imgData, 'JPEG', imgX, imgY, imgWidth, imgHeight);
 
     // Page 2: Detailed measurements list
     pdf.addPage();
@@ -323,40 +319,29 @@ export async function exportMeasurementsAsPDF(
     );
 
     const filename = `${roomName.replace(/\s+/g, '_')}_measurements_${Date.now()}.pdf`;
-    console.log('[PDF Export] Attempting to save PDF as:', filename);
+    console.log('[PDF Export] Creating blob for download:', filename);
     
-    try {
-      // Try multiple download methods for better browser compatibility
-      
-      // Method 1: Standard jsPDF save (works in most browsers)
-      pdf.save(filename);
-      console.log('[PDF Export] Standard save() called');
-      
-      // Method 2: Blob download fallback (more reliable in some browsers)
-      const blob = pdf.output('blob');
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = filename;
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      
-      // Trigger download
-      link.click();
-      
-      // Cleanup
-      setTimeout(() => {
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        console.log('[PDF Export] Blob download triggered and cleaned up');
-      }, 100);
-      
-      console.log('[PDF Export] PDF download triggered successfully');
-      return true;
-    } catch (downloadError) {
-      console.error('[PDF Export] Download failed:', downloadError);
-      throw downloadError;
-    }
+    // Create blob with proper MIME type and trigger download
+    const blob = pdf.output('blob');
+    const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    
+    console.log('[PDF Export] Triggering download...');
+    link.click();
+    
+    // Cleanup
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      console.log('[PDF Export] Download triggered and cleaned up');
+    }, 100);
+    
+    console.log('[PDF Export] PDF download completed successfully');
+    return true;
   } catch (error) {
     console.error('[PDF Export] Error exporting measurements PDF:', error);
     return false;
