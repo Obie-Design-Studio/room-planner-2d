@@ -1379,7 +1379,7 @@ export default function Home() {
               right: 0,
               bottom: 0,
               backgroundColor: 'rgba(0, 0, 0, 0.4)',
-              zIndex: 90,
+              zIndex: 5,
               transition: 'opacity 250ms ease-in-out',
             }}
             className="md:hidden"
