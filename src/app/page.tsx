@@ -767,7 +767,7 @@ export default function Home() {
             borderRight: '1px solid #EFEFEF',
             backgroundColor: '#FAFAFA',
             position: 'absolute',
-            top: '64px',
+            top: '0',
             left: 0,
             bottom: 0,
             transform: isSidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
@@ -782,7 +782,7 @@ export default function Home() {
               flex: 1, 
               minHeight: 0, 
               overflowY: 'auto', 
-              padding: '16px 20px 20px 20px'
+              padding: '80px 20px 20px 20px'
             }}
             className="md:mt-0"
           >
@@ -794,7 +794,7 @@ export default function Home() {
                 color: '#666666',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
-                margin: '0 0 8px 0'
+                margin: '0 0 12px 0'
               }}>
                 Room
               </h3>
@@ -1283,7 +1283,7 @@ export default function Home() {
                   ))
                 ) : (
                   <div style={{
-                    padding: '16px 20px 20px 20px',
+                    padding: '80px 20px 20px 20px',
                     textAlign: 'center',
                     color: '#999999',
                     fontSize: '13px',
@@ -1374,7 +1374,7 @@ export default function Home() {
             onClick={() => setIsSidebarOpen(false)}
             style={{
               position: 'fixed',
-              top: '64px',
+              top: '0',
               left: 0,
               right: 0,
               bottom: 0,
