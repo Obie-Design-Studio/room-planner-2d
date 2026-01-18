@@ -69,7 +69,7 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
         setLocalDistanceFromCorner(item.y);
       }
     }
-  }, [item]);
+  }, [item, roomWidth, roomHeight]); // Include roomWidth/roomHeight for wall detection
 
   if (!isOpen || !item) return null;
 
@@ -125,6 +125,11 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
         updates.x = item?.x || 0;
         updates.y = localDistanceFromCorner;
       }
+    } else {
+      // For regular furniture, preserve existing X/Y coordinates
+      // (They are positioned via drag-and-drop, not via this modal)
+      updates.x = item?.x || 0;
+      updates.y = item?.y || 0;
     }
 
     // For windows, include height and floor distance
