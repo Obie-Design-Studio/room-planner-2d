@@ -787,14 +787,14 @@ export default function Home() {
             className="md:mt-0"
           >
             {/* Room Settings Section */}
-            <div style={{ marginBottom: '20px' }}>
+            <div style={{ marginBottom: '16px' }}>
               <h3 style={{ 
                 fontSize: '13px', 
                 fontWeight: 600,
                 color: '#666666',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
-                margin: '0 0 12px 0'
+                margin: '0 0 16px 0'
               }}>
                 Room
               </h3>
@@ -854,7 +854,7 @@ export default function Home() {
             </div>
 
           {/* Windows & Doors Section */}
-          <div style={{ marginBottom: '20px' }}>
+          <div style={{ marginBottom: '16px' }}>
             <button
               onClick={() => setIsWindowsDoorsOpen(!isWindowsDoorsOpen)}
               style={{
@@ -866,7 +866,7 @@ export default function Home() {
                 backgroundColor: 'transparent',
                 border: 'none',
                 cursor: 'pointer',
-                marginBottom: '12px',
+                marginBottom: '16px',
               }}
             >
               <h3 style={{ 
@@ -1091,7 +1091,7 @@ export default function Home() {
           </div>
 
           {/* Add Furniture Section */}
-          <div style={{ marginBottom: '20px' }}>
+          <div style={{ marginBottom: '16px' }}>
             <button
               onClick={() => setIsFurnitureOpen(!isFurnitureOpen)}
               style={{
@@ -1103,7 +1103,7 @@ export default function Home() {
                 backgroundColor: 'transparent',
                 border: 'none',
                 cursor: 'pointer',
-                marginBottom: '12px',
+                marginBottom: '16px',
               }}
             >
               <h3 style={{ 
@@ -1126,7 +1126,7 @@ export default function Home() {
               <>
               {/* Furniture List - Show first */}
               {furnitureItems.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px' }}>
                   {furnitureItems.map((item) => {
                     const isSelected = item.id === selectedId;
 
