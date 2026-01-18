@@ -100,10 +100,10 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
   const contentHeight = maxY - minY;
   
   // Dynamic padding that scales with zoom level
-  // At 100% zoom (userZoom=1.0): 100px padding - room uses maximum space
-  // At 300% zoom (userZoom=3.0): 300px padding - ensures edge visibility
-  // This keeps content away from edges at all zoom levels while maximizing space
-  const basePadding = 100;
+  // At 100% zoom (userZoom=1.0): 40px padding - room uses maximum space (buffer already accounts for door swings)
+  // At 300% zoom (userZoom=3.0): 120px padding - ensures comfortable edge visibility when zoomed in
+  // This keeps content away from edges at all zoom levels while maximizing space at default zoom
+  const basePadding = 40;
   const padding = basePadding * userZoom;
   
   // Base scale to fit content
