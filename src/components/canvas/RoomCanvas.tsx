@@ -216,8 +216,9 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
         const contentScreenWidth = contentWidth * scale;
         const contentScreenHeight = contentHeight * scale;
         
-        // At minimum zoom (10%), enforce stricter boundaries to keep room visible
-        const MIN_VISIBILITY_RATIO = userZoom <= 0.15 ? 0.3 : 0.0; // Keep 30% visible at very low zoom
+        // At minimum zoom (10%), enforce stricter boundaries to keep room fully visible
+        // At 10% zoom, keep room completely within canvas boundaries
+        const MIN_VISIBILITY_RATIO = userZoom <= 0.15 ? 1.0 : 0.0; // Keep 100% visible at very low zoom
         const minVisibilityWidth = contentScreenWidth * MIN_VISIBILITY_RATIO;
         const minVisibilityHeight = contentScreenHeight * MIN_VISIBILITY_RATIO;
         
@@ -419,9 +420,9 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
         // Content spans from (minX * scale) to (maxX * scale) in its own coordinate space
         // With Layer offset, the content's screen position is: stagePos + offsetX + (content coords * scale)
         
-        // At minimum zoom (10%), enforce stricter boundaries to keep room visible
-        // At higher zoom levels, use normal boundaries
-        const MIN_VISIBILITY_RATIO = userZoom <= 0.15 ? 0.3 : 0.0; // Keep 30% visible at very low zoom
+        // At minimum zoom (10%), enforce stricter boundaries to keep room fully visible
+        // At 10% zoom, keep room completely within canvas boundaries
+        const MIN_VISIBILITY_RATIO = userZoom <= 0.15 ? 1.0 : 0.0; // Keep 100% visible at very low zoom
         const minVisibilityWidth = contentScreenWidth * MIN_VISIBILITY_RATIO;
         const minVisibilityHeight = contentScreenHeight * MIN_VISIBILITY_RATIO;
         
@@ -826,32 +827,6 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
               })()}
             </Group>
             
-            {/* Scale Reference - Bottom-left corner, cleaner design */}
-            <Group x={20} y={roomConfig.height * PIXELS_PER_CM + 40} listening={false}>
-              {/* Scale box - 10cm (40px) - simple outline only */}
-              <Rect
-                x={0}
-                y={0}
-                width={10 * PIXELS_PER_CM}
-                height={10 * PIXELS_PER_CM}
-                fill="#ffffff"
-                stroke="#0a0a0a"
-                strokeWidth={2}
-                listening={false}
-              />
-              {/* Label below box - larger, bolder, more readable */}
-              <Text
-                x={0}
-                y={10 * PIXELS_PER_CM + 10}
-                text={`= ${formatMeasurement(10, measurementUnit)}`}
-                fontSize={18}
-                fontFamily="Arial, sans-serif"
-                fontStyle="bold"
-                fill="#0a0a0a"
-                listening={false}
-              />
-            </Group>
-            
             {items.map((item) => (
               <FurnitureShape
                 key={item.id}
@@ -901,6 +876,44 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
           </Group>
         </Layer>
       </Stage>
+      
+      {/* Scale Reference - Fixed at bottom-left of viewport, independent of zoom/pan */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: '20px',
+          left: '20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px',
+          pointerEvents: 'none',
+          zIndex: 100,
+        }}
+      >
+        {/* Scale box - 10cm reference - visual only, size doesn't change with zoom */}
+        <div
+          style={{
+            width: '40px',
+            height: '40px',
+            backgroundColor: '#ffffff',
+            border: '2px solid #0a0a0a',
+            borderRadius: '4px',
+          }}
+        />
+        {/* Label below box */}
+        <div
+          style={{
+            fontSize: '14px',
+            fontFamily: 'Arial, sans-serif',
+            fontWeight: 'bold',
+            color: '#0a0a0a',
+            textAlign: 'center',
+            marginTop: '-4px',
+          }}
+        >
+          = {formatMeasurement(10, measurementUnit)}
+        </div>
+      </div>
       
       {/* Zoom Controls */}
       <div

@@ -976,9 +976,8 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
   return (
     <>
       <Group {...groupProps}>
-        <Group listening={false}>
-          {renderSymbol()}
-        </Group>
+        {/* Render furniture symbol */}
+        {renderSymbol()}
         
         {/* Hover Overlay - Only show when hovering AND not selected */}
         {!isWallObject && isHovered && !isSelected && (() => {
