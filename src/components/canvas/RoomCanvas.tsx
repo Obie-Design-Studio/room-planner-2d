@@ -120,23 +120,23 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
   const baseCenterOffsetX = viewportWidth / 2 - (contentWidth / 2 + minX) * scale;
   const baseCenterOffsetY = viewportHeight / 2 - (contentHeight / 2 + minY) * scale;
 
-  // Elastic boundary helper - allows ±100px over-pan with resistance
+  // Elastic boundary helper - allows ±100px over-pan with resistance (configurable)
   const ELASTIC_MARGIN = 100;
-  const applyElasticBoundary = (value: number, min: number, max: number): number => {
+  const applyElasticBoundary = (value: number, min: number, max: number, margin: number = ELASTIC_MARGIN): number => {
     if (min > max) return value; // Invalid range, no clamping
     
     if (value < min) {
       // Over-panned to the left/top - apply elastic resistance
       const overpan = min - value;
-      if (overpan > ELASTIC_MARGIN) {
-        return min - ELASTIC_MARGIN; // Hard limit at margin
+      if (overpan > margin) {
+        return min - margin; // Hard limit at margin
       }
       return value; // Allow within elastic margin
     } else if (value > max) {
       // Over-panned to the right/bottom - apply elastic resistance
       const overpan = value - max;
-      if (overpan > ELASTIC_MARGIN) {
-        return max + ELASTIC_MARGIN; // Hard limit at margin
+      if (overpan > margin) {
+        return max + margin; // Hard limit at margin
       }
       return value; // Allow within elastic margin
     }
@@ -263,9 +263,11 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
           }
         }
         
-        // Apply elastic boundaries (±100px over-pan allowed)
-        const clampedX = applyElasticBoundary(newX, minPosX, maxPosX);
-        const clampedY = applyElasticBoundary(newY, minPosY, maxPosY);
+        // Apply elastic boundaries
+        // At low zoom (≤15%), disable elastic margin to prevent room from moving off-screen
+        const elasticMargin = userZoom <= 0.15 ? 0 : ELASTIC_MARGIN;
+        const clampedX = applyElasticBoundary(newX, minPosX, maxPosX, elasticMargin);
+        const clampedY = applyElasticBoundary(newY, minPosY, maxPosY, elasticMargin);
         
         return {
           x: clampedX,
@@ -480,9 +482,11 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
           }
         }
         
-        // Apply elastic boundaries (±100px over-pan allowed)
-        const clampedX = applyElasticBoundary(newX, minPosX, maxPosX);
-        const clampedY = applyElasticBoundary(newY, minPosY, maxPosY);
+        // Apply elastic boundaries
+        // At low zoom (≤15%), disable elastic margin to prevent room from moving off-screen
+        const elasticMargin = userZoom <= 0.15 ? 0 : ELASTIC_MARGIN;
+        const clampedX = applyElasticBoundary(newX, minPosX, maxPosX, elasticMargin);
+        const clampedY = applyElasticBoundary(newY, minPosY, maxPosY, elasticMargin);
         
         return {
           x: clampedX,
