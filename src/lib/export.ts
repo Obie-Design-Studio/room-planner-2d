@@ -5,56 +5,103 @@ import type { RoomConfig, FurnitureItem } from '@/types';
 // Helper function to trigger download with fallback
 function downloadPDF(pdf: jsPDF, filename: string): boolean {
   try {
-    console.log('[PDF Download] Attempting download:', filename);
+    console.log('[PDF Download] === DOWNLOAD ATTEMPT START ===');
+    console.log('[PDF Download] Filename:', filename);
+    console.log('[PDF Download] PDF object:', pdf);
+    console.log('[PDF Download] Browser info:', {
+      userAgent: navigator.userAgent,
+      platform: navigator.platform,
+      vendor: navigator.vendor,
+    });
+    
+    // Get PDF size for debugging
+    try {
+      const blob = pdf.output('blob');
+      console.log('[PDF Download] PDF blob size:', blob.size, 'bytes', '(', (blob.size / 1024).toFixed(2), 'KB)');
+      console.log('[PDF Download] PDF blob type:', blob.type);
+    } catch (e) {
+      console.error('[PDF Download] Failed to get blob info:', e);
+    }
     
     // Method 1: Try pdf.save() first (standard jsPDF method)
+    console.log('[PDF Download] Attempting Method 1: pdf.save()');
     try {
       pdf.save(filename);
-      console.log('[PDF Download] pdf.save() completed');
+      console.log('[PDF Download] ✅ pdf.save() completed successfully');
+      console.log('[PDF Download] === DOWNLOAD ATTEMPT END (SUCCESS via Method 1) ===');
       return true;
     } catch (saveError) {
-      console.warn('[PDF Download] pdf.save() failed:', saveError);
+      console.error('[PDF Download] ❌ pdf.save() failed:', saveError);
+      console.error('[PDF Download] Error stack:', (saveError as Error).stack);
     }
     
     // Method 2: Create blob and trigger download via anchor
+    console.log('[PDF Download] Attempting Method 2: Blob + anchor');
     try {
       const blob = pdf.output('blob');
+      console.log('[PDF Download] Blob created:', blob.size, 'bytes');
+      
       const url = URL.createObjectURL(blob);
+      console.log('[PDF Download] Blob URL created:', url);
       
       const link = document.createElement('a');
       link.href = url;
       link.download = filename;
       link.style.display = 'none';
       
+      console.log('[PDF Download] Anchor element created:', {
+        href: link.href,
+        download: link.download,
+        display: link.style.display,
+      });
+      
       document.body.appendChild(link);
+      console.log('[PDF Download] Anchor appended to body');
+      
       link.click();
+      console.log('[PDF Download] Anchor clicked');
       
       // Cleanup after a short delay
       setTimeout(() => {
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
+        console.log('[PDF Download] Anchor removed and URL revoked');
       }, 250);
       
-      console.log('[PDF Download] Blob download triggered');
+      console.log('[PDF Download] ✅ Blob download triggered successfully');
+      console.log('[PDF Download] === DOWNLOAD ATTEMPT END (SUCCESS via Method 2) ===');
       return true;
     } catch (blobError) {
-      console.warn('[PDF Download] Blob download failed:', blobError);
+      console.error('[PDF Download] ❌ Blob download failed:', blobError);
+      console.error('[PDF Download] Error stack:', (blobError as Error).stack);
     }
     
     // Method 3: Open in new window for manual save
+    console.log('[PDF Download] Attempting Method 3: Open in new window');
     try {
       const blob = pdf.output('blob');
       const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
-      console.log('[PDF Download] Opened in new window for manual save');
-      return true;
+      const newWindow = window.open(url, '_blank');
+      
+      if (newWindow) {
+        console.log('[PDF Download] ✅ Opened in new window for manual save');
+        console.log('[PDF Download] === DOWNLOAD ATTEMPT END (SUCCESS via Method 3) ===');
+        return true;
+      } else {
+        console.error('[PDF Download] ❌ window.open returned null (popup blocked?)');
+      }
     } catch (windowError) {
-      console.error('[PDF Download] Window.open failed:', windowError);
+      console.error('[PDF Download] ❌ window.open failed:', windowError);
+      console.error('[PDF Download] Error stack:', (windowError as Error).stack);
     }
     
+    console.log('[PDF Download] === DOWNLOAD ATTEMPT END (ALL METHODS FAILED) ===');
     return false;
   } catch (error) {
-    console.error('[PDF Download] All download methods failed:', error);
+    console.error('[PDF Download] === CRITICAL ERROR IN DOWNLOAD FUNCTION ===');
+    console.error('[PDF Download] Error:', error);
+    console.error('[PDF Download] Error stack:', (error as Error).stack);
+    console.log('[PDF Download] === DOWNLOAD ATTEMPT END (CRITICAL FAILURE) ===');
     return false;
   }
 }
