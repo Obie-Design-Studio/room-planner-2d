@@ -186,6 +186,15 @@ export default function Home() {
 
   const handleSelect = (id: string) => {
     setSelectedId(id);
+    
+    // Auto-open edit modal for doors and windows to show measurements immediately
+    const selectedItem = items.find(item => item.id === id);
+    if (selectedItem) {
+      const typeLower = selectedItem.type?.toLowerCase() || '';
+      if (typeLower === 'door' || typeLower === 'window') {
+        setEditingItemId(id);
+      }
+    }
   };
 
   const handleOpenEditor = (id: string) => {
