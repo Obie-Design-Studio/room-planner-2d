@@ -185,7 +185,8 @@ export async function exportBlueprintAsPDF(
   stageRef: any, // Konva Stage ref
   roomName: string,
   roomConfig: RoomConfig,
-  ceilingHeight: number
+  ceilingHeight: number,
+  items: FurnitureItem[] = []
 ): Promise<boolean> {
   try {
     console.log('[PDF Export Blueprint] Starting...');
@@ -202,10 +203,83 @@ export async function exportBlueprintAsPDF(
     console.log('[PDF Export Blueprint] Stage object:', stage);
     console.log('[PDF Export Blueprint] Stage dimensions:', stage.width(), 'x', stage.height());
     
-    // Export canvas as data URL
+    // Calculate the bounding box of actual content (room + furniture + door swings)
+    const PIXELS_PER_CM = 4;
+    const WALL_THICKNESS_CM = 2.5;
+    
+    // Room bounds (accounting for wall thickness)
+    let minX = -WALL_THICKNESS_CM;
+    let minY = -WALL_THICKNESS_CM;
+    let maxX = roomConfig.width + WALL_THICKNESS_CM;
+    let maxY = roomConfig.height + WALL_THICKNESS_CM;
+    
+    // Expand bounds to include door swings (which can extend beyond room walls)
+    items.forEach((item) => {
+      if (item.type?.toLowerCase() === 'door') {
+        const doorWidth = item.width || 90; // Door width along wall
+        
+        // Check which wall the door is on and extend bounds for swing
+        const isOnTopWall = Math.abs(item.y - (-WALL_THICKNESS_CM)) < 1;
+        const isOnBottomWall = Math.abs(item.y - roomConfig.height) < 1;
+        const isOnLeftWall = Math.abs(item.x - (-WALL_THICKNESS_CM)) < 1;
+        const isOnRightWall = Math.abs(item.x - roomConfig.width) < 1;
+        
+        // Door swings extend by door width perpendicular to wall
+        if (isOnTopWall) {
+          minY = Math.min(minY, item.y - doorWidth); // Swing outside (upward)
+          maxY = Math.max(maxY, item.y + doorWidth); // Swing inside (downward)
+        } else if (isOnBottomWall) {
+          minY = Math.min(minY, item.y - doorWidth); // Swing inside (upward)
+          maxY = Math.max(maxY, item.y + doorWidth); // Swing outside (downward)
+        } else if (isOnLeftWall) {
+          minX = Math.min(minX, item.x - doorWidth); // Swing outside (leftward)
+          maxX = Math.max(maxX, item.x + doorWidth); // Swing inside (rightward)
+        } else if (isOnRightWall) {
+          minX = Math.min(minX, item.x - doorWidth); // Swing inside (leftward)
+          maxX = Math.max(maxX, item.x + doorWidth); // Swing outside (rightward)
+        }
+      }
+    });
+    
+    // Add small padding to bounding box (in cm)
+    const boundsPaddingCm = 20; // 20cm padding around content
+    minX -= boundsPaddingCm;
+    minY -= boundsPaddingCm;
+    maxX += boundsPaddingCm;
+    maxY += boundsPaddingCm;
+    
+    // Convert to pixels for Konva
+    const contentWidthCm = maxX - minX;
+    const contentHeightCm = maxY - minY;
+    const contentWidthPx = contentWidthCm * PIXELS_PER_CM;
+    const contentHeightPx = contentHeightCm * PIXELS_PER_CM;
+    
+    // Find the layer and get its position/scale
+    const layer = stage.findOne('Layer');
+    const layerX = layer.x();
+    const layerY = layer.y();
+    const layerScale = layer.scaleX(); // Assuming uniform scale
+    
+    // Calculate crop area in stage coordinates
+    const cropX = (minX * PIXELS_PER_CM * layerScale) + layerX;
+    const cropY = (minY * PIXELS_PER_CM * layerScale) + layerY;
+    const cropWidth = contentWidthPx * layerScale;
+    const cropHeight = contentHeightPx * layerScale;
+    
+    console.log('[PDF Export Blueprint] Content bounds (cm):', { minX, minY, maxX, maxY });
+    console.log('[PDF Export Blueprint] Content size (px):', contentWidthPx, 'x', contentHeightPx);
+    console.log('[PDF Export Blueprint] Crop area:', { x: cropX, y: cropY, width: cropWidth, height: cropHeight });
+    
+    // Export only the content area as data URL
     let dataURL: string;
     try {
-      dataURL = stage.toDataURL({ pixelRatio: 2 });
+      dataURL = stage.toDataURL({
+        pixelRatio: 2,
+        x: cropX,
+        y: cropY,
+        width: cropWidth,
+        height: cropHeight,
+      });
       console.log('[PDF Export Blueprint] Canvas exported, dataURL length:', dataURL.length);
     } catch (canvasError) {
       console.error('[PDF Export Blueprint] Failed to export canvas:', canvasError);
@@ -214,7 +288,7 @@ export async function exportBlueprintAsPDF(
     }
 
     const pdf = new jsPDF({
-      orientation: roomConfig.width > roomConfig.height ? 'landscape' : 'portrait',
+      orientation: contentWidthCm > contentHeightCm ? 'landscape' : 'portrait',
       unit: 'mm',
       format: 'a4',
     });
@@ -238,10 +312,8 @@ export async function exportBlueprintAsPDF(
       { align: 'center' }
     );
 
-    // Calculate image dimensions to fit page
-    const stageWidth = stage.width();
-    const stageHeight = stage.height();
-    const imgAspectRatio = stageWidth / stageHeight;
+    // Calculate image dimensions to fill available page space
+    const imgAspectRatio = contentWidthCm / contentHeightCm;
     
     const contentWidth = pageWidth - 2 * margin;
     const availableHeight = pageHeight - margin - 35;
@@ -303,19 +375,92 @@ export async function exportMeasurementsAsPDF(
     console.log('[PDF Export Measurements] Stage object:', stage);
     console.log('[PDF Export Measurements] Stage dimensions:', stage.width(), 'x', stage.height());
     
-    // Export canvas as data URL
+    // Calculate the bounding box of actual content (room + furniture + door swings)
+    const PIXELS_PER_CM = 4;
+    const WALL_THICKNESS_CM = 2.5;
+    
+    // Room bounds (accounting for wall thickness)
+    let minX = -WALL_THICKNESS_CM;
+    let minY = -WALL_THICKNESS_CM;
+    let maxX = roomConfig.width + WALL_THICKNESS_CM;
+    let maxY = roomConfig.height + WALL_THICKNESS_CM;
+    
+    // Expand bounds to include door swings (which can extend beyond room walls)
+    items.forEach((item) => {
+      if (item.type?.toLowerCase() === 'door') {
+        const doorWidth = item.width || 90; // Door width along wall
+        
+        // Check which wall the door is on and extend bounds for swing
+        const isOnTopWall = Math.abs(item.y - (-WALL_THICKNESS_CM)) < 1;
+        const isOnBottomWall = Math.abs(item.y - roomConfig.height) < 1;
+        const isOnLeftWall = Math.abs(item.x - (-WALL_THICKNESS_CM)) < 1;
+        const isOnRightWall = Math.abs(item.x - roomConfig.width) < 1;
+        
+        // Door swings extend by door width perpendicular to wall
+        if (isOnTopWall) {
+          minY = Math.min(minY, item.y - doorWidth); // Swing outside (upward)
+          maxY = Math.max(maxY, item.y + doorWidth); // Swing inside (downward)
+        } else if (isOnBottomWall) {
+          minY = Math.min(minY, item.y - doorWidth); // Swing inside (upward)
+          maxY = Math.max(maxY, item.y + doorWidth); // Swing outside (downward)
+        } else if (isOnLeftWall) {
+          minX = Math.min(minX, item.x - doorWidth); // Swing outside (leftward)
+          maxX = Math.max(maxX, item.x + doorWidth); // Swing inside (rightward)
+        } else if (isOnRightWall) {
+          minX = Math.min(minX, item.x - doorWidth); // Swing inside (leftward)
+          maxX = Math.max(maxX, item.x + doorWidth); // Swing outside (rightward)
+        }
+      }
+    });
+    
+    // Add small padding to bounding box (in cm)
+    const boundsPaddingCm = 20; // 20cm padding around content
+    minX -= boundsPaddingCm;
+    minY -= boundsPaddingCm;
+    maxX += boundsPaddingCm;
+    maxY += boundsPaddingCm;
+    
+    // Convert to pixels for Konva
+    const contentWidthCm = maxX - minX;
+    const contentHeightCm = maxY - minY;
+    const contentWidthPx = contentWidthCm * PIXELS_PER_CM;
+    const contentHeightPx = contentHeightCm * PIXELS_PER_CM;
+    
+    // Find the layer and get its position/scale
+    const layer = stage.findOne('Layer');
+    const layerX = layer.x();
+    const layerY = layer.y();
+    const layerScale = layer.scaleX(); // Assuming uniform scale
+    
+    // Calculate crop area in stage coordinates
+    const cropX = (minX * PIXELS_PER_CM * layerScale) + layerX;
+    const cropY = (minY * PIXELS_PER_CM * layerScale) + layerY;
+    const cropWidth = contentWidthPx * layerScale;
+    const cropHeight = contentHeightPx * layerScale;
+    
+    console.log('[PDF Export Measurements] Content bounds (cm):', { minX, minY, maxX, maxY });
+    console.log('[PDF Export Measurements] Content size (px):', contentWidthPx, 'x', contentHeightPx);
+    console.log('[PDF Export Measurements] Crop area:', { x: cropX, y: cropY, width: cropWidth, height: cropHeight });
+    
+    // Export only the content area as data URL
     let dataURL: string;
     try {
-      dataURL = stage.toDataURL({ pixelRatio: 2 });
+      dataURL = stage.toDataURL({
+        pixelRatio: 2,
+        x: cropX,
+        y: cropY,
+        width: cropWidth,
+        height: cropHeight,
+      });
       console.log('[PDF Export Measurements] Canvas exported, dataURL length:', dataURL.length);
     } catch (canvasError) {
       console.error('[PDF Export Measurements] Failed to export canvas:', canvasError);
       alert('Failed to capture canvas. Please try again.');
       return false;
     }
-    
+
     const pdf = new jsPDF({
-      orientation: roomConfig.width > roomConfig.height ? 'landscape' : 'portrait',
+      orientation: contentWidthCm > contentHeightCm ? 'landscape' : 'portrait',
       unit: 'mm',
       format: 'a4',
     });
@@ -353,10 +498,8 @@ export async function exportMeasurementsAsPDF(
       { align: 'center' }
     );
 
-    // Calculate image dimensions
-    const stageWidth = stage.width();
-    const stageHeight = stage.height();
-    const imgAspectRatio = stageWidth / stageHeight;
+    // Calculate image dimensions to fill available page space
+    const imgAspectRatio = contentWidthCm / contentHeightCm;
     
     const contentWidth = pageWidth - 2 * margin;
     const availableHeight = pageHeight - margin - 65;
