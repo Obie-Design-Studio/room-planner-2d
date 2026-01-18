@@ -197,7 +197,12 @@ const MeasurementOverlay: React.FC<Props> = ({
 
   // Helper: Start editing a measurement
   const startEditing = (direction: MeasurementDirection, currentValue: number) => {
-    if (!onItemChange || !stageRef?.current) return;
+    console.log('[StartEditing] Called with:', { direction, currentValue, itemType: item.type, onItemChange: !!onItemChange });
+    
+    if (!onItemChange || !stageRef?.current) {
+      console.log('[StartEditing] Aborted - missing onItemChange or stageRef');
+      return;
+    }
     
     // Calculate canvas position for this direction
     let canvasX = 0;
@@ -529,6 +534,12 @@ const MeasurementOverlay: React.FC<Props> = ({
           name="dimension-label-rect"
           onMouseDown={(e) => {
             if (isEditable) {
+              console.log('[EditableDimensionLabel] Click detected!', {
+                direction,
+                value,
+                itemType: item.type,
+                itemId: item.id
+              });
               e.evt.stopPropagation();
               e.cancelBubble = true;
               

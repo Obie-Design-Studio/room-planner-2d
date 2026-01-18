@@ -226,6 +226,12 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
         if (contentScreenWidth <= viewportWidth) {
           minPosX = viewportWidth - (baseCenterOffsetX + maxX * scale);
           maxPosX = -(baseCenterOffsetX + minX * scale);
+          
+          // At minimum zoom, even when content fits, prevent it from moving completely off-screen
+          if (MIN_VISIBILITY_RATIO > 0) {
+            minPosX = Math.max(minPosX, -contentScreenWidth + minVisibilityWidth);
+            maxPosX = Math.min(maxPosX, viewportWidth - minVisibilityWidth);
+          }
         } else {
           maxPosX = -(baseCenterOffsetX + minX * scale);
           minPosX = viewportWidth - (baseCenterOffsetX + maxX * scale);
@@ -240,6 +246,12 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
         if (contentScreenHeight <= viewportHeight) {
           minPosY = viewportHeight - (baseCenterOffsetY + maxY * scale);
           maxPosY = -(baseCenterOffsetY + minY * scale);
+          
+          // At minimum zoom, even when content fits, prevent it from moving completely off-screen
+          if (MIN_VISIBILITY_RATIO > 0) {
+            minPosY = Math.max(minPosY, -contentScreenHeight + minVisibilityHeight);
+            maxPosY = Math.min(maxPosY, viewportHeight - minVisibilityHeight);
+          }
         } else {
           maxPosY = -(baseCenterOffsetY + minY * scale);
           minPosY = viewportHeight - (baseCenterOffsetY + maxY * scale);
@@ -424,6 +436,12 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
           minPosX = viewportWidth - (baseCenterOffsetX + maxX * scale);
           // Left constraint: baseCenterOffsetX + minX * scale + stagePos.x >= 0
           maxPosX = -(baseCenterOffsetX + minX * scale);
+          
+          // At minimum zoom, even when content fits, prevent it from moving completely off-screen
+          if (MIN_VISIBILITY_RATIO > 0) {
+            minPosX = Math.max(minPosX, -contentScreenWidth + minVisibilityWidth);
+            maxPosX = Math.min(maxPosX, viewportWidth - minVisibilityWidth);
+          }
         } else {
           // Content larger than viewport - clamp to edges, but ensure minimum visibility at low zoom
           maxPosX = -(baseCenterOffsetX + minX * scale); // Can pan left
@@ -442,6 +460,12 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
           // Content fits vertically
           minPosY = viewportHeight - (baseCenterOffsetY + maxY * scale);
           maxPosY = -(baseCenterOffsetY + minY * scale);
+          
+          // At minimum zoom, even when content fits, prevent it from moving completely off-screen
+          if (MIN_VISIBILITY_RATIO > 0) {
+            minPosY = Math.max(minPosY, -contentScreenHeight + minVisibilityHeight);
+            maxPosY = Math.min(maxPosY, viewportHeight - minVisibilityHeight);
+          }
         } else {
           // Content larger than viewport
           maxPosY = -(baseCenterOffsetY + minY * scale);
