@@ -798,6 +798,40 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
               })()}
             </Group>
             
+            {/* Scale Reference - Bottom-left corner */}
+            <Group x={20} y={roomConfig.height * PIXELS_PER_CM + 40}>
+              {/* Scale box - 10cm (40px) */}
+              <Rect
+                x={0}
+                y={0}
+                width={10 * PIXELS_PER_CM}
+                height={10 * PIXELS_PER_CM}
+                fill="#f5f5f5"
+                stroke="#666"
+                strokeWidth={1}
+              />
+              {/* Inner detail lines for visual interest */}
+              <Line
+                points={[5 * PIXELS_PER_CM, 0, 5 * PIXELS_PER_CM, 10 * PIXELS_PER_CM]}
+                stroke="#ddd"
+                strokeWidth={1}
+              />
+              <Line
+                points={[0, 5 * PIXELS_PER_CM, 10 * PIXELS_PER_CM, 5 * PIXELS_PER_CM]}
+                stroke="#ddd"
+                strokeWidth={1}
+              />
+              {/* Label below box */}
+              <Text
+                x={0}
+                y={10 * PIXELS_PER_CM + 8}
+                text="= 10 cm"
+                fontSize={14}
+                fontFamily="Arial, sans-serif"
+                fill="#666"
+              />
+            </Group>
+            
             {items.map((item) => (
               <FurnitureShape
                 key={item.id}
