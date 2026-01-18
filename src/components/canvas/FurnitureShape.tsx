@@ -789,34 +789,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
             y={arcY}
           />
           
-          {/* Measurement labels when selected - positioned based on wall */}
-          {isSelected && (
-            <>
-              {(isOnTopWall || isOnBottomWall) ? (
-                // Horizontal walls: show width label centered above/below
-                <Text
-                  x={doorOrWindowLengthPx / 2}
-                  y={isOnTopWall ? -25 / zoom : wallThicknessPx + 10 / zoom}
-                  text={`${item.width}cm`}
-                  fontSize={13 / zoom}
-                  fontFamily="system-ui, -apple-system, sans-serif"
-                  fill="#0A0A0A"
-                  align="center"
-                  offsetX={20 / zoom}
-                />
-              ) : (
-                // Vertical walls: show width label to the side
-                <Text
-                  x={isOnLeftWall ? wallThicknessPx + 10 / zoom : -40 / zoom}
-                  y={doorOrWindowLengthPx / 2}
-                  text={`${item.width}cm`}
-                  fontSize={13 / zoom}
-                  fontFamily="system-ui, -apple-system, sans-serif"
-                  fill="#0A0A0A"
-                />
-              )}
-            </>
-          )}
+          {/* Measurement labels removed - now shown by MeasurementOverlay in blue */}
           
           {/* Centered Rotate Button - only show when selected */}
           {isSelected && renderRotateButton()}
@@ -896,34 +869,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
             fill="#81d4fa" 
           />
           
-          {/* Measurement labels when selected - positioned based on wall */}
-          {isSelected && (
-            <>
-              {(isOnTopWall || isOnBottomWall) ? (
-                // Horizontal walls: show width label centered above/below
-                <Text
-                  x={widthPx / 2}
-                  y={isOnTopWall ? -25 / zoom : heightPx + 10 / zoom}
-                  text={`${item.width}cm`}
-                  fontSize={13 / zoom}
-                  fontFamily="system-ui, -apple-system, sans-serif"
-                  fill="#0A0A0A"
-                  align="center"
-                  offsetX={20 / zoom}
-                />
-              ) : (
-                // Vertical walls: show width label to the side
-                <Text
-                  x={isOnLeftWall ? widthPx + 10 / zoom : -40 / zoom}
-                  y={heightPx / 2}
-                  text={`${item.width}cm`}
-                  fontSize={13 / zoom}
-                  fontFamily="system-ui, -apple-system, sans-serif"
-                  fill="#0A0A0A"
-                />
-              )}
-            </>
-          )}
+          {/* Measurement labels removed - now shown by MeasurementOverlay in blue */}
         </Group>
         {isSelected && isDraggable && (
           <Transformer
