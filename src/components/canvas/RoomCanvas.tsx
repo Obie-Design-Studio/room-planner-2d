@@ -216,57 +216,35 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
         const contentScreenWidth = contentWidth * scale;
         const contentScreenHeight = contentHeight * scale;
         
-        // At minimum zoom (10%), enforce stricter boundaries to keep room fully visible
-        // At 10% zoom, keep room completely within canvas boundaries
-        const MIN_VISIBILITY_RATIO = userZoom <= 0.15 ? 1.0 : 0.0; // Keep 100% visible at very low zoom
-        const minVisibilityWidth = contentScreenWidth * MIN_VISIBILITY_RATIO;
-        const minVisibilityHeight = contentScreenHeight * MIN_VISIBILITY_RATIO;
+        // At minimum zoom (10%), disable elastic margin to keep room fully visible
+        const isMinZoom = userZoom <= 0.15;
         
         let minPosX, maxPosX, minPosY, maxPosY;
         
+        // Horizontal bounds
         if (contentScreenWidth <= viewportWidth) {
-          minPosX = viewportWidth - (baseCenterOffsetX + maxX * scale);
-          maxPosX = -(baseCenterOffsetX + minX * scale);
-          
-          // At minimum zoom, even when content fits, prevent it from moving completely off-screen
-          if (MIN_VISIBILITY_RATIO > 0) {
-            minPosX = Math.max(minPosX, -contentScreenWidth + minVisibilityWidth);
-            maxPosX = Math.min(maxPosX, viewportWidth - minVisibilityWidth);
-          }
+          // Content fits: allow panning, but keep fully visible (edges within viewport)
+          minPosX = viewportWidth - (baseCenterOffsetX + maxX * scale); // Right edge at viewport right
+          maxPosX = -(baseCenterOffsetX + minX * scale); // Left edge at viewport left
         } else {
+          // Content larger than viewport: clamp to edges
           maxPosX = -(baseCenterOffsetX + minX * scale);
           minPosX = viewportWidth - (baseCenterOffsetX + maxX * scale);
-          
-          // At minimum zoom, restrict panning to keep room partially visible
-          if (MIN_VISIBILITY_RATIO > 0) {
-            minPosX = Math.max(minPosX, -contentScreenWidth + minVisibilityWidth);
-            maxPosX = Math.min(maxPosX, viewportWidth - minVisibilityWidth);
-          }
         }
         
+        // Vertical bounds
         if (contentScreenHeight <= viewportHeight) {
-          minPosY = viewportHeight - (baseCenterOffsetY + maxY * scale);
-          maxPosY = -(baseCenterOffsetY + minY * scale);
-          
-          // At minimum zoom, even when content fits, prevent it from moving completely off-screen
-          if (MIN_VISIBILITY_RATIO > 0) {
-            minPosY = Math.max(minPosY, -contentScreenHeight + minVisibilityHeight);
-            maxPosY = Math.min(maxPosY, viewportHeight - minVisibilityHeight);
-          }
+          // Content fits: allow panning, but keep fully visible (edges within viewport)
+          minPosY = viewportHeight - (baseCenterOffsetY + maxY * scale); // Bottom edge at viewport bottom
+          maxPosY = -(baseCenterOffsetY + minY * scale); // Top edge at viewport top
         } else {
+          // Content larger than viewport: clamp to edges
           maxPosY = -(baseCenterOffsetY + minY * scale);
           minPosY = viewportHeight - (baseCenterOffsetY + maxY * scale);
-          
-          // At minimum zoom, restrict panning to keep room partially visible
-          if (MIN_VISIBILITY_RATIO > 0) {
-            minPosY = Math.max(minPosY, -contentScreenHeight + minVisibilityHeight);
-            maxPosY = Math.min(maxPosY, viewportHeight - minVisibilityHeight);
-          }
         }
         
-        // Apply elastic boundaries
-        // At low zoom (≤15%), disable elastic margin to prevent room from moving off-screen
-        const elasticMargin = userZoom <= 0.15 ? 0 : ELASTIC_MARGIN;
+        // Apply elastic boundaries (disabled at minimum zoom to ensure room stays fully visible)
+        const elasticMargin = isMinZoom ? 0 : ELASTIC_MARGIN;
         const clampedX = applyElasticBoundary(newX, minPosX, maxPosX, elasticMargin);
         const clampedY = applyElasticBoundary(newY, minPosY, maxPosY, elasticMargin);
         
@@ -420,72 +398,35 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
         // Content spans from (minX * scale) to (maxX * scale) in its own coordinate space
         // With Layer offset, the content's screen position is: stagePos + offsetX + (content coords * scale)
         
-        // At minimum zoom (10%), enforce stricter boundaries to keep room fully visible
-        // At 10% zoom, keep room completely within canvas boundaries
-        const MIN_VISIBILITY_RATIO = userZoom <= 0.15 ? 1.0 : 0.0; // Keep 100% visible at very low zoom
-        const minVisibilityWidth = contentScreenWidth * MIN_VISIBILITY_RATIO;
-        const minVisibilityHeight = contentScreenHeight * MIN_VISIBILITY_RATIO;
-        
-        // Boundary logic:
-        // - If content is smaller than viewport, allow free movement within extra space
-        // - If content is larger than viewport, only allow panning to see all parts
-        // - At minimum zoom, enforce minimum visibility to prevent losing the room
+        // At minimum zoom (10%), disable elastic margin to keep room fully visible
+        const isMinZoom = userZoom <= 0.15;
         
         let minPosX, maxPosX, minPosY, maxPosY;
         
+        // Horizontal bounds
         if (contentScreenWidth <= viewportWidth) {
-          // Content fits horizontally - allow positioning anywhere that keeps it fully visible
-          // Right constraint: baseCenterOffsetX + maxX * scale + stagePos.x <= viewportWidth
-          minPosX = viewportWidth - (baseCenterOffsetX + maxX * scale);
-          // Left constraint: baseCenterOffsetX + minX * scale + stagePos.x >= 0
+          // Content fits: allow panning, but keep fully visible (edges within viewport)
+          minPosX = viewportWidth - (baseCenterOffsetX + maxX * scale); // Right edge at viewport right
+          maxPosX = -(baseCenterOffsetX + minX * scale); // Left edge at viewport left
+        } else {
+          // Content larger than viewport: clamp to edges
           maxPosX = -(baseCenterOffsetX + minX * scale);
-          
-          // At minimum zoom, even when content fits, prevent it from moving completely off-screen
-          if (MIN_VISIBILITY_RATIO > 0) {
-            minPosX = Math.max(minPosX, -contentScreenWidth + minVisibilityWidth);
-            maxPosX = Math.min(maxPosX, viewportWidth - minVisibilityWidth);
-          }
-        } else {
-          // Content larger than viewport - clamp to edges, but ensure minimum visibility at low zoom
-          maxPosX = -(baseCenterOffsetX + minX * scale); // Can pan left
-          minPosX = viewportWidth - (baseCenterOffsetX + maxX * scale); // Can pan right
-          
-          // At minimum zoom, restrict panning to keep room partially visible
-          if (MIN_VISIBILITY_RATIO > 0) {
-            // Ensure at least minVisibilityWidth is visible on right side
-            minPosX = Math.max(minPosX, -contentScreenWidth + minVisibilityWidth);
-            // Ensure at least minVisibilityWidth is visible on left side
-            maxPosX = Math.min(maxPosX, viewportWidth - minVisibilityWidth);
-          }
+          minPosX = viewportWidth - (baseCenterOffsetX + maxX * scale);
         }
         
+        // Vertical bounds
         if (contentScreenHeight <= viewportHeight) {
-          // Content fits vertically
-          minPosY = viewportHeight - (baseCenterOffsetY + maxY * scale);
-          maxPosY = -(baseCenterOffsetY + minY * scale);
-          
-          // At minimum zoom, even when content fits, prevent it from moving completely off-screen
-          if (MIN_VISIBILITY_RATIO > 0) {
-            minPosY = Math.max(minPosY, -contentScreenHeight + minVisibilityHeight);
-            maxPosY = Math.min(maxPosY, viewportHeight - minVisibilityHeight);
-          }
+          // Content fits: allow panning, but keep fully visible (edges within viewport)
+          minPosY = viewportHeight - (baseCenterOffsetY + maxY * scale); // Bottom edge at viewport bottom
+          maxPosY = -(baseCenterOffsetY + minY * scale); // Top edge at viewport top
         } else {
-          // Content larger than viewport
+          // Content larger than viewport: clamp to edges
           maxPosY = -(baseCenterOffsetY + minY * scale);
           minPosY = viewportHeight - (baseCenterOffsetY + maxY * scale);
-          
-          // At minimum zoom, restrict panning to keep room partially visible
-          if (MIN_VISIBILITY_RATIO > 0) {
-            // Ensure at least minVisibilityHeight is visible on bottom
-            minPosY = Math.max(minPosY, -contentScreenHeight + minVisibilityHeight);
-            // Ensure at least minVisibilityHeight is visible on top
-            maxPosY = Math.min(maxPosY, viewportHeight - minVisibilityHeight);
-          }
         }
         
-        // Apply elastic boundaries
-        // At low zoom (≤15%), disable elastic margin to prevent room from moving off-screen
-        const elasticMargin = userZoom <= 0.15 ? 0 : ELASTIC_MARGIN;
+        // Apply elastic boundaries (disabled at minimum zoom to ensure room stays fully visible)
+        const elasticMargin = isMinZoom ? 0 : ELASTIC_MARGIN;
         const clampedX = applyElasticBoundary(newX, minPosX, maxPosX, elasticMargin);
         const clampedY = applyElasticBoundary(newY, minPosY, maxPosY, elasticMargin);
         
