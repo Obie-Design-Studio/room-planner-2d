@@ -21,9 +21,9 @@ interface RoomCanvasProps {
   measurementUnit?: Unit;
   viewportWidth: number;
   viewportHeight: number;
-  viewMode: ViewMode;
-  hiddenMeasurements: Set<string>;
-  onToggleMeasurement: (measurementId: string) => void;
+  viewMode?: ViewMode;
+  hiddenMeasurements?: Set<string>;
+  onToggleMeasurement?: (measurementId: string) => void;
   measurementMode?: MeasurementMode;
   pinnedMeasurements?: Set<string>;
   hoveredItemId?: string | null;

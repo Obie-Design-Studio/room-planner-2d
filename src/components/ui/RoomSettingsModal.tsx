@@ -9,11 +9,11 @@ interface RoomSettingsModalProps {
   roomName: string;
   roomConfig: RoomConfig;
   ceilingHeight: number;
-  defaultWindowWidth: number;
-  defaultWindowHeight: number;
-  defaultWindowFloorDistance: number;
-  defaultDoorWidth: number;
-  defaultDoorHeight: number;
+  defaultWindowWidth?: number;
+  defaultWindowHeight?: number;
+  defaultWindowFloorDistance?: number;
+  defaultDoorWidth?: number;
+  defaultDoorHeight?: number;
   onClose: () => void;
   onUpdate: (name: string, config: RoomConfig, ceiling: number, windowWidth: number, windowHeight: number, windowFloorDistance: number, doorWidth: number, doorHeight: number) => void;
 }
