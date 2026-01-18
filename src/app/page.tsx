@@ -96,6 +96,41 @@ export default function Home() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // Auto-restore room state on page load
+  useEffect(() => {
+    const savedState = localStorage.getItem('roomPlanner_currentRoom');
+    if (savedState) {
+      try {
+        const parsed = JSON.parse(savedState);
+        console.log('[Auto-restore] Restoring saved room state');
+        setRoomName(parsed.roomName || 'Untitled Room');
+        setRoomConfig(parsed.roomConfig || { width: 400, height: 300 });
+        setCeilingHeight(parsed.ceilingHeight || 250);
+        setItems(parsed.items || []);
+        setCurrentRoomId(parsed.currentRoomId || null);
+        setRoomType(parsed.roomType || 'Living Room');
+      } catch (error) {
+        console.error('[Auto-restore] Error restoring room state:', error);
+      }
+    }
+  }, []); // Only run once on mount
+
+  // Auto-save room state whenever it changes
+  useEffect(() => {
+    const stateToSave = {
+      roomName,
+      roomConfig,
+      ceilingHeight,
+      items,
+      currentRoomId,
+      roomType,
+      lastSaved: new Date().toISOString(),
+    };
+    
+    localStorage.setItem('roomPlanner_currentRoom', JSON.stringify(stateToSave));
+    console.log('[Auto-save] Room state saved to localStorage');
+  }, [roomName, roomConfig, ceilingHeight, items, currentRoomId, roomType]);
+
   const handleUpdateRoomSettings = (
     name: string, 
     config: RoomConfig, 
