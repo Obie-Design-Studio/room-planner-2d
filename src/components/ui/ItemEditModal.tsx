@@ -35,7 +35,9 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
   // Detect which wall the door/window is on
   const getWallPosition = (item: FurnitureItem | null): 'top' | 'bottom' | 'left' | 'right' | null => {
     if (!item) return null;
-    const isWallObject = item.type?.toLowerCase() === 'door' || item.type?.toLowerCase() === 'window';
+    const isWallObject = item.type?.toLowerCase() === 'door' || 
+                         item.type?.toLowerCase() === 'window' || 
+                         item.type?.toLowerCase() === 'wall';
     if (!isWallObject) return null;
 
     // Check which wall based on y/x position
@@ -61,12 +63,19 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
       
       // Convert X/Y to distance from corner for wall objects
       const wall = getWallPosition(item);
+      console.log('[ItemEditModal] useEffect - Item:', item.id, 'Type:', item.type, 'Wall Position:', wall);
+      console.log('[ItemEditModal] useEffect - Item X:', item.x, 'Item Y:', item.y);
+
       if (wall === 'top' || wall === 'bottom') {
         // On horizontal walls: distance from left corner = X coordinate
         setLocalDistanceFromCorner(item.x);
+        console.log('[ItemEditModal] useEffect - Horizontal wall, Distance from Corner (X):', item.x);
       } else if (wall === 'left' || wall === 'right') {
         // On vertical walls: distance from top corner = Y coordinate
         setLocalDistanceFromCorner(item.y);
+        console.log('[ItemEditModal] useEffect - Vertical wall, Distance from Corner (Y):', item.y);
+      } else {
+        console.log('[ItemEditModal] useEffect - Not a wall object or wall not detected.');
       }
     }
   }, [item, roomWidth, roomHeight]); // Include roomWidth/roomHeight for wall detection
@@ -79,7 +88,9 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
     }
   };
 
-  const isWallObject = item.type?.toLowerCase() === 'door' || item.type?.toLowerCase() === 'window';
+  const isWallObject = item.type?.toLowerCase() === 'door' || 
+                       item.type?.toLowerCase() === 'window' || 
+                       item.type?.toLowerCase() === 'wall';
   const isDoor = item.type?.toLowerCase() === 'door';
   const isWindow = item.type?.toLowerCase() === 'window';
   const isWall = item.type?.toLowerCase() === 'wall';
