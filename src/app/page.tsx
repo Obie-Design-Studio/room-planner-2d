@@ -887,6 +887,8 @@ export default function Home() {
         onClose={handleCloseEditor}
         onUpdate={handleUpdateItem}
         onDelete={handleDeleteItemById}
+        roomWidth={roomConfig.width}
+        roomHeight={roomConfig.height}
       />
 
       <RoomSettingsModal

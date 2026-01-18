@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import type { FurnitureItem } from '@/types';
 import Input from '@/components/ui/Input';
 import ColorPicker from '@/components/ui/ColorPicker';
+import { WALL_THICKNESS_CM } from '@/lib/constants';
 
 interface ItemEditModalProps {
   isOpen: boolean;
@@ -10,6 +11,8 @@ interface ItemEditModalProps {
   onClose: () => void;
   onUpdate: (id: string, updates: Partial<FurnitureItem>) => void;
   onDelete: (id: string) => void;
+  roomWidth: number;
+  roomHeight: number;
 }
 
 const ItemEditModal: React.FC<ItemEditModalProps> = ({
@@ -18,6 +21,8 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
   onClose,
   onUpdate,
   onDelete,
+  roomWidth,
+  roomHeight,
 }) => {
   const [localType, setLocalType] = useState('');
   const [localWidth, setLocalWidth] = useState(0);
@@ -25,8 +30,24 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
   const [localRotation, setLocalRotation] = useState(0);
   const [localColor, setLocalColor] = useState('#e0e0e0');
   const [localFloorDistance, setLocalFloorDistance] = useState(90);
-  const [localX, setLocalX] = useState(0);
-  const [localY, setLocalY] = useState(0);
+  const [localDistanceFromCorner, setLocalDistanceFromCorner] = useState(0);
+
+  // Detect which wall the door/window is on
+  const getWallPosition = (item: FurnitureItem | null): 'top' | 'bottom' | 'left' | 'right' | null => {
+    if (!item) return null;
+    const isWallObject = item.type?.toLowerCase() === 'door' || item.type?.toLowerCase() === 'window';
+    if (!isWallObject) return null;
+
+    // Check which wall based on y/x position
+    if (Math.abs(item.y - (-WALL_THICKNESS_CM)) < 1) return 'top';
+    if (Math.abs(item.y - roomHeight) < 1) return 'bottom';
+    if (Math.abs(item.x - (-WALL_THICKNESS_CM)) < 1) return 'left';
+    if (Math.abs(item.x - roomWidth) < 1) return 'right';
+
+    return null;
+  };
+
+  const wallPosition = getWallPosition(item);
 
   // Sync local state when item changes
   useEffect(() => {
@@ -37,8 +58,16 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
       setLocalRotation(item.rotation || 0);
       setLocalColor(item.color || '#e0e0e0');
       setLocalFloorDistance(item.floorDistance || 90);
-      setLocalX(item.x);
-      setLocalY(item.y);
+      
+      // Convert X/Y to distance from corner for wall objects
+      const wall = getWallPosition(item);
+      if (wall === 'top' || wall === 'bottom') {
+        // On horizontal walls: distance from left corner = X coordinate
+        setLocalDistanceFromCorner(item.x);
+      } else if (wall === 'left' || wall === 'right') {
+        // On vertical walls: distance from top corner = Y coordinate
+        setLocalDistanceFromCorner(item.y);
+      }
     }
   }, [item]);
 
@@ -83,9 +112,20 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
       width: localWidth,
       rotation: localRotation,
       color: localColor,
-      x: localX,
-      y: localY,
     };
+
+    // Convert distance from corner back to X/Y coordinates for wall objects
+    if (isWallObject && wallPosition) {
+      if (wallPosition === 'top' || wallPosition === 'bottom') {
+        // On horizontal walls: X = distance from corner, Y stays the same
+        updates.x = localDistanceFromCorner;
+        updates.y = item?.y || 0;
+      } else if (wallPosition === 'left' || wallPosition === 'right') {
+        // On vertical walls: Y = distance from corner, X stays the same
+        updates.x = item?.x || 0;
+        updates.y = localDistanceFromCorner;
+      }
+    }
 
     // For windows, include height and floor distance
     if (isWindow) {
@@ -255,22 +295,22 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
               />
             )}
 
-            {/* Position Controls for Doors and Windows */}
-            {isWallObject && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <Input
-                  label="Position X (cm)"
-                  type="number"
-                  value={localX}
-                  onChange={(e) => setLocalX(e.target.value === '' ? 0 : Number(e.target.value))}
-                />
-                <Input
-                  label="Position Y (cm)"
-                  type="number"
-                  value={localY}
-                  onChange={(e) => setLocalY(e.target.value === '' ? 0 : Number(e.target.value))}
-                />
-              </div>
+            {/* Distance from Corner for Doors and Windows */}
+            {isWallObject && wallPosition && (
+              <Input
+                label={
+                  wallPosition === 'top' 
+                    ? "Distance from Left Corner (cm)" 
+                    : wallPosition === 'bottom'
+                    ? "Distance from Left Corner (cm)"
+                    : wallPosition === 'left'
+                    ? "Distance from Top Corner (cm)"
+                    : "Distance from Top Corner (cm)"
+                }
+                type="number"
+                value={localDistanceFromCorner}
+                onChange={(e) => setLocalDistanceFromCorner(e.target.value === '' ? 0 : Number(e.target.value))}
+              />
             )}
 
             {/* Rotation Control */}
