@@ -356,8 +356,19 @@ export default function Home() {
 
   // Export handler
   const handleExport = async (format: 'pdf-blueprint' | 'pdf-measurements' | 'png' | 'json') => {
-    if (!canvasContainerRef.current || !stageRef.current) {
-      alert('Canvas not ready for export');
+    console.log('[Export] Starting export:', format);
+    console.log('[Export] stageRef:', stageRef);
+    console.log('[Export] stageRef.current:', stageRef.current);
+    console.log('[Export] canvasContainerRef.current:', canvasContainerRef.current);
+    
+    if (!canvasContainerRef.current) {
+      alert('Canvas container not ready');
+      return;
+    }
+    
+    if ((format === 'pdf-blueprint' || format === 'pdf-measurements') && !stageRef.current) {
+      console.error('[Export] Stage ref not available for PDF export');
+      alert('Canvas not ready for PDF export. Please try again.');
       return;
     }
 

@@ -141,6 +141,16 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
     rotation: isWallObject ? 0 : rotation, // Apply rotation for furniture
     offsetX: widthPx / 2,
     offsetY: heightPx / 2,
+    onMouseDown: (e: any) => {
+      // Select immediately on mousedown so measurements show during drag
+      e.cancelBubble = true;
+      onSelect(item.id);
+    },
+    onTouchStart: (e: any) => {
+      // Select immediately on touch so measurements show during drag (mobile)
+      e.cancelBubble = true;
+      onSelect(item.id);
+    },
     onClick: (e: any) => {
       e.cancelBubble = true;
       onSelect(item.id);

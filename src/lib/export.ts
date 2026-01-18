@@ -2,6 +2,63 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import type { RoomConfig, FurnitureItem } from '@/types';
 
+// Helper function to trigger download with fallback
+function downloadPDF(pdf: jsPDF, filename: string): boolean {
+  try {
+    console.log('[PDF Download] Attempting download:', filename);
+    
+    // Method 1: Try pdf.save() first (standard jsPDF method)
+    try {
+      pdf.save(filename);
+      console.log('[PDF Download] pdf.save() completed');
+      return true;
+    } catch (saveError) {
+      console.warn('[PDF Download] pdf.save() failed:', saveError);
+    }
+    
+    // Method 2: Create blob and trigger download via anchor
+    try {
+      const blob = pdf.output('blob');
+      const url = URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.style.display = 'none';
+      
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup after a short delay
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }, 250);
+      
+      console.log('[PDF Download] Blob download triggered');
+      return true;
+    } catch (blobError) {
+      console.warn('[PDF Download] Blob download failed:', blobError);
+    }
+    
+    // Method 3: Open in new window for manual save
+    try {
+      const blob = pdf.output('blob');
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      console.log('[PDF Download] Opened in new window for manual save');
+      return true;
+    } catch (windowError) {
+      console.error('[PDF Download] Window.open failed:', windowError);
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('[PDF Download] All download methods failed:', error);
+    return false;
+  }
+}
+
 // Export room as JSON
 export function exportAsJSON(
   roomName: string,
@@ -84,18 +141,30 @@ export async function exportBlueprintAsPDF(
   ceilingHeight: number
 ): Promise<boolean> {
   try {
-    console.log('[PDF Export Blueprint] Starting blueprint PDF export...');
+    console.log('[PDF Export Blueprint] Starting...');
+    console.log('[PDF Export Blueprint] stageRef:', stageRef);
+    console.log('[PDF Export Blueprint] stageRef?.current:', stageRef?.current);
     
     if (!stageRef?.current) {
       console.error('[PDF Export Blueprint] Stage ref not available');
+      alert('Canvas not ready. Please try again.');
       return false;
     }
 
-    // Get the Konva stage and export as data URL
     const stage = stageRef.current;
-    const dataURL = stage.toDataURL({ pixelRatio: 2 }); // High quality export
+    console.log('[PDF Export Blueprint] Stage object:', stage);
+    console.log('[PDF Export Blueprint] Stage dimensions:', stage.width(), 'x', stage.height());
     
-    console.log('[PDF Export Blueprint] Canvas captured from Konva stage');
+    // Export canvas as data URL
+    let dataURL: string;
+    try {
+      dataURL = stage.toDataURL({ pixelRatio: 2 });
+      console.log('[PDF Export Blueprint] Canvas exported, dataURL length:', dataURL.length);
+    } catch (canvasError) {
+      console.error('[PDF Export Blueprint] Failed to export canvas:', canvasError);
+      alert('Failed to capture canvas. Please try again.');
+      return false;
+    }
 
     const pdf = new jsPDF({
       orientation: roomConfig.width > roomConfig.height ? 'landscape' : 'portrait',
@@ -128,7 +197,7 @@ export async function exportBlueprintAsPDF(
     const imgAspectRatio = stageWidth / stageHeight;
     
     const contentWidth = pageWidth - 2 * margin;
-    const availableHeight = pageHeight - margin - 35; // Space for title and footer
+    const availableHeight = pageHeight - margin - 35;
     
     let imgWidth = contentWidth;
     let imgHeight = imgWidth / imgAspectRatio;
@@ -138,7 +207,6 @@ export async function exportBlueprintAsPDF(
       imgWidth = imgHeight * imgAspectRatio;
     }
 
-    // Center image on page
     const imgX = (pageWidth - imgWidth) / 2;
     const imgY = margin + 12;
 
@@ -154,15 +222,13 @@ export async function exportBlueprintAsPDF(
       { align: 'right' }
     );
 
-    const filename = `${roomName.replace(/\s+/g, '_')}_blueprint_${Date.now()}.pdf`;
-    console.log('[PDF Export Blueprint] Saving PDF:', filename);
+    const filename = `${roomName.replace(/\s+/g, '_')}_blueprint.pdf`;
+    console.log('[PDF Export Blueprint] PDF created, triggering download:', filename);
     
-    pdf.save(filename);
-    
-    console.log('[PDF Export Blueprint] PDF save triggered');
-    return true;
+    return downloadPDF(pdf, filename);
   } catch (error) {
-    console.error('[PDF Export Blueprint] Error exporting PDF:', error);
+    console.error('[PDF Export Blueprint] Error:', error);
+    alert('Error creating PDF. Check console for details.');
     return false;
   }
 }
@@ -176,26 +242,36 @@ export async function exportMeasurementsAsPDF(
   items: FurnitureItem[]
 ): Promise<boolean> {
   try {
-    console.log('[PDF Export] Starting measurements PDF export...');
+    console.log('[PDF Export Measurements] Starting...');
+    console.log('[PDF Export Measurements] stageRef:', stageRef);
+    console.log('[PDF Export Measurements] stageRef?.current:', stageRef?.current);
     
     if (!stageRef?.current) {
-      console.error('[PDF Export] Stage ref not available');
+      console.error('[PDF Export Measurements] Stage ref not available');
+      alert('Canvas not ready. Please try again.');
       return false;
     }
 
-    // Get the Konva stage and export as data URL
     const stage = stageRef.current;
-    const dataURL = stage.toDataURL({ pixelRatio: 2 }); // High quality export
+    console.log('[PDF Export Measurements] Stage object:', stage);
+    console.log('[PDF Export Measurements] Stage dimensions:', stage.width(), 'x', stage.height());
     
-    console.log('[PDF Export] Canvas captured from Konva stage');
+    // Export canvas as data URL
+    let dataURL: string;
+    try {
+      dataURL = stage.toDataURL({ pixelRatio: 2 });
+      console.log('[PDF Export Measurements] Canvas exported, dataURL length:', dataURL.length);
+    } catch (canvasError) {
+      console.error('[PDF Export Measurements] Failed to export canvas:', canvasError);
+      alert('Failed to capture canvas. Please try again.');
+      return false;
+    }
     
     const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
       format: 'a4',
     });
-    
-    console.log('[PDF Export] jsPDF instance created');
 
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
@@ -217,7 +293,7 @@ export async function exportMeasurementsAsPDF(
       { align: 'center' }
     );
 
-    // Add canvas image
+    // Calculate image dimensions
     const stageWidth = stage.width();
     const stageHeight = stage.height();
     const imgAspectRatio = stageWidth / stageHeight;
@@ -293,11 +369,11 @@ export async function exportMeasurementsAsPDF(
           pdf.text(`   Rotation: ${item.rotation}°`, margin + 5, yPos);
           yPos += 5;
         }
-        yPos += 3; // Extra spacing between items
+        yPos += 3;
       });
     }
 
-    // Footer with timestamp on last page
+    // Footer with timestamp
     pdf.setFontSize(8);
     pdf.setTextColor(120);
     pdf.text(
@@ -307,15 +383,13 @@ export async function exportMeasurementsAsPDF(
       { align: 'right' }
     );
 
-    const filename = `${roomName.replace(/\s+/g, '_')}_measurements_${Date.now()}.pdf`;
-    console.log('[PDF Export] Saving PDF:', filename);
+    const filename = `${roomName.replace(/\s+/g, '_')}_measurements.pdf`;
+    console.log('[PDF Export Measurements] PDF created, triggering download:', filename);
     
-    pdf.save(filename);
-    
-    console.log('[PDF Export] PDF save triggered');
-    return true;
+    return downloadPDF(pdf, filename);
   } catch (error) {
-    console.error('[PDF Export] Error exporting measurements PDF:', error);
+    console.error('[PDF Export Measurements] Error:', error);
+    alert('Error creating PDF. Check console for details.');
     return false;
   }
 }
