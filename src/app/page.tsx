@@ -145,6 +145,18 @@ export default function Home() {
     setRoomName(name);
     setRoomConfig(config);
     setCeilingHeight(ceiling);
+    
+    // Update roomType state to match config.roomType (convert from category to user-friendly label)
+    if (config.roomType) {
+      const roomTypeMap: Record<string, string> = {
+        'living': 'Living Room',
+        'bedroom': 'Bedroom',
+        'kitchen': 'Kitchen',
+        'office': 'Office',
+        'bathroom': 'Bathroom',
+      };
+      setRoomType(roomTypeMap[config.roomType] || 'Living Room');
+    }
     if (windowWidth !== undefined) setDefaultWindowWidth(windowWidth);
     if (windowHeight !== undefined) setDefaultWindowHeight(windowHeight);
     if (windowFloorDistance !== undefined) setDefaultWindowFloorDistance(windowFloorDistance);
