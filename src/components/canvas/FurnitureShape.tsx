@@ -779,6 +779,33 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
             y={arcY}
           />
           
+          {/* Measurement labels when selected */}
+          {isSelected && (
+            <>
+              {/* Width label (along wall) */}
+              <Text
+                x={doorOrWindowLengthPx / 2}
+                y={-20 / zoom}
+                text={`${item.width}cm`}
+                fontSize={14 / zoom}
+                fontFamily="system-ui, -apple-system, sans-serif"
+                fontStyle="600"
+                fill="#0A0A0A"
+                align="center"
+                offsetX={30 / zoom}
+              />
+              {/* Height label */}
+              <Text
+                x={doorOrWindowLengthPx + 15 / zoom}
+                y={wallThicknessPx / 2}
+                text={`H: ${item.height}cm`}
+                fontSize={12 / zoom}
+                fontFamily="system-ui, -apple-system, sans-serif"
+                fill="#666666"
+              />
+            </>
+          )}
+          
           {/* Centered Rotate Button - only show when selected */}
           {isSelected && renderRotateButton()}
         </Group>
@@ -856,6 +883,42 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
             height={2} 
             fill="#81d4fa" 
           />
+          
+          {/* Measurement labels when selected */}
+          {isSelected && (
+            <>
+              {/* Width label (along wall) */}
+              <Text
+                x={widthPx / 2}
+                y={-20 / zoom}
+                text={`${item.width}cm`}
+                fontSize={14 / zoom}
+                fontFamily="system-ui, -apple-system, sans-serif"
+                fontStyle="600"
+                fill="#0A0A0A"
+                align="center"
+                offsetX={30 / zoom}
+              />
+              {/* Height label */}
+              <Text
+                x={widthPx + 15 / zoom}
+                y={heightPx / 2}
+                text={`H: ${item.height}cm`}
+                fontSize={12 / zoom}
+                fontFamily="system-ui, -apple-system, sans-serif"
+                fill="#666666"
+              />
+              {/* Floor distance label */}
+              <Text
+                x={widthPx + 15 / zoom}
+                y={heightPx / 2 + 20 / zoom}
+                text={`Floor: ${item.floorDistance || 90}cm`}
+                fontSize={12 / zoom}
+                fontFamily="system-ui, -apple-system, sans-serif"
+                fill="#666666"
+              />
+            </>
+          )}
         </Group>
         {isSelected && isDraggable && (
           <Transformer
