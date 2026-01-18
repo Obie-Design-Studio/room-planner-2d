@@ -1,0 +1,361 @@
+---
+description: Token efficiency and cost optimization rules
+globs:
+alwaysApply: true
+---
+
+# TOKEN OPTIMIZATION RULES
+
+## Principle: Minimize Token Usage Without Sacrificing Quality
+
+Every tool call and file operation costs tokens. Be strategic.
+
+---
+
+## 1. UI Components: shadcn FIRST (Always)
+
+**Before creating ANY UI component, CHECK shadcn MCP first.**
+
+### Mandatory Flow:
+```
+User asks for UI element
+  ↓
+1. Check shadcn MCP for matching component
+2. If exists → Use shadcn component
+3. If not → Create custom (rare)
+```
+
+### shadcn-First Components:
+
+| User Asks For | shadcn Component | Don't Create Custom |
+|---------------|------------------|---------------------|
+| "Add a button" | `shadcn Button` | ❌ Never use raw `<button>` |
+| "Add a modal" / "dialog" | `shadcn Dialog` or `Sheet` | ❌ Never create custom modal |
+| "Add an input" | `shadcn Input` | ❌ Never use raw `<input>` |
+| "Add a dropdown" / "select" | `shadcn Select` | ❌ Never create custom select |
+| "Add a form" | `shadcn Form` | ❌ Never create from scratch |
+| "Add notifications" | `shadcn Toast` | ❌ Never create custom toast |
+| "Add tooltips" | `shadcn Tooltip` | ❌ Never use title attribute |
+| "Add tabs" | `shadcn Tabs` | ❌ Never create custom tabs |
+
+**Exception:** Canvas-specific components (furniture shapes, measurement overlays) where shadcn doesn't apply.
+
+---
+
+## 2. Testing: Only When Necessary
+
+**STOP testing trivial changes.**
+
+### TEST These:
+- ✅ New features (buttons that do something, new interactions)
+- ✅ Bug fixes (verify the bug is gone)
+- ✅ Interactive changes (click handlers, drag-drop, form submissions)
+- ✅ Pre-deployment verification
+
+### DO NOT TEST These:
+- ❌ Text changes ("Update button label to 'Save'")
+- ❌ Color/styling tweaks ("Change button to blue")
+- ❌ Spacing adjustments ("Add 10px padding")
+- ❌ CSS-only changes (no JavaScript logic)
+- ❌ Documentation updates
+- ❌ Comment additions
+
+### Scope Testing to Changed Functionality:
+**BAD:** Change zoom button color → Test entire app
+**GOOD:** Change zoom button color → Visual inspection only (screenshot)
+
+**BAD:** Fix furniture drag bug → Test zoom, pan, delete, everything
+**GOOD:** Fix furniture drag bug → Test drag functionality only
+
+---
+
+## 3. File Operations: Use Diffs, Not Full Files
+
+### Editing Files:
+- ✅ Use `search_replace` for targeted changes (most efficient)
+- ⚠️ Use `write` only for new files or complete rewrites
+- ❌ Never regenerate entire file for small changes
+
+### Reading Files:
+- ✅ Read only files you need to modify
+- ❌ Don't read entire codebase to answer simple questions
+- ✅ Use grep/codebase_search for finding things first
+
+---
+
+## 4. Documentation Lookup: Context7 First
+
+**Before answering "How does X work?" → Check Context7 MCP.**
+
+### Mandatory Flow:
+```
+Question about library/API
+  ↓
+1. Query Context7 for official docs
+2. If found → Use official docs
+3. If not found → Use training knowledge + caveat
+```
+
+**Examples:**
+- "How does Konva handle canvas interactions?" → Query Context7 for Konva docs
+- "What's the Next.js Image API?" → Query Context7 for Next.js docs
+- "How to use React hooks?" → Query Context7 for React docs
+
+---
+
+## 5. Debugging: Console First, Test After
+
+**When debugging, follow this sequence:**
+
+### Step 1: Read Console Logs (Cheapest)
+```
+Use Playwright to check console messages
+  ↓
+Identify error/warning
+  ↓
+Analyze issue from logs
+```
+
+### Step 2: Fix Code
+```
+Make targeted fix based on console evidence
+```
+
+### Step 3: Verify Fix (Targeted Testing Only)
+```
+Test ONLY the fixed functionality
+Don't test unrelated features
+```
+
+**Example:**
+- Bug: "Zoom doesn't work"
+- ❌ BAD: Test entire app, take 10 screenshots, test all features
+- ✅ GOOD: Check console for errors → Fix issue → Test zoom only
+
+---
+
+## 6. Batch Operations When Possible
+
+**Parallel tool calls save time and tokens.**
+
+### Good Batching:
+- ✅ Read 3 related files → 3 parallel read_file calls
+- ✅ Update 2 files → 2 parallel search_replace calls
+- ✅ Check console + network + screenshot → 3 parallel Playwright calls
+
+### Bad Batching:
+- ❌ Read file → wait → Read another file → wait (sequential when parallel works)
+
+---
+
+## 7. Expensive Operation Warnings
+
+**Before performing high-cost operations, warn user and ask permission.**
+
+### Expensive Operations:
+- Reading 5+ files at once
+- Running comprehensive test suite
+- Deploying to production
+- Major refactors affecting 10+ files
+- Generating new components from scratch
+
+### Warning Format:
+```
+⚠️ **Token Cost Warning**
+
+This operation will:
+- Read 8 files (moderate cost)
+- Run full test suite (high cost)
+- Estimated: X tool calls
+
+Alternatives:
+- [Cheaper option if available]
+
+Proceed? (yes/no)
+```
+
+---
+
+## 8. Task Complexity Assessment
+
+**At the start of each request, assess complexity.**
+
+### Simple Tasks (Low Token Usage):
+- Text/styling changes
+- Single file edits
+- Adding comments/documentation
+- Using existing patterns
+
+**Action:** Proceed quickly, skip testing if trivial.
+
+### Complex Tasks (High Token Usage):
+- New features with multiple files
+- Architectural changes
+- Debugging unknown issues
+- Major refactors
+
+**Action:** Break into steps, warn about token usage, suggest phased approach.
+
+---
+
+## 9. Project Pattern Following
+
+**Check existing patterns before creating new ones.**
+
+### Before Creating:
+1. Grep for similar components
+2. Read existing example
+3. Follow the same pattern
+4. Don't reinvent if pattern exists
+
+**Example:**
+- Adding new modal? → Check existing modals (`CustomFurnitureModal.tsx`)
+- Adding new UI component? → Check existing components structure
+- Adding new utility? → Check `/lib/` for patterns
+
+---
+
+## 10. Proactive Efficiency Suggestions
+
+**Suggest more efficient approaches when appropriate.**
+
+### Examples:
+- User: "Test everything before deployment"
+- You: "I'll test core workflows (furniture, zoom, measurements). Full manual QA is more efficient for edge cases. Proceed?"
+
+- User: "Add 10 new furniture types"
+- You: "This will require 10 file reads + modifications. More efficient: I'll create a template, you can duplicate for remaining 7. Proceed?"
+
+---
+
+## Summary Checklist
+
+Before any response, ask yourself:
+
+- [ ] Can I use shadcn instead of creating custom UI?
+- [ ] Is testing actually necessary for this change?
+- [ ] Can I use search_replace instead of rewriting the file?
+- [ ] Should I check Context7 for documentation first?
+- [ ] Can I batch these tool calls?
+- [ ] Is this expensive enough to warrant a warning?
+- [ ] Am I testing only changed functionality?
+- [ ] Have I checked for existing patterns first?
+
+**If any answer is "yes" → Optimize before proceeding.**
+
+---
+
+## 11. Model Complexity Recommendations
+
+**I cannot change models, but I CAN recommend when YOU should.**
+
+### When to Suggest More Powerful Model
+
+Recommend upgrading to a more powerful model (Claude Opus, o1, etc.) when:
+- ❌ **Stuck after 3+ attempts** - Same fix fails repeatedly
+- ❌ **Complex architectural decisions** - Requires deep reasoning about tradeoffs
+- ❌ **Debugging unknown issues** - Root cause isn't clear after console/code inspection
+- ❌ **Multi-step reasoning required** - Task has 5+ interdependent steps
+- ❌ **Going in circles** - Solutions contradict each other
+
+**Recommendation format:**
+```
+⚠️ **Model Complexity Suggestion**
+
+This task is complex:
+- [Specific reason why it's complex]
+- I've attempted 3 fixes without success
+- This requires deeper reasoning about [architectural/design/debugging issue]
+
+Recommendation: Consider switching to a more powerful model (Claude Opus, o1) for this task.
+
+Want me to continue with current approach, or would you like to switch models first?
+```
+
+### When to Suggest Cheaper Model
+
+Recommend downgrading to a cheaper model when:
+- ✅ **Simple text changes** - Updating labels, copy, documentation
+- ✅ **Straightforward styling** - CSS tweaks, spacing, colors
+- ✅ **Following established patterns** - Adding similar component to existing ones
+- ✅ **Code formatting** - Organizing imports, adding comments
+- ✅ **Minor bug fixes** - Obvious typos, simple logic errors
+
+**Recommendation format:**
+```
+💡 **Cost Optimization Tip**
+
+This is a straightforward task:
+- [Specific reason why it's simple]
+- Doesn't require complex reasoning
+- Follows existing patterns
+
+You could use a cheaper/faster model for tasks like this to save costs.
+
+Proceed with this task? (I can handle it regardless of model)
+```
+
+### When to Suggest Returning to Standard Model
+
+After completing a complex task, recommend switching back:
+
+**Recommendation format:**
+```
+✅ **Complex Task Complete**
+
+The [architectural/debugging/design] issue is resolved.
+
+Recommendation: If you switched to a more powerful model for this task, you can now return to your standard model (Claude Sonnet, GPT-4) for regular development.
+
+Ready for next task!
+```
+
+### Self-Awareness Triggers
+
+Monitor these patterns and recommend model changes:
+
+| Pattern | Trigger | Recommendation |
+|---------|---------|----------------|
+| Multiple failed attempts | 3+ fixes, same issue | Suggest more powerful model |
+| Going in circles | Solutions contradict | Suggest more powerful model |
+| Trivial task | Text/CSS-only change | Suggest cheaper model could handle this |
+| Complex task complete | Just solved hard problem | Suggest returning to standard model |
+| Uncertainty about approach | "Not sure if this will work" | Suggest more powerful model for confidence |
+
+### Example Scenarios
+
+**Scenario 1: Stuck on Bug**
+```
+User: "Fix the drag-and-drop bug"
+AI: *Tries fix 1* → Doesn't work
+AI: *Tries fix 2* → Different issue
+AI: *Tries fix 3* → Still broken
+
+AI: "⚠️ Model Complexity Suggestion: I've attempted 3 fixes without success. This requires deeper debugging. Consider switching to a more powerful model (Claude Opus, o1) for this task."
+```
+
+**Scenario 2: Simple Change**
+```
+User: "Change all button labels to Title Case"
+AI: "💡 Cost Optimization Tip: This is straightforward text replacement. You could use a cheaper/faster model for simple tasks like this. Proceed?"
+```
+
+**Scenario 3: Complex Task Done**
+```
+User: "Thanks, that fixed the architecture issue!"
+AI: "✅ Complex Task Complete: The state management refactor is done. If you switched to a more powerful model for this, you can now return to your standard model for regular development."
+```
+
+### Frequency Limits
+
+To avoid annoying recommendations:
+- **Only suggest once per session** for the same pattern
+- **Skip suggestions** if user explicitly chose current model recently
+- **Don't suggest** if task complexity is medium (unclear benefit)
+
+### Never Suggest When:
+
+- ❌ User explicitly said "I'm using [model] for this"
+- ❌ Task is medium complexity (not clearly simple or complex)
+- ❌ Already suggested in last 10 messages
+- ❌ User said "don't suggest model changes"

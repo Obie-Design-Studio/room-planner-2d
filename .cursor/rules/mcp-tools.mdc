@@ -45,21 +45,58 @@ NEVER remove debug logs immediately. Keep them until:
 
 **Why:** Debug logs cost nothing in development and save massive time when debugging issues.
 
-# MANDATORY TESTING PROTOCOL
+# SMART TESTING PROTOCOL
 
-**After implementing ANY change, you MUST test it yourself before reporting success.**
+**Test strategically, not reflexively.**
 
-## Testing Workflow (REQUIRED)
+## When to Test (Required)
 
-For EVERY code change:
+Test these changes:
+- ✅ **New features** - Buttons, forms, interactive elements
+- ✅ **Bug fixes** - Verify the bug is actually fixed
+- ✅ **Logic changes** - Event handlers, state management, calculations
+- ✅ **Pre-deployment** - Critical workflows before going live
+- ✅ **Complex interactions** - Drag-drop, canvas operations, multi-step flows
+
+## When NOT to Test (Skip)
+
+Don't waste tokens testing:
+- ❌ **Pure styling** - Color changes, spacing, fonts (visual inspection only)
+- ❌ **Text changes** - Button labels, error messages, copy updates
+- ❌ **CSS-only changes** - No JavaScript logic modified
+- ❌ **Documentation** - README, comments, code docs
+- ❌ **Debug log additions** - console.log statements
+
+## Testing Scope: Changed Functionality Only
+
+**CRITICAL:** Only test what you changed, not the entire app.
+
+**Examples:**
+
+| Change | Test This | Don't Test This |
+|--------|-----------|-----------------|
+| Fix zoom bug | Zoom in/out, keyboard shortcut | Furniture library, measurements, pan |
+| Update button color | Visual screenshot | Button click functionality (unchanged) |
+| Add new furniture type | Add that furniture type | All other furniture types |
+| Fix drag issue | Drag functionality | Zoom, delete, rotate (unrelated) |
+
+---
+
+## Testing Workflow (When Testing IS Required)
+
+For changes that require testing:
 1. ✅ Wait for Fast Refresh/rebuild to complete
-2. ✅ Check console: `browser_console_messages` (look for errors)
-3. ✅ Take screenshot: `browser_take_screenshot` (verify visual result)
-4. ✅ Test the actual interaction using `browser_click`, `browser_type`, etc.
-5. ✅ Report what you tested and what the results were
-6. ✅ ONLY THEN ask user to confirm
+2. ✅ Use Playwright to check console messages (errors only)
+3. ✅ Test the specific changed functionality
+4. ✅ Take screenshot if visual change
+5. ✅ Report what you tested
+6. ✅ Ask user to confirm
+
+**Skip steps that don't apply to the change.**
 
 ## Never Ask User To Test
+
+**But be honest about testing limitations.**
 
 **FORBIDDEN:**
 - ❌ "Try clicking the button and let me know if it works"
@@ -67,21 +104,34 @@ For EVERY code change:
 - ❌ "Refresh and see if you see any errors"
 - ❌ "Check the console for me"
 
-**REQUIRED:**
-- ✅ "I clicked the button - it works correctly. Console shows no errors. Screenshot attached."
-- ✅ "I tested the form - submission works, data appears in the list. See screenshot."
-- ✅ "I clicked the measurement label - the edit input appears correctly. Ready for your confirmation."
+**REQUIRED (when testing is appropriate):**
+- ✅ "I tested the zoom functionality - works correctly. Console shows no errors."
+- ✅ "I tested furniture drag - items move smoothly. Screenshot attached."
+- ✅ "I verified the bug fix - measurement editing now works."
 
-## Testing Scenarios
+**REQUIRED (when testing is NOT appropriate):**
+- ✅ "Changed button text to 'Save Room'. This is a text-only change, no testing needed."
+- ✅ "Updated button color to blue. Visual change only, no logic modified."
+- ✅ "Added spacing between buttons. CSS-only change."
 
-| Change Type | Required Test Actions |
-|-------------|----------------------|
-| UI change | Screenshot before/after, verify visually |
-| Button/link | Click it, check console, verify result |
-| Form | Fill fields, submit, check console & result |
-| Interactive feature | Perform the interaction, verify behavior |
-| Bug fix | Reproduce original bug, verify it's fixed |
-| API call | Check network tab, verify request/response |
+## Testing Decision Matrix
+
+Use this to decide if testing is needed:
+
+| Change Type | Test? | What to Check |
+|-------------|-------|---------------|
+| New button with onClick handler | ✅ Yes | Click it, verify handler fires, check console |
+| Change button color | ❌ No | Visual inspection only (screenshot if major UI change) |
+| Fix drag-and-drop bug | ✅ Yes | Test drag functionality, verify bug gone |
+| Update error message text | ❌ No | No testing needed |
+| Add new furniture type | ✅ Yes | Add that specific furniture, verify it renders |
+| Adjust spacing between elements | ❌ No | Screenshot if significant visual change |
+| Refactor state management logic | ✅ Yes | Test affected features thoroughly |
+| Add code comments | ❌ No | No testing needed |
+| Fix zoom calculation | ✅ Yes | Test zoom in/out/keyboard shortcuts |
+| Change font size | ❌ No | Visual inspection only |
+
+**When in doubt:** If no JavaScript logic changed, skip testing.
 
 ## When Browser Tools Can't Test
 
@@ -97,54 +147,44 @@ Otherwise: TEST IT YOURSELF.
 
 **When testing browser interactions, use this EXACT sequence:**
 
-### Step 1: cursor-ide-browser (Primary)
-- Try `browser_click`, `browser_type`, `browser_press_key`
+### Step 1: Playwright (Primary - ALWAYS USE FIRST)
+- **Playwright is industry-standard browser automation** (used by Microsoft, Meta, Netflix)
+- Handles canvas interactions, drag-and-drop, precise coordinates reliably
+- Can execute JavaScript directly in page context
+- Provides snapshots, screenshots, console logs, network requests
+- Better error messages and automatic timing/race condition handling
 - **If it works:** Continue testing
 - **If it fails:** Proceed to Step 2
 
-### Step 2: user-chrome-devtools (Canvas/Advanced)
-- Check for browser instance conflicts
-- **If conflict exists:** Try to resolve (check for running Chrome processes)
-- Use `evaluate_script` to inject JavaScript for canvas interactions
-- Use `click` with uid from snapshots
-- **If it works:** Continue testing
-- **If it fails:** Proceed to Step 3
+**Playwright Capabilities:**
+- ✅ Canvas coordinate clicks (highly reliable)
+- ✅ Drag-and-drop operations
+- ✅ Keyboard shortcuts and complex interactions
+- ✅ Console log inspection
+- ✅ Network request monitoring
+- ✅ Screenshots and visual verification
+- ✅ JavaScript evaluation in page context
 
-### Step 3: user-comet (AI-Powered Fallback)
-- Try `comet_connect` first
-- **If connection fails:** Diagnose why (error message, process conflicts)
-- **If you can fix it:** Apply fix and retry
-- **If you cannot fix it:** Document the limitation and provide manual test steps
-
-### Step 4: Manual Testing (Last Resort)
-- **ONLY use this if all 3 MCPs failed**
+### Step 2: Manual Testing (Last Resort)
+- **ONLY use this if Playwright failed**
 - Provide specific step-by-step instructions
 - Request specific feedback (console logs, screenshots, behavior)
 
 **CRITICAL:** Never skip steps. Always try the next tool in the chain before giving up.
 
-### Known Limitations by Tool
+### Why Playwright is Superior for Room Planner App
 
-**cursor-ide-browser:**
-- ❌ Canvas coordinate clicks often fail with "Element not found"
-- ❌ Drag operations on canvas may not work reliably
-- ✅ Works well for HTML buttons, forms, links
-
-**user-chrome-devtools:**
-- ❌ Browser instance conflicts with cursor-ide-browser
-- ✅ Can execute JavaScript via `evaluate_script` for canvas interactions
-- ✅ Can click using element uid
-
-**user-comet:**
-- ✅ AI-powered, can handle complex interactions
-- ❌ Connection issues may occur
+For canvas-based apps like this room planner:
+- **Canvas interactions**: Click furniture, drag items, zoom/pan - all work reliably
+- **Coordinate precision**: Exact pixel-level clicks for measurements and placement
+- **Debugging**: Better visibility into what's happening in the browser
+- **No instance conflicts**: Single, stable browser connection
 
 **When you hit limitations:**
 1. ❌ DO NOT claim "ready for testing" or "should work now"
-2. ✅ DO report: "cursor-ide-browser failed (reason). Trying user-chrome-devtools..."
-3. ✅ DO report: "All 3 MCPs failed for X, Y, Z reasons. Providing manual test steps..."
-4. ✅ DO provide clear test steps for the user to follow
-5. ✅ DO ask for specific feedback about what happened
+2. ✅ DO report: "Playwright failed (reason). Providing manual test steps..."
+3. ✅ DO provide clear test steps for the user to follow
+4. ✅ DO ask for specific feedback about what happened
 
 **FORBIDDEN phrases when you cannot fully test:**
 - ❌ "Ready for your confirmation"
@@ -152,9 +192,9 @@ Otherwise: TEST IT YOURSELF.
 - ❌ "Both features are implemented ✅"
 - ❌ "The code is ready and compiled successfully"
 
-**REQUIRED phrases when all testing fails:**
-- ✅ "cursor-ide-browser failed (canvas limitation). user-chrome-devtools has browser conflict. comet failed to connect. Needs manual testing."
-- ✅ "Fixed the code, but all 3 MCPs failed to test canvas interaction (reasons: X, Y, Z)"
+**REQUIRED phrases when testing fails:**
+- ✅ "Playwright failed (reason). Needs manual testing."
+- ✅ "Fixed the code, but Playwright failed to test canvas interaction (reason: X)"
 - ✅ "Please test and tell me exactly what happens when you click X"
 
 ## Required Test Results Format
@@ -194,10 +234,13 @@ Reasons:
 
 | MCP Server | What It Does |
 |------------|--------------|
-| **user-filesystem** | Read/write files, inspect project structure |
-| **user-chrome-devtools** | Console logs, network requests, screenshots, run JS |
-| **user-comet** | Browser automation and inspection |
-| **user-context7** | Library docs + long-term context across conversations |
+| **playwright** | Browser automation (PRIMARY for all testing) - canvas, clicks, drag-drop, console, network |
+| **shadcn** | shadcn/ui component library - pre-built accessible UI components |
+| **ui-ux-mcp** | UX design analysis, accessibility checks, design critique, best practices |
+| **vercel** | Deployment and hosting management - deploy, logs, environment variables |
+| **filesystem** | Read/write files, inspect project structure |
+| **context7** | Library docs + official documentation lookup |
+| **google-workspace** | Google Drive/Sheets integration (for future export features) |
 
 # Future MCP Connections
 
@@ -236,68 +279,192 @@ If uncertain → Try the MCP first. Ask me only if it fails.
 **ALWAYS:**
 → Read the file yourself. Then continue.
 
-# Chrome DevTools MCP
-
-**Tools available:**
-- `list_console_messages` — Console errors, warnings, logs
-- `list_network_requests` — API calls, failed requests
-- `take_screenshot` — Current visual state
-- `evaluate_script` — Run JavaScript to inspect state
-
-**NEVER ask me to:**
-- "Open the console..."
-- "Check for errors..."
-- "What does the console say?"
-- "Press F12..."
-- "Try refreshing and let me know..."
-
-**ALWAYS:**
-→ Check the console yourself. Then tell me what you found.
-
-# Comet MCP
+# Playwright MCP (PRIMARY TESTING TOOL)
 
 **Use this for:**
-- Browser automation
-- Inspecting web pages
-- Visual reference extraction
+- ALL browser testing (canvas, buttons, forms, interactions)
+- Console errors, warnings, logs
+- Network requests monitoring
+- Screenshots and visual verification
+- JavaScript evaluation in page context
+- Drag-and-drop testing
+- Keyboard shortcuts and complex interactions
+
+**NEVER ask me to:**
+- "Click the button and let me know if it works"
+- "Check for errors in the console"
+- "Try the interaction"
+- "Refresh and see what happens"
+
+**ALWAYS:**
+→ Use Playwright to test it yourself. Then tell me what you found.
+
+# shadcn MCP
+
+**Use this for:**
+- Adding pre-built UI components (Dialog, Sheet, Button, Input, Select, etc.)
+- Replacing custom components with accessible alternatives
+- Consistent design patterns across the app
+- Form components with built-in validation support
+
+**NEVER ask me:**
+- "Should we use a library for this modal?"
+- "How do we make this accessible?"
+- "What component library should we use?"
+
+**ALWAYS:**
+→ Use shadcn components when building UI. They're accessible by default and follow best practices.
+
+**When to use shadcn components:**
+- ✅ Modals and dialogs (replace custom modals)
+- ✅ Form inputs (better than plain HTML inputs)
+- ✅ Buttons (consistent styling and variants)
+- ✅ Dropdowns and selects
+- ✅ Toast notifications for feedback
+- ✅ Tooltips for additional info
+- ✅ Popovers for contextual content
+
+# UI/UX MCP
+
+**Use this for:**
+- Analyzing UI/UX design decisions
+- Checking accessibility compliance (WCAG, ARIA)
+- Design critique and improvement suggestions
+- Evaluating user experience patterns
+- Color contrast checks
+- Responsive design analysis
+- Usability best practices
+
+**NEVER ask me:**
+- "Is this accessible?"
+- "Does this follow UX best practices?"
+- "What's wrong with this design?"
+
+**ALWAYS:**
+→ Use UI/UX MCP to analyze and provide evidence-based feedback.
+
+# vercel MCP
+
+**Use this for:**
+- Deploying the app to production or preview
+- Checking deployment status and logs
+- Managing environment variables
+- Viewing build errors
+- Creating preview deployments for testing
+
+**NEVER ask me:**
+- "Can you deploy this to Vercel?"
+- "What's the deployment status?"
+- "Are there any build errors?"
+
+**ALWAYS:**
+→ Use Vercel MCP to check status, deploy, and manage hosting directly.
 
 # Context7 MCP
 
 **Use this for:**
-- Recalling past decisions we made
-- Checking what we discussed before
-- Long-term project context
+- Looking up official library documentation
+- Checking API references for libraries we're using
+- Finding up-to-date usage examples
 
 **NEVER ask me:**
-- "What did we decide about...?"
-- "Do you remember when we...?"
+- "How does [library feature] work?"
+- "What's the correct API for...?"
 
 **ALWAYS:**
-→ Query context7 for past conversation context.
+→ Query context7 for library docs first.
 
 # Auto-Debug Protocol
 
+**When debugging, DIAGNOSE FIRST, then test.**
+
+## Debugging Flow (Mandatory Sequence)
+
+### Step 1: Console Logs (Cheapest, Most Informative)
+```
+User reports issue
+  ↓
+Use Playwright to read console messages
+  ↓
+Identify error/warning from logs
+  ↓
+Diagnose root cause
+```
+
+### Step 2: Targeted Fix
+```
+Make specific fix based on console evidence
+Add debug logging if needed
+```
+
+### Step 3: Verify Fix (Scope to Changed Area)
+```
+Test ONLY the fixed functionality
+Don't test unrelated features
+```
+
+## Anti-Pattern: Testing Before Diagnosis
+
+**❌ WRONG:**
+```
+User: "Zoom doesn't work"
+AI: *Tests zoom, pan, furniture, measurements, everything*
+AI: *Takes 10 screenshots*
+AI: "I tested everything, zoom seems broken"
+```
+
+**✅ RIGHT:**
+```
+User: "Zoom doesn't work"
+AI: *Checks console logs via Playwright*
+AI: "Console shows error: 'zoomLevel is undefined at line 47'"
+AI: *Fixes the undefined variable*
+AI: *Tests zoom only*
+AI: "Fixed. Zoom now works correctly."
+```
+
+---
+
+## Debug Symptom → Action Table
+
 When something isn't working, DO THIS AUTOMATICALLY:
 
-| Symptom | Your Action (don't ask me) |
-|---------|----------------------------|
-| "It's not working" | `list_console_messages` immediately |
-| "Nothing happens" | `list_console_messages` + `list_network_requests` |
-| "It looks wrong" | `take_screenshot` |
-| "The data isn't showing" | `list_network_requests` + `list_console_messages` |
-| "I see an error" | `list_console_messages` to see it yourself |
-| Need to see a file | Read it via filesystem MCP |
-| Need past context | Query context7 |
-| Any other inspection | Check if an MCP can do it |
+| Symptom | Step 1: Diagnose | Step 2: Fix | Step 3: Verify |
+|---------|------------------|-------------|----------------|
+| "It's not working" | Check console for errors | Fix identified error | Test that specific feature |
+| "Nothing happens on click" | Check console + event handlers | Fix handler issue | Click and verify |
+| "Visual bug" | Take screenshot, compare to expected | Fix CSS/layout | Screenshot after fix |
+| "Data not showing" | Check network + console | Fix data flow | Verify data appears |
+| "Feature broke after change" | Compare console before/after | Revert or fix issue | Test that feature only |
+
+**Key principle:** Don't test everything hoping to find the issue. Diagnose first.
+
+---
+
+## MCP Tool Reference
+
+When you need something, use the right tool automatically:
+
+| Need | MCP Tool | Action |
+|------|----------|--------|
+| Check console errors | Playwright | `browser_console_messages` |
+| Check network requests | Playwright | `browser_network_requests` |
+| Take screenshot | Playwright | `browser_take_screenshot` |
+| Read a file | filesystem | `read_file` |
+| Look up docs | context7 | `query-docs` |
+| Analyze UX | ui-ux-mcp | [UX analysis tools] |
+| Add UI component | shadcn | [Component tools] |
+| Deploy/check logs | vercel | [Deployment tools] |
 
 # After Implementing a Fix
 
-1. Check console via `list_console_messages`
-2. Check network via `list_network_requests` if relevant
-3. Take screenshot via `take_screenshot` if visual
-4. **Report what you found**, then ask for confirmation
+1. Use Playwright to check console messages
+2. Use Playwright to check network requests if relevant
+3. Use Playwright to take screenshot if visual
+4. Use Playwright to test the actual interaction
+5. **Report what you found**, then ask for confirmation
 
-✅ "Fix applied. I checked the console — no errors. Network request to /api/users now returns 200. Can you confirm it looks right?"
+✅ "Fix applied. I tested with Playwright — clicked the button, console shows no errors, interaction works correctly. Screenshot attached. Can you confirm it looks right?"
 
 ❌ "Try refreshing and let me know if it works."
 
@@ -309,11 +476,10 @@ When something isn't working, DO THIS AUTOMATICALLY:
 
 | Error | Likely Cause | Action |
 |-------|-------------|--------|
-| "Browser already running" | Instance conflict between MCPs | Check which MCP is using the browser, consider using a different MCP |
-| "Element not found" (canvas) | Canvas doesn't expose accessibility tree | Switch to `evaluate_script` (user-chrome-devtools) or Comet |
-| "Cannot read properties of undefined" | Connection not established | Try `connect()` or check MCP configuration |
-| "Script failed to execute" | Timing issue or incorrect selector | Add wait, use snapshot to verify element exists |
-| "Not connected to Comet" | Comet connection not established | Call `comet_connect` first, diagnose why it failed |
+| "Timeout waiting for element" | Element not rendered or timing issue | Use Playwright's auto-wait features, check if element exists |
+| "Element not found" | Selector issue or element not in DOM | Take snapshot to verify, adjust selector |
+| "Element not interactable" | Element hidden or covered | Check z-index, visibility, try JavaScript evaluation |
+| "Script failed to execute" | JavaScript error in page context | Check console logs first |
 
 ## Required Debugging Steps
 
@@ -330,25 +496,25 @@ When a tool fails:
 - ❌ "The tool failed" (without explaining why or trying alternatives)
 
 **REQUIRED:**
-- ✅ "cursor-ide-browser fails on canvas coordinates (Element not found). Trying user-chrome-devtools evaluate_script..."
-- ✅ "user-chrome-devtools has browser instance conflict with cursor-ide-browser. Attempting comet_connect..."
-- ✅ "comet_connect failed with 'Cannot read properties of undefined'. This suggests Comet browser isn't running. Trying manual connection steps..."
-- ✅ "All 3 MCPs failed: cursor-ide-browser (canvas limitation), user-chrome-devtools (browser conflict), comet (connection error). Providing manual test steps..."
+- ✅ "Playwright element timeout. Checking if selector is correct..."
+- ✅ "Playwright failed to interact with canvas element (reason: X). Providing manual test steps..."
+- ✅ "Cannot test this feature with Playwright because [specific reason]. Please test manually: [specific steps]"
 
 ## Example: Proper Fallback Execution
 
 ```
-1. Try cursor-ide-browser browser_click → "Element not found" error
-   → This is expected for canvas. Moving to Step 2.
+1. Try Playwright browser_click / locator.click() → Success
+   → Canvas interaction worked. Feature tested successfully.
 
-2. Try user-chrome-devtools evaluate_script → "Browser already running" error
-   → Conflict with cursor-ide-browser. Cannot use simultaneously. Moving to Step 3.
+OR (if Playwright fails):
 
-3. Try user-comet comet_connect → "Cannot read properties of undefined" error
-   → Connection issue. Checking if Comet process is running...
-   → No fix available. Moving to Step 4.
+1. Try Playwright browser_click → "Timeout waiting for element" error
+   → Element not found or timing issue. Moving to Step 2.
 
-4. Manual testing required - all 3 MCPs exhausted with documented reasons.
+2. Try browsermcp browser_click → "Element not interactable" error
+   → Cannot interact with element. Moving to Step 3.
+
+3. Manual testing required - both MCPs exhausted with documented reasons.
 ```
 
 This is the MINIMUM effort expected before asking user to test manually.
@@ -372,3 +538,40 @@ This applies to:
 - Any tool that can inspect, read, query, or automate
 
 Never ask. Just do.
+
+---
+
+# PLAYWRIGHT TEST SCRIPTS FOR USER
+
+## Why Create Automated Test Scripts?
+
+As your room planner app grows, you'll add more features. Automated tests act as **safety nets**:
+
+1. **Catch Breaking Changes**: When you change code, tests tell you if you broke existing features
+2. **Save Time**: Run all tests in 30 seconds instead of manually clicking through everything
+3. **Document Expected Behavior**: Tests show exactly how features should work
+4. **Confidence to Refactor**: Change code knowing tests will catch mistakes
+5. **Regression Prevention**: Once a bug is fixed, add a test so it never comes back
+
+## When to Write Tests
+
+Write tests for:
+- ✅ Core workflows (adding furniture, moving items, measurements)
+- ✅ Critical interactions (zoom, pan, delete, edit)
+- ✅ Bug fixes (test the bug scenario to prevent regression)
+- ✅ Complex features (multi-step interactions)
+
+Skip tests for:
+- ❌ Styling tweaks (color changes, spacing)
+- ❌ Trivial features you'll change frequently
+- ❌ Prototypes you're still experimenting with
+
+## Test Script Setup
+
+See the `PLAYWRIGHT_TESTING_GUIDE.md` file for:
+- How to install Playwright for testing
+- Where to put test files
+- How to run tests
+- Example test scripts for your room planner app
+
+Test scripts are separate from the MCP server - you run them yourself when you want to verify everything works.
