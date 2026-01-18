@@ -4,7 +4,7 @@ import { X, FileText, Image, FileJson, Download } from 'lucide-react';
 interface ExportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onExport: (format: 'pdf-blueprint' | 'pdf-measurements' | 'png' | 'json') => void;
+  onExport: (format: 'pdf' | 'png' | 'json') => void;
   currentView: 'blueprint' | 'measurements' | 'materials';
 }
 
@@ -13,7 +13,7 @@ export default function ExportModal({ isOpen, onClose, onExport, currentView }: 
 
   if (!isOpen) return null;
 
-  const handleExport = async (format: 'pdf-blueprint' | 'pdf-measurements' | 'png' | 'json') => {
+  const handleExport = async (format: 'pdf' | 'png' | 'json') => {
     setExporting(true);
     await onExport(format);
     setExporting(false);
@@ -22,18 +22,11 @@ export default function ExportModal({ isOpen, onClose, onExport, currentView }: 
 
   const exportOptions = [
     {
-      id: 'pdf-blueprint',
+      id: 'pdf',
       icon: FileText,
-      title: 'PDF - Blueprint View',
-      description: 'Export current room layout as a PDF document',
-      recommended: currentView === 'blueprint',
-    },
-    {
-      id: 'pdf-measurements',
-      icon: FileText,
-      title: 'PDF - With Measurements',
-      description: 'Export room with detailed measurements and item list',
-      recommended: currentView === 'measurements',
+      title: 'PDF Document',
+      description: 'Complete room plan with blueprint, measurements, and item list',
+      recommended: true,
     },
     {
       id: 'png',
@@ -163,7 +156,7 @@ export default function ExportModal({ isOpen, onClose, onExport, currentView }: 
                   key={option.id}
                   onClick={() =>
                     handleExport(
-                      option.id as 'pdf-blueprint' | 'pdf-measurements' | 'png' | 'json'
+                      option.id as 'pdf' | 'png' | 'json'
                     )
                   }
                   disabled={exporting}

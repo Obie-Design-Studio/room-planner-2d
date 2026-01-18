@@ -639,3 +639,283 @@ export async function exportMeasurementsAsPDF(
     return false;
   }
 }
+
+/**
+ * Export a complete PDF with both blueprint and measurements views
+ * Page 1: Blueprint (clean room layout with furniture names on hover effect note)
+ * Page 2: Measurements (room layout with all measurements visible)
+ * Page 3+: Item list with dimensions and details
+ */
+export async function exportCompletePDF(
+  stageRef: any, // Konva Stage ref
+  roomName: string,
+  roomConfig: RoomConfig,
+  ceilingHeight: number,
+  items: FurnitureItem[]
+): Promise<boolean> {
+  try {
+    console.log('[PDF Export Complete] Starting combined PDF export...');
+    
+    if (!stageRef?.current) {
+      console.error('[PDF Export Complete] Stage ref not available');
+      alert('Canvas not ready. Please try again.');
+      return false;
+    }
+
+    const stage = stageRef.current;
+    const PIXELS_PER_CM = 4;
+    const WALL_THICKNESS_CM = 2.5;
+    
+    // === STEP 1: Calculate content bounding box ===
+    let minX = -WALL_THICKNESS_CM;
+    let minY = -WALL_THICKNESS_CM;
+    let maxX = roomConfig.width + WALL_THICKNESS_CM;
+    let maxY = roomConfig.height + WALL_THICKNESS_CM;
+    
+    // Expand bounds for door swings
+    items.forEach((item) => {
+      if (item.type?.toLowerCase() === 'door') {
+        const doorWidth = item.width || 90;
+        const isOnTopWall = Math.abs(item.y - (-WALL_THICKNESS_CM)) < 1;
+        const isOnBottomWall = Math.abs(item.y - roomConfig.height) < 1;
+        const isOnLeftWall = Math.abs(item.x - (-WALL_THICKNESS_CM)) < 1;
+        const isOnRightWall = Math.abs(item.x - roomConfig.width) < 1;
+        
+        if (isOnTopWall) {
+          minY = Math.min(minY, item.y - doorWidth);
+          maxY = Math.max(maxY, item.y + doorWidth);
+        } else if (isOnBottomWall) {
+          minY = Math.min(minY, item.y - doorWidth);
+          maxY = Math.max(maxY, item.y + doorWidth);
+        } else if (isOnLeftWall) {
+          minX = Math.min(minX, item.x - doorWidth);
+          maxX = Math.max(maxX, item.x + doorWidth);
+        } else if (isOnRightWall) {
+          minX = Math.min(minX, item.x - doorWidth);
+          maxX = Math.max(maxX, item.x + doorWidth);
+        }
+      }
+    });
+    
+    const boundsPaddingCm = 20;
+    minX -= boundsPaddingCm;
+    minY -= boundsPaddingCm;
+    maxX += boundsPaddingCm;
+    maxY += boundsPaddingCm;
+    
+    const contentWidthCm = maxX - minX;
+    const contentHeightCm = maxY - minY;
+    const contentWidthPx = contentWidthCm * PIXELS_PER_CM;
+    const contentHeightPx = contentHeightCm * PIXELS_PER_CM;
+    
+    const layer = stage.findOne('Layer');
+    const layerX = layer.x();
+    const layerY = layer.y();
+    const layerScale = layer.scaleX();
+    
+    const cropX = minX * PIXELS_PER_CM * layerScale + layerX;
+    const cropY = minY * PIXELS_PER_CM * layerScale + layerY;
+    const cropWidth = contentWidthPx * layerScale;
+    const cropHeight = contentHeightPx * layerScale;
+    
+    console.log('[PDF Export Complete] Content bounds:', { minX, minY, maxX, maxY, contentWidthCm, contentHeightCm });
+    console.log('[PDF Export Complete] Crop area:', { cropX, cropY, cropWidth, cropHeight });
+    
+    // === STEP 2: Determine PDF orientation ===
+    const orientation = contentWidthCm > contentHeightCm ? 'landscape' : 'portrait';
+    const pdf = new jsPDF({
+      orientation,
+      unit: 'mm',
+      format: 'a4',
+    });
+    
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 15;
+    const contentArea = {
+      width: pageWidth - margin * 2,
+      height: pageHeight - margin * 2 - 15, // Reserve 15mm for footer
+    };
+    
+    console.log('[PDF Export Complete] PDF setup:', { orientation, pageWidth, pageHeight, contentArea });
+    
+    // Helper: Add footer with timestamp
+    const addFooter = () => {
+      const timestamp = new Date().toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+      pdf.setFontSize(8);
+      pdf.setTextColor(150, 150, 150);
+      pdf.text(timestamp, pageWidth - margin, pageHeight - 5, { align: 'right' });
+    };
+    
+    // === PAGE 1: BLUEPRINT VIEW ===
+    console.log('[PDF Export Complete] Generating Page 1: Blueprint...');
+    
+    // Export canvas as PNG (cropped to content)
+    const blueprintDataUrl = stage.toDataURL({
+      x: cropX,
+      y: cropY,
+      width: cropWidth,
+      height: cropHeight,
+      pixelRatio: 2, // Higher quality
+    });
+    
+    // Calculate image dimensions to fit page while maintaining aspect ratio
+    const contentAspect = contentWidthPx / contentHeightPx;
+    let imgWidth, imgHeight;
+    
+    if (contentAspect > contentArea.width / contentArea.height) {
+      imgWidth = contentArea.width;
+      imgHeight = imgWidth / contentAspect;
+    } else {
+      imgHeight = contentArea.height;
+      imgWidth = imgHeight * contentAspect;
+    }
+    
+    const imgX = margin + (contentArea.width - imgWidth) / 2;
+    const imgY = margin + (contentArea.height - imgHeight) / 2;
+    
+    // Add blueprint image
+    pdf.addImage(blueprintDataUrl, 'PNG', imgX, imgY, imgWidth, imgHeight);
+    
+    // Add title
+    pdf.setFontSize(16);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(0, 0, 0);
+    pdf.text(`${roomName} - Blueprint`, margin, 10);
+    
+    // Add room info
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(100, 100, 100);
+    pdf.text(
+      `${roomConfig.width} × ${roomConfig.height} cm  •  Ceiling: ${ceilingHeight} cm`,
+      margin,
+      16
+    );
+    
+    // Add note about furniture
+    pdf.setFontSize(9);
+    pdf.setTextColor(120, 120, 120);
+    pdf.text(
+      'Note: Furniture items are labeled with their type and positioned as shown',
+      margin,
+      pageHeight - margin - 5
+    );
+    
+    addFooter();
+    
+    // === PAGE 2: MEASUREMENTS VIEW ===
+    console.log('[PDF Export Complete] Generating Page 2: Measurements...');
+    pdf.addPage();
+    
+    // Export canvas with measurements visible (same crop area)
+    const measurementsDataUrl = stage.toDataURL({
+      x: cropX,
+      y: cropY,
+      width: cropWidth,
+      height: cropHeight,
+      pixelRatio: 2,
+    });
+    
+    // Add measurements image (same size/position as blueprint)
+    pdf.addImage(measurementsDataUrl, 'PNG', imgX, imgY, imgWidth, imgHeight);
+    
+    // Add title
+    pdf.setFontSize(16);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(0, 0, 0);
+    pdf.text(`${roomName} - Measurements`, margin, 10);
+    
+    // Add room info
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(100, 100, 100);
+    pdf.text(
+      `${roomConfig.width} × ${roomConfig.height} cm  •  Ceiling: ${ceilingHeight} cm`,
+      margin,
+      16
+    );
+    
+    addFooter();
+    
+    // === PAGE 3+: ITEM LIST ===
+    console.log('[PDF Export Complete] Generating Page 3+: Item List...');
+    
+    if (items.length > 0) {
+      pdf.addPage();
+      
+      // Title
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(0, 0, 0);
+      pdf.text('Item List', margin, 10);
+      
+      let yPos = 20;
+      const lineHeight = 6;
+      const maxY = pageHeight - margin - 10;
+      
+      items.forEach((item, index) => {
+        // Check if we need a new page
+        if (yPos + lineHeight * 4 > maxY) {
+          addFooter();
+          pdf.addPage();
+          pdf.setFontSize(16);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text('Item List (continued)', margin, 10);
+          yPos = 20;
+        }
+        
+        const isWindow = item.type?.toLowerCase() === 'window';
+        const isDoor = item.type?.toLowerCase() === 'door';
+        
+        // Item name (bold)
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(0, 0, 0);
+        pdf.text(`${index + 1}. ${item.type || 'Unknown'}`, margin, yPos);
+        yPos += lineHeight;
+        
+        // Dimensions
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(80, 80, 80);
+        
+        if (isWindow) {
+          pdf.text(`   Dimensions: ${item.width} × ${item.height} cm`, margin + 5, yPos);
+          yPos += lineHeight - 1;
+          if (item.floorDistance !== undefined) {
+            pdf.text(`   Floor Distance: ${item.floorDistance} cm`, margin + 5, yPos);
+            yPos += lineHeight - 1;
+          }
+        } else if (isDoor) {
+          pdf.text(`   Dimensions: ${item.width} × ${item.height} cm`, margin + 5, yPos);
+          yPos += lineHeight - 1;
+        } else {
+          // Regular furniture
+          pdf.text(`   Dimensions: ${item.width} × ${item.height} cm`, margin + 5, yPos);
+          yPos += lineHeight - 1;
+        }
+        
+        yPos += 3; // Extra spacing between items
+      });
+      
+      addFooter();
+    }
+    
+    // === DOWNLOAD ===
+    const filename = `${roomName.replace(/\s+/g, '_')}_complete.pdf`;
+    console.log('[PDF Export Complete] PDF created, triggering download:', filename);
+    
+    return downloadPDF(pdf, filename);
+  } catch (error) {
+    console.error('[PDF Export Complete] Error:', error);
+    alert('Error creating PDF. Check console for details.');
+    return false;
+  }
+}

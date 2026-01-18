@@ -15,7 +15,7 @@ import { Armchair, Table, Bed, RectangleHorizontal, DoorOpen, Trash2, Settings, 
 import { PIXELS_PER_CM, WALL_THICKNESS_PX } from "@/lib/constants";
 import { getDefaultFurnitureForRoom, FURNITURE_LIBRARY, getFurnitureByType, type RoomType } from "@/lib/furnitureLibrary";
 import { saveRoom, loadRoom, listRooms } from "@/lib/supabase";
-import { exportAsJSON, exportAsPNG, exportBlueprintAsPDF, exportMeasurementsAsPDF } from "@/lib/export";
+import { exportAsJSON, exportAsPNG, exportCompletePDF } from "@/lib/export";
 
 const RoomCanvas = dynamic(
   () => import("@/components/canvas/RoomCanvas"),
@@ -355,7 +355,7 @@ export default function Home() {
   };
 
   // Export handler
-  const handleExport = async (format: 'pdf-blueprint' | 'pdf-measurements' | 'png' | 'json') => {
+  const handleExport = async (format: 'pdf' | 'png' | 'json') => {
     console.log('[Export] Starting export:', format);
     console.log('[Export] stageRef:', stageRef);
     console.log('[Export] stageRef.current:', stageRef.current);
@@ -366,7 +366,7 @@ export default function Home() {
       return;
     }
     
-    if ((format === 'pdf-blueprint' || format === 'pdf-measurements') && !stageRef.current) {
+    if (format === 'pdf' && !stageRef.current) {
       console.error('[Export] Stage ref not available for PDF export');
       alert('Canvas not ready for PDF export. Please try again.');
       return;
@@ -376,24 +376,16 @@ export default function Home() {
       let success = false;
 
       switch (format) {
-        case 'pdf-blueprint':
-          success = await exportBlueprintAsPDF(
-            stageRef,
-            roomName,
-            roomConfig,
-            ceilingHeight
-          );
-          break;
-        case 'pdf-measurements':
-          console.log('[Export] Starting measurements PDF export with items:', items.length);
-          success = await exportMeasurementsAsPDF(
+        case 'pdf':
+          console.log('[Export] Starting complete PDF export with items:', items.length);
+          success = await exportCompletePDF(
             stageRef,
             roomName,
             roomConfig,
             ceilingHeight,
             items
           );
-          console.log('[Export] Measurements PDF export result:', success);
+          console.log('[Export] Complete PDF export result:', success);
           break;
         case 'png':
           success = await exportAsPNG(canvasContainerRef.current, roomName);
