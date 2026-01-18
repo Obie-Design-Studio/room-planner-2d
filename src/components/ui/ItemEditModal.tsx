@@ -86,8 +86,10 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
       updates.height = localHeight;
       updates.floorDistance = localFloorDistance;
     } else if (isDoor) {
-      // For doors, keep height fixed
-      updates.height = item.height;
+      // For doors, allow editing both width and height
+      // Width = door width (along wall), Height = door height (floor to ceiling)
+      // Thickness is fixed and not editable
+      updates.height = localHeight;
     } else {
       // For regular furniture, update height normally
       updates.height = localHeight;

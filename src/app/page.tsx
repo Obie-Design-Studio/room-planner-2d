@@ -50,9 +50,9 @@ export default function Home() {
   const [roomType, setRoomType] = useState<string>('Living Room');
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
-  const [defaultWindowLength, setDefaultWindowLength] = useState(100);
+  const [defaultWindowWidth, setDefaultWindowWidth] = useState(100);
   const [defaultWindowHeight, setDefaultWindowHeight] = useState(140);
-  const [defaultDoorLength, setDefaultDoorLength] = useState(90);
+  const [defaultDoorWidth, setDefaultDoorWidth] = useState(90);
   const [defaultDoorHeight, setDefaultDoorHeight] = useState(210);
   
   // View mode state
@@ -95,13 +95,13 @@ export default function Home() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const handleUpdateRoomSettings = (name: string, config: RoomConfig, ceiling: number, windowLength: number, windowHeight: number, doorLength: number, doorHeight: number) => {
+  const handleUpdateRoomSettings = (name: string, config: RoomConfig, ceiling: number, windowWidth: number, windowHeight: number, doorWidth: number, doorHeight: number) => {
     setRoomName(name);
     setRoomConfig(config);
     setCeilingHeight(ceiling);
-    setDefaultWindowLength(windowLength);
+    setDefaultWindowWidth(windowWidth);
     setDefaultWindowHeight(windowHeight);
-    setDefaultDoorLength(doorLength);
+    setDefaultDoorWidth(doorWidth);
     setDefaultDoorHeight(doorHeight);
   };
 
@@ -124,9 +124,9 @@ export default function Home() {
     if (wall === 'top') {
       // Center horizontally on top wall
       x = (roomConfig.width - w) / 2; // Center the door/window
-      y = -5 / 4; // Center in 10px wall: -10px/2 = -5px = -5/4 cm = -1.25cm
+      y = -2.5; // Center in wall: -WALL_THICKNESS_CM (10px / 4px-per-cm = 2.5cm)
     } else if (wall === 'left') {
-      x = -5 / 4; // Center in 10px wall: -10px/2 = -5px = -5/4 cm = -1.25cm
+      x = -2.5; // Center in wall: -WALL_THICKNESS_CM (10px / 4px-per-cm = 2.5cm)
       // Center vertically on left wall
       y = (roomConfig.height - w) / 2; // Center the door/window (w is the length along the wall)
     }
@@ -155,6 +155,12 @@ export default function Home() {
       rotation: 0,
       color: c,
     };
+    
+    // Add floorDistance for windows (default 90cm from floor)
+    if (typeLower === 'window') {
+      newItem.floorDistance = 90;
+    }
+    
     setItems((prev) => [...prev, newItem]);
     setSelectedId(newItem.id); // Auto-select the new item
   };
@@ -202,9 +208,9 @@ export default function Home() {
         width_cm: roomConfig.width,
         length_cm: roomConfig.height,
         ceiling_height_cm: ceilingHeight,
-        default_window_width_cm: defaultWindowLength,
+        default_window_width_cm: defaultWindowWidth,
         default_window_height_cm: defaultWindowHeight,
-        default_door_width_cm: defaultDoorLength,
+        default_door_width_cm: defaultDoorWidth,
         default_door_height_cm: defaultDoorHeight,
         wall_color: '#E5E5E5',
         current_view: 'blueprint',
@@ -356,9 +362,12 @@ export default function Home() {
 
   const handleAddWindowOrDoor = (type: 'Window' | 'Door', wall: 'top' | 'left') => {
     if (type === 'Window') {
-      handleAddItem('Window', defaultWindowLength, 10, '#e0f7fa', wall);
+      // Window: width = length along wall, height = window height
+      handleAddItem('Window', defaultWindowWidth, 120, '#e0f7fa', wall);
     } else if (type === 'Door') {
-      handleAddItem('Door', defaultDoorLength, 10, '#8d6e63', wall);
+      // Door: width = door width (along wall), height = door height (floor to ceiling)
+      // Thickness is fixed at WALL_THICKNESS_CM and not stored in item.height
+      handleAddItem('Door', defaultDoorWidth, 210, '#8d6e63', wall);
     }
   };
 
@@ -1178,9 +1187,9 @@ export default function Home() {
         roomName={roomName}
         roomConfig={roomConfig}
         ceilingHeight={ceilingHeight}
-        defaultWindowLength={defaultWindowLength}
+        defaultWindowWidth={defaultWindowWidth}
         defaultWindowHeight={defaultWindowHeight}
-        defaultDoorLength={defaultDoorLength}
+        defaultDoorWidth={defaultDoorWidth}
         defaultDoorHeight={defaultDoorHeight}
         onClose={() => setIsRoomSettingsModalOpen(false)}
         onUpdate={handleUpdateRoomSettings}

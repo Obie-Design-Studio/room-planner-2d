@@ -605,11 +605,13 @@ export default function RoomCanvas({
                 
                 // Get doors on this wall
                 const wallDoors = doors.filter(door => {
-                  // Doors are centered in walls, so check for y = -WALL_THICKNESS_CM/2 for top wall, etc.
-                  if (wall === 'top') return Math.abs(door.y - (-WALL_THICKNESS_CM / 2)) < 1;
-                  if (wall === 'bottom') return Math.abs(door.y - (roomConfig.height + WALL_THICKNESS_CM / 2)) < 1;
-                  if (wall === 'left') return Math.abs(door.x - (-WALL_THICKNESS_CM / 2)) < 1;
-                  if (wall === 'right') return Math.abs(door.x - (roomConfig.width + WALL_THICKNESS_CM / 2)) < 1;
+                  // Match door positions as set by drag logic in FurnitureShape
+                  // Top/Left: -WALL_THICKNESS_CM (-2.5cm)
+                  // Bottom/Right: roomConfig dimension (doors are at outer edge coordinate)
+                  if (wall === 'top') return Math.abs(door.y - (-WALL_THICKNESS_CM)) < 1;
+                  if (wall === 'bottom') return Math.abs(door.y - roomConfig.height) < 1;
+                  if (wall === 'left') return Math.abs(door.x - (-WALL_THICKNESS_CM)) < 1;
+                  if (wall === 'right') return Math.abs(door.x - roomConfig.width) < 1;
                   return false;
                 });
                 

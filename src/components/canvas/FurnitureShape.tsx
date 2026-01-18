@@ -72,11 +72,19 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
   const [isRotateHovered, setIsRotateHovered] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
-  // Door physical dimensions (never change)
-  const doorLengthPx = item.width * PIXELS_PER_CM;   // Door length (90cm = 180px)
-  const wallThickPx = item.height * PIXELS_PER_CM;  // Wall thickness (5cm = 10px)
+  // Door/Window dimensions
+  const isDoor = item.type?.toLowerCase() === 'door';
+  const isWindow = item.type?.toLowerCase() === 'window';
+  const isWallObject = isDoor || isWindow;
   
-  const isWallObject = item.type?.toLowerCase() === 'window' || item.type?.toLowerCase() === 'door';
+  // For doors and windows:
+  // - item.width = length along the wall (e.g., 90cm door width)
+  // - item.height = actual height (e.g., 210cm door height, or 120cm window height)
+  // - thickness = WALL_THICKNESS_CM (fixed at 2.5cm, matches wall thickness)
+  
+  const doorOrWindowLengthPx = item.width * PIXELS_PER_CM;   // Length along wall (90cm = 360px)
+  const wallThicknessPx = WALL_THICKNESS_PX;  // Fixed wall thickness (10px = 2.5cm)
+  
   
   // Detect if door is on a vertical wall (left or right)
   const isOnVerticalWall = isWallObject && 
@@ -84,8 +92,8 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
                             Math.abs(item.x - roomConfig.width) < 1);
   
   // Group dimensions - swap for vertical walls so the bounding box is correct
-  const widthPx = isOnVerticalWall ? wallThickPx : doorLengthPx;
-  const heightPx = isOnVerticalWall ? doorLengthPx : wallThickPx;
+  const widthPx = isOnVerticalWall ? wallThicknessPx : doorOrWindowLengthPx;
+  const heightPx = isOnVerticalWall ? doorOrWindowLengthPx : wallThicknessPx;
   
   // For boundary calculations, we need the VISUAL bounding box size after rotation
   const rotation = item.rotation || 0;
@@ -171,7 +179,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
       if (isWallObject) {
         // --- STRICT WALL LOCKING ---
         // Use RAW dimensions (not swapped) for consistent calculations
-        // doorLengthPx = door length (90cm), wallThickPx = wall thickness (5cm)
+        // doorOrWindowLengthPx = door length (90cm), wallThicknessPx = wall thickness (5cm)
         
         const distLeft = currentCenterX;
         const distRight = Math.abs(roomWidthPx - currentCenterX);
@@ -186,11 +194,11 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
           finalYCm = -WALL_THICKNESS_CM;
           
           // For horizontal walls: width = doorLength, height = wallThick
-          const clampedX = Math.max(0, Math.min(currentCenterX - doorLengthPx / 2, roomWidthPx - doorLengthPx));
+          const clampedX = Math.max(0, Math.min(currentCenterX - doorOrWindowLengthPx / 2, roomWidthPx - doorOrWindowLengthPx));
           finalXCm = Math.round(clampedX / PIXELS_PER_CM);
           
-          e.target.y(-WALL_THICKNESS_CM * PIXELS_PER_CM + wallThickPx / 2);
-          e.target.x(clampedX + doorLengthPx / 2);
+          e.target.y(-WALL_THICKNESS_CM * PIXELS_PER_CM + wallThicknessPx / 2);
+          e.target.x(clampedX + doorOrWindowLengthPx / 2);
           e.target.rotation(0);
         } 
         else if (minDist === distBottom) {
@@ -198,11 +206,11 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
           finalRotation = item.rotation || 0;
           finalYCm = roomConfig.height;
           
-          const clampedX = Math.max(0, Math.min(currentCenterX - doorLengthPx / 2, roomWidthPx - doorLengthPx));
+          const clampedX = Math.max(0, Math.min(currentCenterX - doorOrWindowLengthPx / 2, roomWidthPx - doorOrWindowLengthPx));
           finalXCm = Math.round(clampedX / PIXELS_PER_CM);
 
-          e.target.y(roomHeightPx + wallThickPx / 2);
-          e.target.x(clampedX + doorLengthPx / 2);
+          e.target.y(roomHeightPx + wallThicknessPx / 2);
+          e.target.x(clampedX + doorOrWindowLengthPx / 2);
           e.target.rotation(0);
         } 
         else if (minDist === distLeft) {
@@ -211,11 +219,11 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
           finalXCm = -WALL_THICKNESS_CM;
           
           // For vertical walls: width = wallThick, height = doorLength
-          const clampedY = Math.max(0, Math.min(currentCenterY - doorLengthPx / 2, roomHeightPx - doorLengthPx));
+          const clampedY = Math.max(0, Math.min(currentCenterY - doorOrWindowLengthPx / 2, roomHeightPx - doorOrWindowLengthPx));
           finalYCm = Math.round(clampedY / PIXELS_PER_CM);
 
-          e.target.x(-WALL_THICKNESS_CM * PIXELS_PER_CM + wallThickPx / 2);
-          e.target.y(clampedY + doorLengthPx / 2);
+          e.target.x(-WALL_THICKNESS_CM * PIXELS_PER_CM + wallThicknessPx / 2);
+          e.target.y(clampedY + doorOrWindowLengthPx / 2);
           e.target.rotation(0);  // Don't rotate group, rendering handles orientation
         } 
         else if (minDist === distRight) {
@@ -223,11 +231,11 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
           finalRotation = item.rotation || 0;
           finalXCm = roomConfig.width;
           
-          const clampedY = Math.max(0, Math.min(currentCenterY - doorLengthPx / 2, roomHeightPx - doorLengthPx));
+          const clampedY = Math.max(0, Math.min(currentCenterY - doorOrWindowLengthPx / 2, roomHeightPx - doorOrWindowLengthPx));
           finalYCm = Math.round(clampedY / PIXELS_PER_CM);
 
-          e.target.x(roomWidthPx + wallThickPx / 2);
-          e.target.y(clampedY + doorLengthPx / 2);
+          e.target.x(roomWidthPx + wallThicknessPx / 2);
+          e.target.y(clampedY + doorOrWindowLengthPx / 2);
           e.target.rotation(0);  // Don't rotate group, rendering handles orientation
         }
       } else {
@@ -451,6 +459,11 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
 
   // RENDER: DOOR
   if (item.type?.toLowerCase() === 'door') {
+    // Door Dimensions:
+    // - item.width = door width along wall (e.g., 90cm)
+    // - item.height = door height floor-to-ceiling (e.g., 210cm) - displayed in UI
+    // - thickness = FIXED at WALL_THICKNESS_CM (2.5cm) - NOT editable, matches wall thickness
+    // 
     // Door rendering based on rotation:
     // 0° = Left hinge, Inward (swings into room)
     // 90° = Right hinge, Inward (swings into room)
@@ -475,215 +488,215 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
     
     if (isOnTopWall) {
       // HORIZONTAL DOOR ON TOP WALL
-      // Group: doorLengthPx wide, wallThickPx tall
+      // Group: doorOrWindowLengthPx wide, wallThicknessPx tall
       frameX = 0;
-      frameWidth = doorLengthPx;
+      frameWidth = doorOrWindowLengthPx;
       frameHeight = 5;
-      frameY = wallThickPx - frameHeight;  // Frame at inner edge of wall
+      frameY = wallThicknessPx - frameHeight;  // Frame at inner edge of wall
       
       // For top wall: "In" = swings down into room, "Out" = swings up outside room
-      // Hinge position: "Left" = left side (x=0), "Right" = right side (x=doorLengthPx)
+      // Hinge position: "Left" = left side (x=0), "Right" = right side (x=doorOrWindowLengthPx)
       
       if (rotation === 0) {
         // In + Left: hinge at left, swings down-right into room
         panelX = 0;
-        panelY = wallThickPx - 5;  // Panel flush with wall, not sticking into room
+        panelY = wallThicknessPx - 5;  // Panel flush with wall, not sticking into room
         panelWidth = 5;
-        panelHeight = doorLengthPx;
+        panelHeight = doorOrWindowLengthPx;
         arcX = 0;
-        arcY = wallThickPx / 2;  // Hinge at inner edge of wall
+        arcY = wallThicknessPx / 2;  // Hinge at inner edge of wall
         arcRotation = 0;
       } else if (rotation === 90) {
         // In + Right: hinge at right, swings down-left into room
-        panelX = doorLengthPx - 5;
-        panelY = wallThickPx - 5;  // Panel flush with wall
+        panelX = doorOrWindowLengthPx - 5;
+        panelY = wallThicknessPx - 5;  // Panel flush with wall
         panelWidth = 5;
-        panelHeight = doorLengthPx;
-        arcX = doorLengthPx;
-        arcY = wallThickPx / 2;  // Hinge at inner edge of wall
+        panelHeight = doorOrWindowLengthPx;
+        arcX = doorOrWindowLengthPx;
+        arcY = wallThicknessPx / 2;  // Hinge at inner edge of wall
         arcRotation = 90;
       } else if (rotation === 180) {
         // Out + Left: hinge at left, swings up-right outside room
         panelX = 0;
-        panelY = -doorLengthPx;
+        panelY = -doorOrWindowLengthPx;
         panelWidth = 5;
-        panelHeight = doorLengthPx;
+        panelHeight = doorOrWindowLengthPx;
         arcX = 0;
-        arcY = wallThickPx / 2;  // Hinge at inner edge of wall
+        arcY = wallThicknessPx / 2;  // Hinge at inner edge of wall
         arcRotation = 270;
       } else {
         // 270: Out + Right: hinge at right, swings up-left outside room
-        panelX = doorLengthPx - 5;
-        panelY = -doorLengthPx;
+        panelX = doorOrWindowLengthPx - 5;
+        panelY = -doorOrWindowLengthPx;
         panelWidth = 5;
-        panelHeight = doorLengthPx;
-        arcX = doorLengthPx;
-        arcY = wallThickPx / 2;  // Hinge at inner edge of wall
+        panelHeight = doorOrWindowLengthPx;
+        arcX = doorOrWindowLengthPx;
+        arcY = wallThicknessPx / 2;  // Hinge at inner edge of wall
         arcRotation = 180;
       }
     } else if (isOnLeftWall) {
       // VERTICAL DOOR ON LEFT WALL
-      // Group: wallThickPx wide, doorLengthPx tall
+      // Group: wallThicknessPx wide, doorOrWindowLengthPx tall
       // Frame at inner edge of wall (right edge, against room)
-      frameX = wallThickPx - 5;
+      frameX = wallThicknessPx - 5;
       frameY = 0;
       frameWidth = 5;
-      frameHeight = doorLengthPx;
+      frameHeight = doorOrWindowLengthPx;
       
       // For left wall: "In" = swings right into room, "Out" = swings left outside room
-      // Hinge position: "Left" = top (y=0), "Right" = bottom (y=doorLengthPx)
+      // Hinge position: "Left" = top (y=0), "Right" = bottom (y=doorOrWindowLengthPx)
       
       if (rotation === 0) {
         // In + Left: hinge at top, swings right-down into room
-        panelX = wallThickPx - 5;  // Panel flush with wall
+        panelX = wallThicknessPx - 5;  // Panel flush with wall
         panelY = 0;
-        panelWidth = doorLengthPx;
+        panelWidth = doorOrWindowLengthPx;
         panelHeight = 5;
-        arcX = wallThickPx / 2;  // Hinge at inner edge of wall
+        arcX = wallThicknessPx / 2;  // Hinge at inner edge of wall
         arcY = 0;
         arcRotation = 0;
       } else if (rotation === 90) {
         // In + Right: hinge at bottom, swings right-up into room
-        panelX = wallThickPx - 5;  // Panel flush with wall
-        panelY = doorLengthPx - 5;
-        panelWidth = doorLengthPx;
+        panelX = wallThicknessPx - 5;  // Panel flush with wall
+        panelY = doorOrWindowLengthPx - 5;
+        panelWidth = doorOrWindowLengthPx;
         panelHeight = 5;
-        arcX = wallThickPx / 2;  // Hinge at inner edge of wall
-        arcY = doorLengthPx;
+        arcX = wallThicknessPx / 2;  // Hinge at inner edge of wall
+        arcY = doorOrWindowLengthPx;
         arcRotation = 270;
       } else if (rotation === 180) {
         // Out + Left: hinge at top, swings left-down outside room
-        panelX = -doorLengthPx;
+        panelX = -doorOrWindowLengthPx;
         panelY = 0;
-        panelWidth = doorLengthPx;
+        panelWidth = doorOrWindowLengthPx;
         panelHeight = 5;
-        arcX = wallThickPx / 2;  // Hinge at inner edge of wall
+        arcX = wallThicknessPx / 2;  // Hinge at inner edge of wall
         arcY = 0;
         arcRotation = 90;
       } else {
         // 270: Out + Right: hinge at bottom, swings left-up outside room
-        panelX = -doorLengthPx;
-        panelY = doorLengthPx - 5;
-        panelWidth = doorLengthPx;
+        panelX = -doorOrWindowLengthPx;
+        panelY = doorOrWindowLengthPx - 5;
+        panelWidth = doorOrWindowLengthPx;
         panelHeight = 5;
-        arcX = wallThickPx / 2;  // Hinge at inner edge of wall
-        arcY = doorLengthPx;
+        arcX = wallThicknessPx / 2;  // Hinge at inner edge of wall
+        arcY = doorOrWindowLengthPx;
         arcRotation = 180;
       }
     } else if (isOnBottomWall) {
       // HORIZONTAL DOOR ON BOTTOM WALL
-      // Group: doorLengthPx wide, wallThickPx tall
-      frameWidth = doorLengthPx;
+      // Group: doorOrWindowLengthPx wide, wallThicknessPx tall
+      frameWidth = doorOrWindowLengthPx;
       frameHeight = 5;
       frameX = 0;
       frameY = 0;  // Frame at inner edge (top of wall, room side)
       
       // For bottom wall: "In" = swings up into room, "Out" = swings down outside room
-      // Hinge position: "Left" = left side (x=0), "Right" = right side (x=doorLengthPx)
+      // Hinge position: "Left" = left side (x=0), "Right" = right side (x=doorOrWindowLengthPx)
       
       if (rotation === 0) {
         // In + Left: hinge at left, swings up-right into room
         panelX = 0;
-        panelY = -doorLengthPx + 5;  // Panel flush with wall
+        panelY = -doorOrWindowLengthPx + 5;  // Panel flush with wall
         panelWidth = 5;
-        panelHeight = doorLengthPx;
+        panelHeight = doorOrWindowLengthPx;
         arcX = 0;
-        arcY = wallThickPx / 2;  // Hinge at inner edge of wall
+        arcY = wallThicknessPx / 2;  // Hinge at inner edge of wall
         arcRotation = 270;
       } else if (rotation === 90) {
         // In + Right: hinge at right, swings up-left into room
-        panelX = doorLengthPx - 5;
-        panelY = -doorLengthPx + 5;  // Panel flush with wall
+        panelX = doorOrWindowLengthPx - 5;
+        panelY = -doorOrWindowLengthPx + 5;  // Panel flush with wall
         panelWidth = 5;
-        panelHeight = doorLengthPx;
-        arcX = doorLengthPx;
-        arcY = wallThickPx / 2;  // Hinge at inner edge of wall
+        panelHeight = doorOrWindowLengthPx;
+        arcX = doorOrWindowLengthPx;
+        arcY = wallThicknessPx / 2;  // Hinge at inner edge of wall
         arcRotation = 180;
       } else if (rotation === 180) {
         // Out + Left: hinge at left, swings down-right outside room
         panelX = 0;
-        panelY = wallThickPx;
+        panelY = wallThicknessPx;
         panelWidth = 5;
-        panelHeight = doorLengthPx;
+        panelHeight = doorOrWindowLengthPx;
         arcX = 0;
-        arcY = wallThickPx / 2;  // Hinge at inner edge of wall
+        arcY = wallThicknessPx / 2;  // Hinge at inner edge of wall
         arcRotation = 0;
       } else {
         // 270: Out + Right: hinge at right, swings down-left outside room
-        panelX = doorLengthPx - 5;
-        panelY = wallThickPx;
+        panelX = doorOrWindowLengthPx - 5;
+        panelY = wallThicknessPx;
         panelWidth = 5;
-        panelHeight = doorLengthPx;
-        arcX = doorLengthPx;
-        arcY = wallThickPx / 2;  // Hinge at inner edge of wall
+        panelHeight = doorOrWindowLengthPx;
+        arcX = doorOrWindowLengthPx;
+        arcY = wallThicknessPx / 2;  // Hinge at inner edge of wall
         arcRotation = 90;
       }
     } else if (isOnRightWall) {
       // VERTICAL DOOR ON RIGHT WALL
-      // Group: wallThickPx wide, doorLengthPx tall
+      // Group: wallThicknessPx wide, doorOrWindowLengthPx tall
       // Frame at inner edge (left edge, room side)
       frameWidth = 5;
-      frameHeight = doorLengthPx;
+      frameHeight = doorOrWindowLengthPx;
       frameX = 0;
       frameY = 0;
       
       // For right wall: "In" = swings left into room, "Out" = swings right outside room
-      // Hinge position: "Left" = top (y=0), "Right" = bottom (y=doorLengthPx)
+      // Hinge position: "Left" = top (y=0), "Right" = bottom (y=doorOrWindowLengthPx)
       
       if (rotation === 0) {
         // In + Left: hinge at top, swings left-down into room
-        panelX = -doorLengthPx + 5;  // Panel flush with wall
+        panelX = -doorOrWindowLengthPx + 5;  // Panel flush with wall
         panelY = 0;
-        panelWidth = doorLengthPx;
+        panelWidth = doorOrWindowLengthPx;
         panelHeight = 5;
-        arcX = wallThickPx / 2;  // Hinge at inner edge of wall
+        arcX = wallThicknessPx / 2;  // Hinge at inner edge of wall
         arcY = 0;
         arcRotation = 90;
       } else if (rotation === 90) {
         // In + Right: hinge at bottom, swings left-up into room
-        panelX = -doorLengthPx + 5;  // Panel flush with wall
-        panelY = doorLengthPx - 5;
-        panelWidth = doorLengthPx;
+        panelX = -doorOrWindowLengthPx + 5;  // Panel flush with wall
+        panelY = doorOrWindowLengthPx - 5;
+        panelWidth = doorOrWindowLengthPx;
         panelHeight = 5;
-        arcX = wallThickPx / 2;  // Hinge at inner edge of wall
-        arcY = doorLengthPx;
+        arcX = wallThicknessPx / 2;  // Hinge at inner edge of wall
+        arcY = doorOrWindowLengthPx;
         arcRotation = 180;
       } else if (rotation === 180) {
         // Out + Left: hinge at top, swings right-down outside room
-        panelX = wallThickPx;
+        panelX = wallThicknessPx;
         panelY = 0;
-        panelWidth = doorLengthPx;
+        panelWidth = doorOrWindowLengthPx;
         panelHeight = 5;
-        arcX = wallThickPx / 2;  // Hinge at inner edge of wall
+        arcX = wallThicknessPx / 2;  // Hinge at inner edge of wall
         arcY = 0;
         arcRotation = 0;
       } else {
         // 270: Out + Right: hinge at bottom, swings right-up outside room
-        panelX = wallThickPx;
-        panelY = doorLengthPx - 5;
-        panelWidth = doorLengthPx;
+        panelX = wallThicknessPx;
+        panelY = doorOrWindowLengthPx - 5;
+        panelWidth = doorOrWindowLengthPx;
         panelHeight = 5;
-        arcX = wallThickPx / 2;  // Hinge at inner edge of wall
-        arcY = doorLengthPx;
+        arcX = wallThicknessPx / 2;  // Hinge at inner edge of wall
+        arcY = doorOrWindowLengthPx;
         arcRotation = 270;
       }
     } else {
       // Default to top wall rendering if position is ambiguous
-      frameWidth = doorLengthPx;
+      frameWidth = doorOrWindowLengthPx;
       frameHeight = 5;
       frameX = 0;
-      frameY = wallThickPx - 2.5;
-      panelX = isLeftHinge ? 0 : doorLengthPx - 5;
-      panelY = isInward ? wallThickPx : -doorLengthPx;
+      frameY = wallThicknessPx - 2.5;
+      panelX = isLeftHinge ? 0 : doorOrWindowLengthPx - 5;
+      panelY = isInward ? wallThicknessPx : -doorOrWindowLengthPx;
       panelWidth = 5;
-      panelHeight = doorLengthPx;
-      arcX = isLeftHinge ? 0 : doorLengthPx;
-      arcY = wallThickPx / 2;  // Hinge at inner edge of wall
+      panelHeight = doorOrWindowLengthPx;
+      arcX = isLeftHinge ? 0 : doorOrWindowLengthPx;
+      arcY = wallThicknessPx / 2;  // Hinge at inner edge of wall
       arcRotation = rotation === 0 ? 0 : rotation === 90 ? 90 : rotation === 180 ? 270 : 180;
     }
     
     // Calculate door blade line endpoints
-    // The blade should extend from the hinge point (arcX, arcY) for doorLengthPx
+    // The blade should extend from the hinge point (arcX, arcY) for doorOrWindowLengthPx
     // in the direction perpendicular to the arc's initial rotation
     let bladePoints: number[] = [];
     
@@ -692,20 +705,20 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
       // Blade extends from hinge point (arcX, arcY) downward (into room) or upward (outside room)
       if (rotation === 0 || rotation === 90) {
         // Swings into room (downward from wall)
-        bladePoints = [arcX, arcY, arcX, arcY + doorLengthPx];
+        bladePoints = [arcX, arcY, arcX, arcY + doorOrWindowLengthPx];
       } else {
         // Swings outside room (upward from wall)
-        bladePoints = [arcX, arcY, arcX, arcY - doorLengthPx];
+        bladePoints = [arcX, arcY, arcX, arcY - doorOrWindowLengthPx];
       }
     } else {
       // Vertical walls: door blade is horizontal
       // Blade extends from hinge point (arcX, arcY) rightward (into room) or leftward (outside room)
       if (rotation === 0 || rotation === 90) {
         // Swings into room (rightward from wall)
-        bladePoints = [arcX, arcY, arcX + doorLengthPx, arcY];
+        bladePoints = [arcX, arcY, arcX + doorOrWindowLengthPx, arcY];
       } else {
         // Swings outside room (leftward from wall)
-        bladePoints = [arcX, arcY, arcX - doorLengthPx, arcY];
+        bladePoints = [arcX, arcY, arcX - doorOrWindowLengthPx, arcY];
       }
     }
     
@@ -726,14 +739,14 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
           <Line
             points={bladePoints}
             stroke="#8B4513"
-            strokeWidth={3}
+            strokeWidth={4}
             lineCap="round"
           />
           
           {/* Door swing arc - shows path of swing */}
           <Arc 
             innerRadius={0}
-            outerRadius={doorLengthPx} 
+            outerRadius={doorOrWindowLengthPx} 
             angle={90} 
             stroke="#333333" 
             strokeWidth={2}
@@ -773,7 +786,24 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
 
   // RENDER: WINDOW
   if (item.type?.toLowerCase() === 'window') {
+    // Window Dimensions:
+    // - item.width = window width along wall (e.g., 120cm)
+    // - item.height = window height (e.g., 120cm) - actual visible window height
+    // - item.floorDistance = distance from floor (e.g., 90cm)
+    // - thickness = FIXED at WALL_THICKNESS_CM (2.5cm) - NOT editable, matches wall thickness
+    
+    // Visual window dimensions (what user sees)
+    const windowWidthPx = item.width * PIXELS_PER_CM;  // Width along wall
+    const windowHeightPx = item.height * PIXELS_PER_CM; // Actual window height
+    
+    // Detect which wall the window is on
+    const isOnTopWall = Math.abs(item.y - (-WALL_THICKNESS_CM)) < 1;
+    const isOnLeftWall = Math.abs(item.x - (-WALL_THICKNESS_CM)) < 1;
+    const isOnBottomWall = Math.abs(item.y - roomConfig.height) < 1;
+    const isOnRightWall = Math.abs(item.x - roomConfig.width) < 1;
+    
     const hitAreaPadding = 30; // 30px padding for easier clicking
+    
     return (
       <>
         <Group {...groupProps}>
@@ -785,19 +815,61 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
             height={heightPx + hitAreaPadding} 
             opacity={0}
           />
-          {/* Visible window */}
-          <Rect width={widthPx} height={heightPx} fill="#e0f7fa" stroke="black" strokeWidth={1} />
-          <Rect x={0} y={heightPx / 2 - 2} width={widthPx} height={4} fill="#81d4fa" />
+          
+          {/* Window frame (in wall) - thin slice showing window embedded in wall */}
+          <Rect 
+            width={widthPx} 
+            height={heightPx} 
+            fill="#e0f7fa" 
+            stroke="black" 
+            strokeWidth={2} 
+          />
+          
+          {/* Window divider (cross-section view) */}
+          <Rect 
+            x={0} 
+            y={heightPx / 2 - 1} 
+            width={widthPx} 
+            height={2} 
+            fill="#81d4fa" 
+          />
+          
+          {/* Window actual height indicator (extends into room to show window height)
+              This shows the user how tall the window actually is */}
+          {(isOnTopWall || isOnBottomWall) && (
+            <Rect
+              x={widthPx / 2 - 2}
+              y={isOnTopWall ? wallThicknessPx : -windowHeightPx}
+              width={4}
+              height={windowHeightPx}
+              fill="rgba(129, 212, 250, 0.3)"
+              stroke="#81d4fa"
+              strokeWidth={1}
+              dash={[5, 5]}
+            />
+          )}
+          {(isOnLeftWall || isOnRightWall) && (
+            <Rect
+              x={isOnLeftWall ? wallThicknessPx : -windowHeightPx}
+              y={heightPx / 2 - 2}
+              width={windowHeightPx}
+              height={4}
+              fill="rgba(129, 212, 250, 0.3)"
+              stroke="#81d4fa"
+              strokeWidth={1}
+              dash={[5, 5]}
+            />
+          )}
         </Group>
         {isSelected && isDraggable && (
           <Transformer
             ref={trRef}
             boundBoxFunc={(oldBox, newBox) => {
-              // Lock height to wall thickness, only allow width changes
+              // Lock thickness to wall thickness, only allow width changes
               if (Math.abs(newBox.width) < 5) return oldBox;
               return {
                 ...newBox,
-                height: WALL_THICKNESS_CM * PIXELS_PER_CM, // Lock height to wall thickness
+                height: WALL_THICKNESS_PX, // Lock height to wall thickness (in pixels)
               };
             }}
             flipEnabled={false}
