@@ -1364,6 +1364,14 @@ export default function Home() {
         isOpen={isFurnitureLibraryOpen}
         onClose={() => setIsFurnitureLibraryOpen(false)}
         onAddFurniture={handleAddFurnitureFromLibrary}
+        defaultCategory={
+          roomType === 'Living Room' ? 'living' :
+          roomType === 'Bedroom' ? 'bedroom' :
+          roomType === 'Kitchen' ? 'kitchen' :
+          roomType === 'Office' ? 'office' :
+          roomType === 'Bathroom' ? 'bathroom' :
+          'all'
+        }
       />
 
       <CustomFurnitureModal
