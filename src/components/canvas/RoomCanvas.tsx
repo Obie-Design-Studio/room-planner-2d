@@ -823,7 +823,7 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
             </Group>
             
             {/* Scale Reference - Bottom-left corner */}
-            <Group x={20} y={roomConfig.height * PIXELS_PER_CM + 40}>
+            <Group x={20} y={roomConfig.height * PIXELS_PER_CM + 40} listening={false}>
               {/* Scale box - 10cm (40px) */}
               <Rect
                 x={0}
@@ -833,26 +833,30 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
                 fill="#f5f5f5"
                 stroke="#666"
                 strokeWidth={1}
+                listening={false}
               />
               {/* Inner detail lines for visual interest */}
               <Line
                 points={[5 * PIXELS_PER_CM, 0, 5 * PIXELS_PER_CM, 10 * PIXELS_PER_CM]}
                 stroke="#ddd"
                 strokeWidth={1}
+                listening={false}
               />
               <Line
                 points={[0, 5 * PIXELS_PER_CM, 10 * PIXELS_PER_CM, 5 * PIXELS_PER_CM]}
                 stroke="#ddd"
                 strokeWidth={1}
+                listening={false}
               />
-              {/* Label below box */}
+              {/* Label below box - respects measurementUnit */}
               <Text
                 x={0}
                 y={10 * PIXELS_PER_CM + 8}
-                text="= 10 cm"
+                text={`= ${formatMeasurement(10, measurementUnit)}`}
                 fontSize={14}
                 fontFamily="Arial, sans-serif"
                 fill="#666"
+                listening={false}
               />
             </Group>
             
