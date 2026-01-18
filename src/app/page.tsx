@@ -539,98 +539,100 @@ export default function Home() {
           </span>
         </div>
         
-        {/* Right: Save/Load/Export buttons - Hide on mobile, show in sidebar instead */}
-        <div style={{ display: 'flex', gap: '8px' }} className="hidden md:flex">
-          <button
-            onClick={handleSaveRoom}
-            disabled={isSaving}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '8px 16px',
-              fontSize: '14px',
-              fontWeight: 500,
-              color: isSaving ? '#999999' : '#FFFFFF',
-              backgroundColor: isSaving ? '#E5E5E5' : '#0A0A0A',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: isSaving ? 'not-allowed' : 'pointer',
-              transition: 'all 150ms',
-            }}
-            onMouseEnter={(e) => {
-              if (!isSaving) {
-                e.currentTarget.style.backgroundColor = '#333333';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isSaving) {
-                e.currentTarget.style.backgroundColor = '#0A0A0A';
-              }
-            }}
-          >
-            <Save className="w-4 h-4" />
-            <span>{isSaving ? 'Saving...' : 'Save'}</span>
-          </button>
+        {/* Right: Save/Load/Export buttons - Only show on desktop/tablet */}
+        {!isMobile && (
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              onClick={handleSaveRoom}
+              disabled={isSaving}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 16px',
+                fontSize: '14px',
+                fontWeight: 500,
+                color: isSaving ? '#999999' : '#FFFFFF',
+                backgroundColor: isSaving ? '#E5E5E5' : '#0A0A0A',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: isSaving ? 'not-allowed' : 'pointer',
+                transition: 'all 150ms',
+              }}
+              onMouseEnter={(e) => {
+                if (!isSaving) {
+                  e.currentTarget.style.backgroundColor = '#333333';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isSaving) {
+                  e.currentTarget.style.backgroundColor = '#0A0A0A';
+                }
+              }}
+            >
+              <Save className="w-4 h-4" />
+              <span>{isSaving ? 'Saving...' : 'Save'}</span>
+            </button>
 
-          <button
-            onClick={() => setIsLoadModalOpen(true)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '8px 16px',
-              fontSize: '14px',
-              fontWeight: 500,
-              color: '#0A0A0A',
-              backgroundColor: '#FFFFFF',
-              border: '1px solid #E5E5E5',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              transition: 'all 150ms',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#F5F5F5';
-              e.currentTarget.style.borderColor = '#0A0A0A';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#FFFFFF';
-              e.currentTarget.style.borderColor = '#E5E5E5';
-            }}
-          >
-            <FolderOpen className="w-4 h-4" />
-            <span>Load</span>
-          </button>
+            <button
+              onClick={() => setIsLoadModalOpen(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 16px',
+                fontSize: '14px',
+                fontWeight: 500,
+                color: '#0A0A0A',
+                backgroundColor: '#FFFFFF',
+                border: '1px solid #E5E5E5',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                transition: 'all 150ms',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#F5F5F5';
+                e.currentTarget.style.borderColor = '#0A0A0A';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#FFFFFF';
+                e.currentTarget.style.borderColor = '#E5E5E5';
+              }}
+            >
+              <FolderOpen className="w-4 h-4" />
+              <span>Load</span>
+            </button>
 
-          <button
-            onClick={() => setIsExportModalOpen(true)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '8px 16px',
-              fontSize: '14px',
-              fontWeight: 500,
-              color: '#0A0A0A',
-              backgroundColor: '#FFFFFF',
-              border: '1px solid #E5E5E5',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              transition: 'all 150ms',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#F5F5F5';
-              e.currentTarget.style.borderColor = '#0A0A0A';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#FFFFFF';
-              e.currentTarget.style.borderColor = '#E5E5E5';
-            }}
-          >
-            <Download className="w-4 h-4" />
+            <button
+              onClick={() => setIsExportModalOpen(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 16px',
+                fontSize: '14px',
+                fontWeight: 500,
+                color: '#0A0A0A',
+                backgroundColor: '#FFFFFF',
+                border: '1px solid #E5E5E5',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                transition: 'all 150ms',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#F5F5F5';
+                e.currentTarget.style.borderColor = '#0A0A0A';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#FFFFFF';
+                e.currentTarget.style.borderColor = '#E5E5E5';
+              }}
+            >
+              <Download className="w-4 h-4" />
             <span>Export</span>
           </button>
         </div>
+        )}
       </header>
 
       {/* Main Body */}
@@ -657,7 +659,8 @@ export default function Home() {
             padding: '20px'
           }}>
             {/* Mobile-only Save/Load/Export Section */}
-            <div className="md:hidden" style={{ marginBottom: '24px' }}>
+            {isMobile && (
+              <div style={{ marginBottom: '24px' }}>
               <h3 style={{ 
                 fontSize: '13px', 
                 fontWeight: 600,
@@ -746,6 +749,7 @@ export default function Home() {
                 </button>
               </div>
             </div>
+            )}
 
             {/* Room Settings Section */}
             <div style={{ marginBottom: '24px' }}>
