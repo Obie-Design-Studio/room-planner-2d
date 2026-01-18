@@ -211,7 +211,7 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
                 label={isWall ? "Length (cm)" : "Width (cm)"}
                 type="number"
                 value={localWidth}
-                onChange={(e) => setLocalWidth(Number(e.target.value))}
+                onChange={(e) => setLocalWidth(e.target.value === '' ? 0 : Number(e.target.value))}
               />
 
               {isWindow ? (
@@ -219,28 +219,28 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
                   label="Height (cm)"
                   type="number"
                   value={localHeight}
-                  onChange={(e) => setLocalHeight(Number(e.target.value))}
+                  onChange={(e) => setLocalHeight(e.target.value === '' ? 0 : Number(e.target.value))}
                 />
               ) : isDoor ? (
                 <Input
                   label="Height (cm)"
                   type="number"
                   value={localHeight}
-                  onChange={(e) => setLocalHeight(Number(e.target.value))}
+                  onChange={(e) => setLocalHeight(e.target.value === '' ? 0 : Number(e.target.value))}
                 />
               ) : isWall ? (
                 <Input
                   label="Thickness (cm)"
                   type="number"
                   value={localHeight}
-                  onChange={(e) => setLocalHeight(Number(e.target.value))}
+                  onChange={(e) => setLocalHeight(e.target.value === '' ? 0 : Number(e.target.value))}
                 />
               ) : (
                 <Input
                   label="Height (cm)"
                   type="number"
                   value={localHeight}
-                  onChange={(e) => setLocalHeight(Number(e.target.value))}
+                  onChange={(e) => setLocalHeight(e.target.value === '' ? 0 : Number(e.target.value))}
                 />
               )}
             </div>
@@ -251,7 +251,7 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
                 label="From Floor Distance (cm)"
                 type="number"
                 value={localFloorDistance}
-                onChange={(e) => setLocalFloorDistance(Number(e.target.value))}
+                onChange={(e) => setLocalFloorDistance(e.target.value === '' ? 0 : Number(e.target.value))}
               />
             )}
 
@@ -262,13 +262,13 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
                   label="Position X (cm)"
                   type="number"
                   value={localX}
-                  onChange={(e) => setLocalX(Number(e.target.value))}
+                  onChange={(e) => setLocalX(e.target.value === '' ? 0 : Number(e.target.value))}
                 />
                 <Input
                   label="Position Y (cm)"
                   type="number"
                   value={localY}
-                  onChange={(e) => setLocalY(Number(e.target.value))}
+                  onChange={(e) => setLocalY(e.target.value === '' ? 0 : Number(e.target.value))}
                 />
               </div>
             )}

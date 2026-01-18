@@ -226,14 +226,14 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
                 label="Width (cm)"
                 type="number"
                 value={localWidth}
-                onChange={(e) => setLocalWidth(Number(e.target.value))}
+                onChange={(e) => setLocalWidth(e.target.value === '' ? 0 : Number(e.target.value))}
               />
 
               <Input
                 label="Length (cm)"
                 type="number"
                 value={localHeight}
-                onChange={(e) => setLocalHeight(Number(e.target.value))}
+                onChange={(e) => setLocalHeight(e.target.value === '' ? 0 : Number(e.target.value))}
               />
             </div>
 
@@ -241,7 +241,7 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
               label="Ceiling Height (cm)"
               type="number"
               value={localCeiling}
-              onChange={(e) => setLocalCeiling(Number(e.target.value))}
+              onChange={(e) => setLocalCeiling(e.target.value === '' ? 0 : Number(e.target.value))}
             />
 
             {/* Divider */}
@@ -291,14 +291,14 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
                   label="Width (cm)"
                   type="number"
                   value={localWindowWidth}
-                  onChange={(e) => setLocalWindowWidth(Number(e.target.value))}
+                  onChange={(e) => setLocalWindowWidth(e.target.value === '' ? 0 : Number(e.target.value))}
                   min={10}
                 />
                 <Input
                   label="Height (cm)"
                   type="number"
                   value={localWindowHeight}
-                  onChange={(e) => setLocalWindowHeight(Number(e.target.value))}
+                  onChange={(e) => setLocalWindowHeight(e.target.value === '' ? 0 : Number(e.target.value))}
                   min={10}
                 />
               </div>
@@ -306,7 +306,7 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
                 label="From Floor (cm)"
                 type="number"
                 value={localWindowFloorDistance}
-                onChange={(e) => setLocalWindowFloorDistance(Number(e.target.value))}
+                onChange={(e) => setLocalWindowFloorDistance(e.target.value === '' ? 0 : Number(e.target.value))}
                 min={0}
               />
             </div>
@@ -328,14 +328,14 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
                   label="Width (cm)"
                   type="number"
                   value={localDoorWidth}
-                  onChange={(e) => setLocalDoorWidth(Number(e.target.value))}
+                  onChange={(e) => setLocalDoorWidth(e.target.value === '' ? 0 : Number(e.target.value))}
                   min={10}
                 />
                 <Input
                   label="Height (cm)"
                   type="number"
                   value={localDoorHeight}
-                  onChange={(e) => setLocalDoorHeight(Number(e.target.value))}
+                  onChange={(e) => setLocalDoorHeight(e.target.value === '' ? 0 : Number(e.target.value))}
                   min={10}
                 />
               </div>
