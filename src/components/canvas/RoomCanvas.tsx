@@ -6,7 +6,7 @@ import { type Unit, formatMeasurement } from "@/lib/unitConversion";
 import FurnitureShape from "./FurnitureShape";
 import MeasurementOverlay from "./MeasurementOverlay";
 import GridBackground from "./GridBackground";
-import { Plus, Minus, Maximize2, Ruler } from "lucide-react";
+import { Plus, Minus, Maximize2 } from "lucide-react";
 
 interface RoomCanvasProps {
   roomConfig: RoomConfig;
@@ -15,7 +15,7 @@ interface RoomCanvasProps {
   onItemChangeEnd?: (id: string, updates: Partial<FurnitureItem>) => void;
   onItemDelete: (id: string) => void;
   selectedId: string | null;
-  onSelect: (id: string) => void;
+  onSelect: (id: string | null) => void;
   onEdit: (id: string) => void;
   showAllMeasurements: boolean;
   onToggleMeasurements?: () => void;
@@ -423,6 +423,16 @@ export default function RoomCanvas({
     }
   };
 
+  // Handle clicking empty canvas to deselect
+  const handleStageClick = (e: any) => {
+    // Check if clicked on the stage itself (background) or room floor
+    const clickedOnEmpty = e.target === e.target.getStage() || e.target.attrs?.name === 'room-floor';
+    
+    if (clickedOnEmpty && selectedId !== null) {
+      onSelect(null);
+    }
+  };
+
   // Space key detection for pan mode
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -500,6 +510,7 @@ export default function RoomCanvas({
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onClick={handleStageClick}
       >
         <Layer 
           scale={{ x: scale, y: scale }}
@@ -508,6 +519,7 @@ export default function RoomCanvas({
         >
           <Group x={0} y={0}>
             <Rect
+              name="room-floor"
               x={-WALL_THICKNESS_PX / 2}
               y={-WALL_THICKNESS_PX / 2}
               width={roomConfig.width * PIXELS_PER_CM + WALL_THICKNESS_PX}
@@ -592,7 +604,7 @@ export default function RoomCanvas({
         </Layer>
       </Stage>
       
-      {/* Measurement Toggle & Zoom Controls */}
+      {/* Zoom Controls */}
       <div
         style={{
           position: 'absolute',
@@ -604,41 +616,6 @@ export default function RoomCanvas({
           zIndex: 10,
         }}
       >
-        {/* Show All Measurements Toggle */}
-        {onToggleMeasurements && (
-          <button
-            onClick={onToggleMeasurements}
-            style={{
-              width: '40px',
-              height: '40px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: showAllMeasurements ? '#0A0A0A' : '#FFFFFF',
-              border: showAllMeasurements ? 'none' : '1px solid #E5E5E5',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-              transition: 'all 150ms',
-            }}
-            onMouseEnter={(e) => {
-              if (!showAllMeasurements) {
-                e.currentTarget.style.backgroundColor = '#F5F5F5';
-                e.currentTarget.style.borderColor = '#0A0A0A';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!showAllMeasurements) {
-                e.currentTarget.style.backgroundColor = '#FFFFFF';
-                e.currentTarget.style.borderColor = '#E5E5E5';
-              }
-            }}
-            title={showAllMeasurements ? 'Hide All Measurements' : 'Show All Measurements'}
-          >
-            <Ruler size={20} color={showAllMeasurements ? '#FFFFFF' : '#0A0A0A'} />
-          </button>
-        )}
-        
         <button
           onClick={handleZoomIn}
           style={{
