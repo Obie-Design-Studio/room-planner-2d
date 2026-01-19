@@ -333,7 +333,7 @@ export default function RoomCanvas({
     if (!stage) return;
 
     // Check if clicking on empty space or if Space key is pressed
-    const clickedOnEmpty = e.target === stage || e.target.getLayer;
+    const clickedOnEmpty = e.target === stage || !e.target.getLayer();
     
     if (clickedOnEmpty || isSpacePressed) {
       setIsPanning(true);
