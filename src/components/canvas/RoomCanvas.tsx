@@ -22,6 +22,7 @@ interface RoomCanvasProps {
   measurementUnit?: Unit;
   viewportWidth: number;
   viewportHeight: number;
+  onStageRef?: (stage: any) => void;
 }
 
 export default function RoomCanvas({
@@ -38,8 +39,16 @@ export default function RoomCanvas({
   measurementUnit = 'cm',
   viewportWidth,
   viewportHeight,
+  onStageRef,
 }: RoomCanvasProps) {
   const stageRef = useRef<any>(null);
+
+  // Expose stage ref to parent via callback
+  useEffect(() => {
+    if (stageRef.current && onStageRef) {
+      onStageRef(stageRef.current);
+    }
+  }, [onStageRef]);
   
   // Zoom state: 1.0 = 100%, range 0.1 to 3.0
   const [userZoom, setUserZoom] = useState(1.0);

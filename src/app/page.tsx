@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import type { RoomConfig, FurnitureItem } from "@/types";
 import ColorPicker from "@/components/ui/ColorPicker";
@@ -23,6 +23,8 @@ const RoomCanvas = dynamic(
 );
 
 export default function Home() {
+  const stageRef = useRef<any>(null);
+  
   const [roomConfig, setRoomConfig] = useState<RoomConfig>({
     width: 400,
     height: 300,
@@ -105,9 +107,17 @@ export default function Home() {
 
   const handleExport = async (format: 'pdf' | 'png' | 'json') => {
     const stageElement = document.querySelector('.konvajs-content canvas') as HTMLCanvasElement;
-    if (format === 'json') { exportAsJSON(roomName, 'Living Room', roomConfig, ceilingHeight, items); }
-    else if (format === 'png' && stageElement) { await exportAsPNG(stageElement, roomName); }
-    else if (format === 'pdf') { alert('PDF export requires canvas reference. Use PNG or JSON for now.'); }
+    if (format === 'json') { 
+      exportAsJSON(roomName, 'Living Room', roomConfig, ceilingHeight, items); 
+    } else if (format === 'png' && stageElement) { 
+      await exportAsPNG(stageElement, roomName); 
+    } else if (format === 'pdf') { 
+      if (stageRef.current) {
+        await exportCompletePDF({ current: stageRef.current }, roomName, roomConfig, ceilingHeight, items);
+      } else {
+        alert('Canvas not ready. Please try again.');
+      }
+    }
   };
   const handleAddFurnitureFromLibrary = (furniture: any) => {
     handleAddItem(furniture.type, furniture.width, furniture.height, furniture.color);
@@ -917,6 +927,7 @@ export default function Home() {
             onToggleMeasurements={() => setShowAllMeasurements(!showAllMeasurements)}
             viewportWidth={viewport.width}
             viewportHeight={viewport.height}
+            onStageRef={(stage) => { stageRef.current = stage; }}
           />
         </div>
       </div>
