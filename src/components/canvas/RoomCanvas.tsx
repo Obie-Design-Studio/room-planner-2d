@@ -18,8 +18,8 @@ interface RoomCanvasProps {
   onSelect: (id: string | null) => void;
   onEdit: (id: string) => void;
   showAllMeasurements: boolean;
-  measurementUnit?: Unit;
   onToggleMeasurements?: () => void;
+  measurementUnit?: Unit;
   viewportWidth: number;
   viewportHeight: number;
 }
