@@ -71,7 +71,7 @@ export default function RoomCanvas({
   // Create fixed bounds with buffer for door arcs on ALL walls
   // This prevents the room from jumping when doors move between walls
   const buffer = maxDoorLength; // Buffer extends in all directions
-  const dimensionLabelSpace = 120; // Space for room dimension labels (line at -100 + modest text space)
+  const dimensionLabelSpace = 160; // Space for room dimension labels (line at -100 + modest text space)
   let minX = -WALL_THICKNESS_PX / 2 - buffer - dimensionLabelSpace;
   let minY = -WALL_THICKNESS_PX / 2 - buffer - dimensionLabelSpace;
   let maxX = roomPxWidth + WALL_THICKNESS_PX / 2 + buffer;

@@ -9,9 +9,13 @@ import ItemEditModal from "@/components/ui/ItemEditModal";
 import RoomSettingsModal from "@/components/ui/RoomSettingsModal";
 import FurnitureLibraryModal from "@/components/ui/FurnitureLibraryModal";
 import CustomFurnitureModal from "@/components/ui/CustomFurnitureModal";
-import { Armchair, Table, Bed, RectangleHorizontal, DoorOpen, Trash2, Settings, ChevronDown, ChevronUp, Plus, Grid3x3, Menu, X } from "lucide-react";
+import ExportModal from "@/components/ui/ExportModal";
+import LoadRoomModal from "@/components/ui/LoadRoomModal";
+import { Armchair, Table, Bed, RectangleHorizontal, DoorOpen, Trash2, Settings, ChevronDown, ChevronUp, Plus, Grid3x3, Menu, X, Save, FolderOpen, Download } from "lucide-react";
 import { PIXELS_PER_CM, WALL_THICKNESS_PX } from "@/lib/constants";
 import { getDefaultFurnitureForRoom, FURNITURE_LIBRARY, getFurnitureByType, type RoomType } from "@/lib/furnitureLibrary";
+import { saveRoom, loadRoom } from "@/lib/supabase";
+import { exportAsJSON, exportAsPNG, exportCompletePDF } from "@/lib/export";
 
 const RoomCanvas = dynamic(
   () => import("@/components/canvas/RoomCanvas"),
@@ -39,12 +43,14 @@ export default function Home() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(320);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
 
   useEffect(() => {
     const handleResize = () => {
       const windowWidth = window.innerWidth;
-      const isMobileView = windowWidth < 768;
-      const isTabletView = windowWidth >= 768 && windowWidth < 1024;
+      const isMobileView = windowWidth < 1024;
+      const isTabletView = windowWidth >= 1024 && windowWidth < 1280;
       
       setIsMobile(isMobileView);
       
@@ -78,6 +84,31 @@ export default function Home() {
     setCeilingHeight(ceiling);
   };
 
+
+  const handleSaveRoom = async () => {
+    const roomData = { name: roomName, room_type: 'Living Room', width_cm: roomConfig.width, length_cm: roomConfig.height, ceiling_height_cm: ceilingHeight, default_window_width_cm: 120, default_window_height_cm: 150, default_door_width_cm: 90, default_door_height_cm: 210, wall_color: '#FFFFFF', current_view: 'blueprint' };
+    const roomItems = items.map(item => ({ type: item.type, label: item.type, x: item.x, y: item.y, width: item.width, height: item.height, rotation: item.rotation, color: item.color }));
+    const result = await saveRoom(roomData, roomItems);
+    if (result.success) { alert('Room saved successfully!'); } else { alert('Failed to save room: ' + result.error); }
+  };
+
+  const handleLoadRoom = async (roomId: string) => {
+    const result = await loadRoom(roomId);
+    if (result.success && result.room) {
+      setRoomName(result.room.name);
+      setRoomConfig({ width: result.room.width_cm, height: result.room.length_cm });
+      setCeilingHeight(result.room.ceiling_height_cm);
+      if (result.items) { setItems(result.items.map((item: any) => ({ id: item.id || crypto.randomUUID(), type: item.type, x: item.x, y: item.y, width: item.width, height: item.height, rotation: item.rotation || 0, color: item.color || '#666666', name: item.label || item.type }))); }
+      setIsLoadModalOpen(false);
+    } else { alert('Failed to load room'); }
+  };
+
+  const handleExport = async (format: 'pdf' | 'png' | 'json') => {
+    const stageElement = document.querySelector('.konvajs-content canvas') as HTMLCanvasElement;
+    if (format === 'json') { exportAsJSON(roomName, 'Living Room', roomConfig, ceilingHeight, items); }
+    else if (format === 'png' && stageElement) { await exportAsPNG(stageElement, roomName); }
+    else if (format === 'pdf') { alert('PDF export requires canvas reference. Use PNG or JSON for now.'); }
+  };
   const handleAddFurnitureFromLibrary = (furniture: any) => {
     handleAddItem(furniture.type, furniture.width, furniture.height, furniture.color);
   };
@@ -278,8 +309,16 @@ export default function Home() {
           </span>
         </div>
         
-        {/* Right: Empty spacer for balance */}
-        <div style={{ width: isMobile ? '0px' : '140px' }}></div>
+        {/* Right: Action buttons */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {!isMobile && (
+            <>
+              <button onClick={() => setIsLoadModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 12px', backgroundColor: 'transparent', border: '1px solid #E5E5E5', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 500, color: '#0A0A0A' }}><FolderOpen size={16} /> Load</button>
+              <button onClick={handleSaveRoom} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 12px', backgroundColor: 'transparent', border: '1px solid #E5E5E5', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 500, color: '#0A0A0A' }}><Save size={16} /> Save</button>
+              <button onClick={() => setIsExportModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 12px', backgroundColor: '#0A0A0A', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 500, color: '#FFFFFF' }}><Download size={16} /> Export</button>
+            </>
+          )}
+        </div>
       </header>
 
       {/* Main Body */}
@@ -841,6 +880,14 @@ export default function Home() {
             )}
           </div>
           </div>
+          {/* Mobile Action Buttons - Bottom of Sidebar */}
+          {isMobile && (
+            <div style={{ padding: '16px 20px', borderTop: '1px solid #EFEFEF', display: 'flex', flexDirection: 'column', gap: '8px', backgroundColor: '#FAFAFA' }}>
+              <button onClick={() => { setIsLoadModalOpen(true); setIsSidebarOpen(false); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', backgroundColor: '#FFFFFF', border: '1px solid #E5E5E5', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 500, color: '#0A0A0A' }}><FolderOpen size={18} /> Load Room</button>
+              <button onClick={() => { handleSaveRoom(); setIsSidebarOpen(false); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', backgroundColor: '#FFFFFF', border: '1px solid #E5E5E5', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 500, color: '#0A0A0A' }}><Save size={18} /> Save Room</button>
+              <button onClick={() => { setIsExportModalOpen(true); setIsSidebarOpen(false); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', backgroundColor: '#0A0A0A', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 500, color: '#FFFFFF' }}><Download size={18} /> Export</button>
+            </div>
+          )}
         </aside>
 
         {/* Canvas Area */}
@@ -904,6 +951,19 @@ export default function Home() {
         isOpen={isCustomFurnitureOpen}
         onClose={() => setIsCustomFurnitureOpen(false)}
         onAddCustomFurniture={handleAddCustomFurniture}
+      />
+
+      <ExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        onExport={handleExport}
+        currentView="blueprint"
+      />
+
+      <LoadRoomModal
+        isOpen={isLoadModalOpen}
+        onClose={() => setIsLoadModalOpen(false)}
+        onLoad={handleLoadRoom}
       />
     </div>
   );
