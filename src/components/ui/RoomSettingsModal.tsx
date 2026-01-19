@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import type { RoomConfig } from '@/types';
+import type { Unit } from '@/lib/unitConversion';
+import { UNIT_LABELS } from '@/lib/unitConversion';
 import Input from '@/components/ui/Input';
 import { ROOM_TYPE_LABELS, type RoomType } from '@/lib/furnitureLibrary';
 
@@ -9,13 +11,14 @@ interface RoomSettingsModalProps {
   roomName: string;
   roomConfig: RoomConfig;
   ceilingHeight: number;
+  measurementUnit?: Unit;
   defaultWindowWidth?: number;
   defaultWindowHeight?: number;
   defaultWindowFloorDistance?: number;
   defaultDoorWidth?: number;
   defaultDoorHeight?: number;
   onClose: () => void;
-  onUpdate: (name: string, config: RoomConfig, ceiling: number, windowWidth?: number, windowHeight?: number, windowFloorDistance?: number, doorWidth?: number, doorHeight?: number) => void;
+  onUpdate: (name: string, config: RoomConfig, ceiling: number, unit?: Unit, windowWidth?: number, windowHeight?: number, windowFloorDistance?: number, doorWidth?: number, doorHeight?: number) => void;
 }
 
 const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
@@ -23,6 +26,7 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
   roomName,
   roomConfig,
   ceilingHeight,
+  measurementUnit = 'cm',
   defaultWindowWidth,
   defaultWindowHeight,
   defaultWindowFloorDistance,
@@ -35,6 +39,7 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
   const [localWidth, setLocalWidth] = useState(roomConfig.width);
   const [localHeight, setLocalHeight] = useState(roomConfig.height);
   const [localCeiling, setLocalCeiling] = useState(ceilingHeight);
+  const [localUnit, setLocalUnit] = useState<Unit>(measurementUnit);
   const [localRoomType, setLocalRoomType] = useState<RoomType | undefined>(roomConfig.roomType);
   const [localWindowWidth, setLocalWindowWidth] = useState(defaultWindowWidth);
   const [localWindowHeight, setLocalWindowHeight] = useState(defaultWindowHeight);
@@ -49,6 +54,7 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
       setLocalWidth(roomConfig.width);
       setLocalHeight(roomConfig.height);
       setLocalCeiling(ceilingHeight);
+      setLocalUnit(measurementUnit);
       setLocalRoomType(roomConfig.roomType);
       setLocalWindowWidth(defaultWindowWidth);
       setLocalWindowHeight(defaultWindowHeight);
@@ -56,7 +62,7 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
       setLocalDoorWidth(defaultDoorWidth);
       setLocalDoorHeight(defaultDoorHeight);
     }
-  }, [isOpen, roomName, roomConfig, ceilingHeight, defaultWindowWidth, defaultWindowHeight, defaultWindowFloorDistance, defaultDoorWidth, defaultDoorHeight]);
+  }, [isOpen, roomName, roomConfig, ceilingHeight, measurementUnit, defaultWindowWidth, defaultWindowHeight, defaultWindowFloorDistance, defaultDoorWidth, defaultDoorHeight]);
 
   if (!isOpen) return null;
 
@@ -70,7 +76,8 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
     onUpdate(
       localName, 
       { width: localWidth, height: localHeight, roomType: localRoomType }, 
-      localCeiling, 
+      localCeiling,
+      localUnit,
       localWindowWidth, 
       localWindowHeight, 
       localWindowFloorDistance,
@@ -220,6 +227,49 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
               value={localName}
               onChange={(e) => setLocalName(e.target.value)}
             />
+
+            {/* Measurement Unit Selector */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label
+                style={{
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  color: '#666666',
+                  letterSpacing: '-0.01em',
+                }}
+              >
+                Measurement Unit
+              </label>
+              <select
+                value={localUnit}
+                onChange={(e) => setLocalUnit(e.target.value as Unit)}
+                style={{
+                  padding: '12px 14px',
+                  fontSize: '14px',
+                  fontWeight: 400,
+                  color: '#0A0A0A',
+                  backgroundColor: '#FAFAFA',
+                  border: '1px solid #E5E5E5',
+                  borderRadius: '10px',
+                  outline: 'none',
+                  transition: 'all 150ms',
+                  cursor: 'pointer',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = '#0A0A0A';
+                  e.currentTarget.style.backgroundColor = '#FFFFFF';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = '#E5E5E5';
+                  e.currentTarget.style.backgroundColor = '#FAFAFA';
+                }}
+              >
+                <option value="cm">Centimeters (cm)</option>
+                <option value="m">Meters (m)</option>
+                <option value="in">Inches (in)</option>
+                <option value="ft">Feet (ft)</option>
+              </select>
+            </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <Input
