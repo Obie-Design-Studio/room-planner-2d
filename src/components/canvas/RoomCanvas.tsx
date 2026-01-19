@@ -1,12 +1,12 @@
-import React, { useRef, useEffect, useState, forwardRef, useImperativeHandle } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { Stage, Layer, Rect, Group, Line, Text } from "react-konva";
 import { PIXELS_PER_CM, WALL_THICKNESS_PX } from "@/lib/constants";
-import { RoomConfig, FurnitureItem, ViewMode } from "@/types";
+import { RoomConfig, FurnitureItem } from "@/types";
 import { type Unit, formatMeasurement } from "@/lib/unitConversion";
 import FurnitureShape from "./FurnitureShape";
-import MeasurementOverlay, { type MeasurementMode } from "./MeasurementOverlay";
+import MeasurementOverlay from "./MeasurementOverlay";
 import GridBackground from "./GridBackground";
-import { Plus, Minus, Maximize2 } from "lucide-react";
+import { Plus, Minus, Maximize2, Ruler } from "lucide-react";
 
 interface RoomCanvasProps {
   roomConfig: RoomConfig;
@@ -15,22 +15,16 @@ interface RoomCanvasProps {
   onItemChangeEnd?: (id: string, updates: Partial<FurnitureItem>) => void;
   onItemDelete: (id: string) => void;
   selectedId: string | null;
-  onSelect: (id: string | null) => void;
+  onSelect: (id: string) => void;
   onEdit: (id: string) => void;
   showAllMeasurements: boolean;
+  onToggleMeasurements?: () => void;
   measurementUnit?: Unit;
   viewportWidth: number;
   viewportHeight: number;
-  viewMode?: ViewMode;
-  hiddenMeasurements?: Set<string>;
-  onToggleMeasurement?: (measurementId: string) => void;
-  measurementMode?: MeasurementMode;
-  pinnedMeasurements?: Set<string>;
-  hoveredItemId?: string | null;
-  onItemHover?: (itemId: string | null) => void;
 }
 
-const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
+export default function RoomCanvas({
   roomConfig,
   items,
   onItemChange,
@@ -40,21 +34,12 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
   onSelect,
   onEdit,
   showAllMeasurements,
+  onToggleMeasurements,
   measurementUnit = 'cm',
   viewportWidth,
   viewportHeight,
-  viewMode,
-  hiddenMeasurements,
-  onToggleMeasurement,
-  measurementMode = 'all',
-  pinnedMeasurements = new Set(),
-  hoveredItemId = null,
-  onItemHover,
-}, ref) => {
+}: RoomCanvasProps) {
   const stageRef = useRef<any>(null);
-  
-  // Expose stageRef to parent via ref
-  useImperativeHandle(ref, () => stageRef.current);
   
   // Zoom state: 1.0 = 100%, range 0.1 to 3.0
   const [userZoom, setUserZoom] = useState(1.0);
@@ -64,9 +49,6 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
   const [isPanning, setIsPanning] = useState(false);
   const [isSpacePressed, setIsSpacePressed] = useState(false);
   const lastPointerPos = useRef({ x: 0, y: 0 });
-  
-  // Track timestamp of measurement click to prevent deselection
-  const measurementClickTimeRef = useRef(0);
   
   // Zoom tooltip state (shows during Ctrl+Scroll zoom)
   const [showZoomTooltip, setShowZoomTooltip] = useState(false);
@@ -88,9 +70,7 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
   
   // Create fixed bounds with buffer for door arcs on ALL walls
   // This prevents the room from jumping when doors move between walls
-  // Ensure minimum buffer for room dimension labels (positioned at -100 with text extending ~30-50px beyond)
-  const ROOM_LABEL_BUFFER = 150; // Space for room dimension labels on top and left walls
-  const buffer = Math.max(maxDoorLength, ROOM_LABEL_BUFFER); // Buffer extends in all directions
+  const buffer = maxDoorLength; // Buffer extends in all directions
   let minX = -WALL_THICKNESS_PX / 2 - buffer;
   let minY = -WALL_THICKNESS_PX / 2 - buffer;
   let maxX = roomPxWidth + WALL_THICKNESS_PX / 2 + buffer;
@@ -100,10 +80,10 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
   const contentHeight = maxY - minY;
   
   // Dynamic padding that scales with zoom level
-  // At 100% zoom (userZoom=1.0): 40px padding - room uses maximum space (buffer already accounts for door swings)
-  // At 300% zoom (userZoom=3.0): 120px padding - ensures comfortable edge visibility when zoomed in
-  // This keeps content away from edges at all zoom levels while maximizing space at default zoom
-  const basePadding = 40;
+  // At 100% zoom (userZoom=1.0): 100px padding - room uses maximum space
+  // At 300% zoom (userZoom=3.0): 300px padding - ensures edge visibility
+  // This keeps content away from edges at all zoom levels while maximizing space
+  const basePadding = 100;
   const padding = basePadding * userZoom;
   
   // Base scale to fit content
@@ -120,23 +100,23 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
   const baseCenterOffsetX = viewportWidth / 2 - (contentWidth / 2 + minX) * scale;
   const baseCenterOffsetY = viewportHeight / 2 - (contentHeight / 2 + minY) * scale;
 
-  // Elastic boundary helper - allows ±100px over-pan with resistance (configurable)
+  // Elastic boundary helper - allows ±100px over-pan with resistance
   const ELASTIC_MARGIN = 100;
-  const applyElasticBoundary = (value: number, min: number, max: number, margin: number = ELASTIC_MARGIN): number => {
+  const applyElasticBoundary = (value: number, min: number, max: number): number => {
     if (min > max) return value; // Invalid range, no clamping
     
     if (value < min) {
       // Over-panned to the left/top - apply elastic resistance
       const overpan = min - value;
-      if (overpan > margin) {
-        return min - margin; // Hard limit at margin
+      if (overpan > ELASTIC_MARGIN) {
+        return min - ELASTIC_MARGIN; // Hard limit at margin
       }
       return value; // Allow within elastic margin
     } else if (value > max) {
       // Over-panned to the right/bottom - apply elastic resistance
       const overpan = value - max;
-      if (overpan > margin) {
-        return max + margin; // Hard limit at margin
+      if (overpan > ELASTIC_MARGIN) {
+        return max + ELASTIC_MARGIN; // Hard limit at margin
       }
       return value; // Allow within elastic margin
     }
@@ -216,53 +196,27 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
         const contentScreenWidth = contentWidth * scale;
         const contentScreenHeight = contentHeight * scale;
         
-        // At minimum zoom (10%), disable elastic margin to keep room fully visible
-        const isMinZoom = userZoom <= 0.15;
-        
         let minPosX, maxPosX, minPosY, maxPosY;
         
-        if (isMinZoom) {
-          // At minimum zoom: constrain actual ROOM (not content with buffer) to stay visible
-          // Room bounds are from (-WALL_THICKNESS_PX/2, -WALL_THICKNESS_PX/2) to (roomPxWidth + WALL_THICKNESS_PX/2, roomPxHeight + WALL_THICKNESS_PX/2)
-          const roomMinX = -WALL_THICKNESS_PX / 2;
-          const roomMinY = -WALL_THICKNESS_PX / 2;
-          const roomMaxX = roomPxWidth + WALL_THICKNESS_PX / 2;
-          const roomMaxY = roomPxHeight + WALL_THICKNESS_PX / 2;
-          
-          // Constrain room edges to viewport edges
-          minPosX = viewportWidth - (baseCenterOffsetX + roomMaxX * scale); // Room right edge at viewport right
-          maxPosX = -(baseCenterOffsetX + roomMinX * scale); // Room left edge at viewport left
-          minPosY = viewportHeight - (baseCenterOffsetY + roomMaxY * scale); // Room bottom edge at viewport bottom
-          maxPosY = -(baseCenterOffsetY + roomMinY * scale); // Room top edge at viewport top
+        if (contentScreenWidth <= viewportWidth) {
+          minPosX = viewportWidth - (baseCenterOffsetX + maxX * scale);
+          maxPosX = -(baseCenterOffsetX + minX * scale);
         } else {
-          // Normal zoom: use content bounds (includes buffer for doors/labels)
-          // Horizontal bounds
-          if (contentScreenWidth <= viewportWidth) {
-            // Content fits: allow panning, but keep fully visible (edges within viewport)
-            minPosX = viewportWidth - (baseCenterOffsetX + maxX * scale); // Right edge at viewport right
-            maxPosX = -(baseCenterOffsetX + minX * scale); // Left edge at viewport left
-          } else {
-            // Content larger than viewport: clamp to edges
-            maxPosX = -(baseCenterOffsetX + minX * scale);
-            minPosX = viewportWidth - (baseCenterOffsetX + maxX * scale);
-          }
-          
-          // Vertical bounds
-          if (contentScreenHeight <= viewportHeight) {
-            // Content fits: allow panning, but keep fully visible (edges within viewport)
-            minPosY = viewportHeight - (baseCenterOffsetY + maxY * scale); // Bottom edge at viewport bottom
-            maxPosY = -(baseCenterOffsetY + minY * scale); // Top edge at viewport top
-          } else {
-            // Content larger than viewport: clamp to edges
-            maxPosY = -(baseCenterOffsetY + minY * scale);
-            minPosY = viewportHeight - (baseCenterOffsetY + maxY * scale);
-          }
+          maxPosX = -(baseCenterOffsetX + minX * scale);
+          minPosX = viewportWidth - (baseCenterOffsetX + maxX * scale);
         }
         
-        // Apply elastic boundaries (disabled at minimum zoom to ensure room stays fully visible)
-        const elasticMargin = isMinZoom ? 0 : ELASTIC_MARGIN;
-        const clampedX = applyElasticBoundary(newX, minPosX, maxPosX, elasticMargin);
-        const clampedY = applyElasticBoundary(newY, minPosY, maxPosY, elasticMargin);
+        if (contentScreenHeight <= viewportHeight) {
+          minPosY = viewportHeight - (baseCenterOffsetY + maxY * scale);
+          maxPosY = -(baseCenterOffsetY + minY * scale);
+        } else {
+          maxPosY = -(baseCenterOffsetY + minY * scale);
+          minPosY = viewportHeight - (baseCenterOffsetY + maxY * scale);
+        }
+        
+        // Apply elastic boundaries (±100px over-pan allowed)
+        const clampedX = applyElasticBoundary(newX, minPosX, maxPosX);
+        const clampedY = applyElasticBoundary(newY, minPosY, maxPosY);
         
         return {
           x: clampedX,
@@ -378,12 +332,15 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
     const stage = stageRef.current;
     if (!stage) return;
 
-    // Only enable panning when Space key is pressed (pan mode)
-    // Don't pan on regular clicks - those should select/deselect
-    if (isSpacePressed) {
+    // Check if clicking on empty space or if Space key is pressed
+    const clickedOnEmpty = e.target === stage || e.target.getLayer;
+    
+    if (clickedOnEmpty || isSpacePressed) {
       setIsPanning(true);
       const pos = stage.getPointerPosition();
       lastPointerPos.current = pos;
+      
+      // Change cursor
       stage.container().style.cursor = 'grabbing';
     }
   };
@@ -414,53 +371,37 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
         // Content spans from (minX * scale) to (maxX * scale) in its own coordinate space
         // With Layer offset, the content's screen position is: stagePos + offsetX + (content coords * scale)
         
-        // At minimum zoom (10%), disable elastic margin to keep room fully visible
-        const isMinZoom = userZoom <= 0.15;
+        // Boundary logic:
+        // - If content is smaller than viewport, allow free movement within extra space
+        // - If content is larger than viewport, only allow panning to see all parts
         
         let minPosX, maxPosX, minPosY, maxPosY;
         
-        if (isMinZoom) {
-          // At minimum zoom: constrain actual ROOM (not content with buffer) to stay visible
-          // Room bounds are from (-WALL_THICKNESS_PX/2, -WALL_THICKNESS_PX/2) to (roomPxWidth + WALL_THICKNESS_PX/2, roomPxHeight + WALL_THICKNESS_PX/2)
-          const roomMinX = -WALL_THICKNESS_PX / 2;
-          const roomMinY = -WALL_THICKNESS_PX / 2;
-          const roomMaxX = roomPxWidth + WALL_THICKNESS_PX / 2;
-          const roomMaxY = roomPxHeight + WALL_THICKNESS_PX / 2;
-          
-          // Constrain room edges to viewport edges
-          minPosX = viewportWidth - (baseCenterOffsetX + roomMaxX * scale); // Room right edge at viewport right
-          maxPosX = -(baseCenterOffsetX + roomMinX * scale); // Room left edge at viewport left
-          minPosY = viewportHeight - (baseCenterOffsetY + roomMaxY * scale); // Room bottom edge at viewport bottom
-          maxPosY = -(baseCenterOffsetY + roomMinY * scale); // Room top edge at viewport top
+        if (contentScreenWidth <= viewportWidth) {
+          // Content fits horizontally - allow positioning anywhere that keeps it fully visible
+          // Right constraint: baseCenterOffsetX + maxX * scale + stagePos.x <= viewportWidth
+          minPosX = viewportWidth - (baseCenterOffsetX + maxX * scale);
+          // Left constraint: baseCenterOffsetX + minX * scale + stagePos.x >= 0
+          maxPosX = -(baseCenterOffsetX + minX * scale);
         } else {
-          // Normal zoom: use content bounds (includes buffer for doors/labels)
-          // Horizontal bounds
-          if (contentScreenWidth <= viewportWidth) {
-            // Content fits: allow panning, but keep fully visible (edges within viewport)
-            minPosX = viewportWidth - (baseCenterOffsetX + maxX * scale); // Right edge at viewport right
-            maxPosX = -(baseCenterOffsetX + minX * scale); // Left edge at viewport left
-          } else {
-            // Content larger than viewport: clamp to edges
-            maxPosX = -(baseCenterOffsetX + minX * scale);
-            minPosX = viewportWidth - (baseCenterOffsetX + maxX * scale);
-          }
-          
-          // Vertical bounds
-          if (contentScreenHeight <= viewportHeight) {
-            // Content fits: allow panning, but keep fully visible (edges within viewport)
-            minPosY = viewportHeight - (baseCenterOffsetY + maxY * scale); // Bottom edge at viewport bottom
-            maxPosY = -(baseCenterOffsetY + minY * scale); // Top edge at viewport top
-          } else {
-            // Content larger than viewport: clamp to edges
-            maxPosY = -(baseCenterOffsetY + minY * scale);
-            minPosY = viewportHeight - (baseCenterOffsetY + maxY * scale);
-          }
+          // Content larger than viewport - clamp to edges
+          maxPosX = -(baseCenterOffsetX + minX * scale); // Can pan left
+          minPosX = viewportWidth - (baseCenterOffsetX + maxX * scale); // Can pan right
         }
         
-        // Apply elastic boundaries (disabled at minimum zoom to ensure room stays fully visible)
-        const elasticMargin = isMinZoom ? 0 : ELASTIC_MARGIN;
-        const clampedX = applyElasticBoundary(newX, minPosX, maxPosX, elasticMargin);
-        const clampedY = applyElasticBoundary(newY, minPosY, maxPosY, elasticMargin);
+        if (contentScreenHeight <= viewportHeight) {
+          // Content fits vertically
+          minPosY = viewportHeight - (baseCenterOffsetY + maxY * scale);
+          maxPosY = -(baseCenterOffsetY + minY * scale);
+        } else {
+          // Content larger than viewport
+          maxPosY = -(baseCenterOffsetY + minY * scale);
+          minPosY = viewportHeight - (baseCenterOffsetY + maxY * scale);
+        }
+        
+        // Apply elastic boundaries (±100px over-pan allowed)
+        const clampedX = applyElasticBoundary(newX, minPosX, maxPosX);
+        const clampedY = applyElasticBoundary(newY, minPosY, maxPosY);
         
         return {
           x: clampedX,
@@ -472,61 +413,12 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
     }
   };
 
-  const handleMouseUp = (e: any) => {
+  const handleMouseUp = () => {
     const stage = stageRef.current;
-    const targetName = e.target?.attrs?.name;
-    
     if (isPanning) {
       setIsPanning(false);
       if (stage) {
         stage.container().style.cursor = isSpacePressed ? 'grab' : 'default';
-      }
-      return;
-    }
-    
-    // Handle deselection
-    if (selectedId !== null && e && e.target) {
-      // Check if measurement was clicked within last 200ms
-      const timeSinceMeasurementClick = Date.now() - measurementClickTimeRef.current;
-      if (timeSinceMeasurementClick < 200) {
-        return;
-      }
-      
-      // Check if clicked on floor (empty space) or Stage directly
-      const isFloorClick = targetName === 'floor';
-      const isStageClick = e.target === e.target.getStage();
-      
-      if (isFloorClick || isStageClick) {
-        onSelect(null);
-        return;
-      }
-      
-      // Check if clicked on furniture or UI elements
-      let clickedOnFurnitureOrUI = false;
-      let current = e.target;
-      
-      while (current && current.getParent) {
-        const attrs = current.attrs || {};
-        
-        if (attrs.id && items.find((item) => item.id === attrs.id)) {
-          clickedOnFurnitureOrUI = true;
-          break;
-        }
-        
-        if (attrs.name && (
-          attrs.name.includes('measurement') || 
-          attrs.name.includes('dimension-label') ||
-          attrs.name === 'rotate-button'
-        )) {
-          clickedOnFurnitureOrUI = true;
-          break;
-        }
-        
-        current = current.getParent();
-      }
-
-      if (!clickedOnFurnitureOrUI) {
-        onSelect(null);
       }
     }
   };
@@ -534,11 +426,6 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
   // Space key detection for pan mode
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't interfere with typing in input fields
-      const target = e.target as HTMLElement;
-      const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
-      if (isInputField) return;
-      
       if (e.code === 'Space' && !isSpacePressed) {
         e.preventDefault();
         setIsSpacePressed(true);
@@ -550,11 +437,6 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      // Don't interfere with typing in input fields
-      const target = e.target as HTMLElement;
-      const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
-      if (isInputField) return;
-      
       if (e.code === 'Space') {
         e.preventDefault();
         setIsSpacePressed(false);
@@ -625,116 +507,15 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
           y={stagePos.y + baseCenterOffsetY}
         >
           <Group x={0} y={0}>
-            {/* Floor background */}
             <Rect
-              name="floor"
-              x={0}
-              y={0}
-              width={roomConfig.width * PIXELS_PER_CM}
-              height={roomConfig.height * PIXELS_PER_CM}
+              x={-WALL_THICKNESS_PX / 2}
+              y={-WALL_THICKNESS_PX / 2}
+              width={roomConfig.width * PIXELS_PER_CM + WALL_THICKNESS_PX}
+              height={roomConfig.height * PIXELS_PER_CM + WALL_THICKNESS_PX}
               fill="white"
+              stroke="black"
+              strokeWidth={WALL_THICKNESS_PX}
             />
-            
-            {/* Walls with door gaps */}
-            {(() => {
-              const roomWidthPx = roomConfig.width * PIXELS_PER_CM;
-              const roomHeightPx = roomConfig.height * PIXELS_PER_CM;
-              const WALL_THICKNESS_CM = WALL_THICKNESS_PX / PIXELS_PER_CM;
-              
-              // Find all doors and their positions
-              const doors = items.filter(item => item.type?.toLowerCase() === 'door');
-              
-              // Helper: Generate wall segments for a wall, with gaps for doors
-              const generateWallSegments = (wall: 'top' | 'bottom' | 'left' | 'right') => {
-                const segments: Array<{ x1: number; y1: number; x2: number; y2: number }> = [];
-                
-                // Get doors on this wall
-                const wallDoors = doors.filter(door => {
-                  // Match door positions as set by drag logic in FurnitureShape
-                  // Top/Left: -WALL_THICKNESS_CM (-2.5cm)
-                  // Bottom/Right: roomConfig dimension (doors are at outer edge coordinate)
-                  if (wall === 'top') return Math.abs(door.y - (-WALL_THICKNESS_CM)) < 1;
-                  if (wall === 'bottom') return Math.abs(door.y - roomConfig.height) < 1;
-                  if (wall === 'left') return Math.abs(door.x - (-WALL_THICKNESS_CM)) < 1;
-                  if (wall === 'right') return Math.abs(door.x - roomConfig.width) < 1;
-                  return false;
-                });
-                
-                // Sort doors by position along the wall
-                wallDoors.sort((a, b) => {
-                  if (wall === 'top' || wall === 'bottom') return a.x - b.x;
-                  return a.y - b.y;
-                });
-                
-                if (wall === 'top' || wall === 'bottom') {
-                  // Horizontal wall
-                  const y = wall === 'top' ? -WALL_THICKNESS_PX / 2 : roomHeightPx + WALL_THICKNESS_PX / 2;
-                  let currentX = -WALL_THICKNESS_PX / 2;
-                  const endX = roomWidthPx + WALL_THICKNESS_PX / 2;
-                  
-                  wallDoors.forEach(door => {
-                    const doorStartX = door.x * PIXELS_PER_CM;
-                    const doorEndX = doorStartX + door.width * PIXELS_PER_CM;
-                    
-                    // Add segment before door (if there's space)
-                    if (doorStartX > currentX + 1) {
-                      segments.push({ x1: currentX, y1: y, x2: doorStartX, y2: y });
-                    }
-                    
-                    currentX = doorEndX;
-                  });
-                  
-                  // Add final segment after last door
-                  if (currentX < endX - 1) {
-                    segments.push({ x1: currentX, y1: y, x2: endX, y2: y });
-                  }
-                } else {
-                  // Vertical wall
-                  const x = wall === 'left' ? -WALL_THICKNESS_PX / 2 : roomWidthPx + WALL_THICKNESS_PX / 2;
-                  let currentY = -WALL_THICKNESS_PX / 2;
-                  const endY = roomHeightPx + WALL_THICKNESS_PX / 2;
-                  
-                  wallDoors.forEach(door => {
-                    const doorStartY = door.y * PIXELS_PER_CM;
-                    const doorEndY = doorStartY + door.width * PIXELS_PER_CM; // door.width is the length along the wall
-                    
-                    // Add segment before door (if there's space)
-                    if (doorStartY > currentY + 1) {
-                      segments.push({ x1: x, y1: currentY, x2: x, y2: doorStartY });
-                    }
-                    
-                    currentY = doorEndY;
-                  });
-                  
-                  // Add final segment after last door
-                  if (currentY < endY - 1) {
-                    segments.push({ x1: x, y1: currentY, x2: x, y2: endY });
-                  }
-                }
-                
-                return segments;
-              };
-              
-              // Generate all wall segments
-              const allSegments = [
-                ...generateWallSegments('top'),
-                ...generateWallSegments('right'),
-                ...generateWallSegments('bottom'),
-                ...generateWallSegments('left'),
-              ];
-              
-              return allSegments.map((seg, i) => (
-                <Line
-                  key={`wall-${i}`}
-                  points={[seg.x1, seg.y1, seg.x2, seg.y2]}
-                  stroke="black"
-                  strokeWidth={WALL_THICKNESS_PX}
-                  lineCap="square"
-                  listening={false}
-                />
-              ));
-            })()}
-            
             <GridBackground width={roomConfig.width} height={roomConfig.height} />
             
             {/* Room Dimensions - Always visible on top and left walls */}
@@ -747,27 +528,15 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
               />
               <Line points={[0, -105, 0, -95]} stroke="#0a0a0a" strokeWidth={2} />
               <Line points={[roomConfig.width * PIXELS_PER_CM, -105, roomConfig.width * PIXELS_PER_CM, -95]} stroke="#0a0a0a" strokeWidth={2} />
-              {/* Top wall label - ABOVE the dimension line, 2x bigger, zoom-responsive, no box */}
-              {(() => {
-                const topText = formatMeasurement(roomConfig.width, measurementUnit);
-                // 2x bigger base (48px), scales with zoom for readability
-                const baseFontSize = 48;
-                const topFontSize = Math.max(36, Math.min(64, baseFontSize + (userZoom - 1) * 12));
-                const textWidth = topText.length * topFontSize * 0.6;
-                const topCenterX = roomConfig.width * PIXELS_PER_CM / 2 - textWidth / 2;
-                const topY = -100 - 15 - topFontSize; // Position so bottom edge is 15px above line
-                return (
-                  <Text 
-                    x={topCenterX}
-                    y={topY}
-                    text={topText}
-                    fontSize={topFontSize}
-                    fontFamily="Arial, sans-serif"
-                    fontStyle="bold"
-                    fill="#0a0a0a"
-                  />
-                );
-              })()}
+              <Text 
+                x={roomConfig.width * PIXELS_PER_CM / 2} 
+                y={-100 - 15} 
+                text={formatMeasurement(roomConfig.width, measurementUnit)}
+                fontSize={16}
+                fill="#0a0a0a"
+                align="center"
+                offsetX={formatMeasurement(roomConfig.width, measurementUnit).length * 16 * 0.3}
+              />
               
               {/* Left wall - Room height */}
               <Line 
@@ -777,27 +546,15 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
               />
               <Line points={[-105, 0, -95, 0]} stroke="#0a0a0a" strokeWidth={2} />
               <Line points={[-105, roomConfig.height * PIXELS_PER_CM, -95, roomConfig.height * PIXELS_PER_CM]} stroke="#0a0a0a" strokeWidth={2} />
-              {/* Left wall label - LEFT of the dimension line, 2x bigger, zoom-responsive, no box */}
-              {(() => {
-                const leftText = formatMeasurement(roomConfig.height, measurementUnit);
-                // 2x bigger base (48px), scales with zoom for readability
-                const baseFontSize = 48;
-                const leftFontSize = Math.max(36, Math.min(64, baseFontSize + (userZoom - 1) * 12));
-                const textWidth = leftText.length * leftFontSize * 0.6;
-                const leftX = -100 - 15 - textWidth; // Position so right edge is 15px left of line
-                const leftCenterY = roomConfig.height * PIXELS_PER_CM / 2;
-                return (
-                  <Text 
-                    x={leftX}
-                    y={leftCenterY - leftFontSize / 2}
-                    text={leftText}
-                    fontSize={leftFontSize}
-                    fontFamily="Arial, sans-serif"
-                    fontStyle="bold"
-                    fill="#0a0a0a"
-                  />
-                );
-              })()}
+              <Text 
+                x={-100 - 30} 
+                y={roomConfig.height * PIXELS_PER_CM / 2} 
+                text={formatMeasurement(roomConfig.height, measurementUnit)}
+                fontSize={16}
+                fill="#0a0a0a"
+                align="center"
+                offsetY={8}
+              />
             </Group>
             
             {items.map((item) => (
@@ -811,9 +568,6 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
                 onSelect={onSelect}
                 onEdit={onEdit}
                 roomConfig={roomConfig}
-                zoom={userZoom}
-                isDraggable={viewMode === 'blueprint'}
-                onHover={onItemHover}
               />
             ))}
             {items.map((item) => {
@@ -829,18 +583,6 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
                     otherItems={neighbors}
                     zoom={userZoom}
                     unit={measurementUnit}
-                    onItemChange={onItemChange}
-                    stageRef={stageRef}
-                    scale={scale}
-                    stagePos={stagePos}
-                    layerOffset={{ x: baseCenterOffsetX, y: baseCenterOffsetY }}
-                    measurementClickTimeRef={measurementClickTimeRef}
-                    hiddenMeasurements={hiddenMeasurements}
-                    onToggleMeasurement={onToggleMeasurement}
-                    viewMode={viewMode}
-                    measurementMode={measurementMode}
-                    pinnedMeasurements={pinnedMeasurements}
-                    hoveredItemId={hoveredItemId}
                   />
                 );
               }
@@ -850,63 +592,58 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
         </Layer>
       </Stage>
       
-      {/* Scale Reference - Fixed at bottom-left of viewport, independent of zoom/pan */}
+      {/* Measurement Toggle & Zoom Controls */}
       <div
         style={{
           position: 'absolute',
           bottom: '20px',
-          left: '20px',
+          right: '20px',
           display: 'flex',
           flexDirection: 'column',
           gap: '8px',
-          pointerEvents: 'none',
-          zIndex: 100,
+          zIndex: 10,
         }}
       >
-        {/* Scale box - 10cm reference - visual only, size doesn't change with zoom */}
-        <div
-          style={{
-            width: '32px',
-            height: '32px',
-            backgroundColor: '#fafafa',
-            border: '1px solid #d4d4d4',
-          }}
-        />
-        {/* Label below box */}
-        <div
-          style={{
-            fontSize: '11px',
-            fontFamily: 'Arial, sans-serif',
-            fontWeight: '500',
-            color: '#a3a3a3',
-            textAlign: 'center',
-            marginTop: '-2px',
-          }}
-        >
-          = {formatMeasurement(10, measurementUnit)}
-        </div>
-      </div>
-      
-      {/* Zoom Controls */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: '12px',
-          right: '12px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '6px',
-          zIndex: 1000,
-        }}
-        className="md:bottom-5 md:right-5 md:gap-2"
-      >
+        {/* Show All Measurements Toggle */}
+        {onToggleMeasurements && (
+          <button
+            onClick={onToggleMeasurements}
+            style={{
+              width: '40px',
+              height: '40px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: showAllMeasurements ? '#0A0A0A' : '#FFFFFF',
+              border: showAllMeasurements ? 'none' : '1px solid #E5E5E5',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+              transition: 'all 150ms',
+            }}
+            onMouseEnter={(e) => {
+              if (!showAllMeasurements) {
+                e.currentTarget.style.backgroundColor = '#F5F5F5';
+                e.currentTarget.style.borderColor = '#0A0A0A';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!showAllMeasurements) {
+                e.currentTarget.style.backgroundColor = '#FFFFFF';
+                e.currentTarget.style.borderColor = '#E5E5E5';
+              }
+            }}
+            title={showAllMeasurements ? 'Hide All Measurements' : 'Show All Measurements'}
+          >
+            <Ruler size={20} color={showAllMeasurements ? '#FFFFFF' : '#0A0A0A'} />
+          </button>
+        )}
+        
         <button
           onClick={handleZoomIn}
           style={{
             width: '40px',
             height: '40px',
-            minWidth: '40px',
-            minHeight: '40px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -916,8 +653,6 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
             cursor: 'pointer',
             boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
             transition: 'all 150ms',
-            boxSizing: 'border-box',
-            padding: 0,
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = '#F5F5F5';
@@ -929,7 +664,7 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
           }}
           title="Zoom In (+)"
         >
-          <Plus size={18} color="#0A0A0A" />
+          <Plus size={20} color="#0A0A0A" />
         </button>
         
         <button
@@ -937,8 +672,6 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
           style={{
             width: '40px',
             height: '40px',
-            minWidth: '40px',
-            minHeight: '40px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -948,8 +681,6 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
             cursor: 'pointer',
             boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
             transition: 'all 150ms',
-            boxSizing: 'border-box',
-            padding: 0,
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = '#F5F5F5';
@@ -961,44 +692,45 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
           }}
           title="Fit to View (F or 0) - Reset zoom and center room"
         >
-          <Maximize2 size={16} color="#0A0A0A" />
+          <Maximize2 size={18} color="#0A0A0A" />
         </button>
         
-        {/* Zoom percentage display (read-only) */}
-        <div
+        <button
+          onClick={handleResetView}
           style={{
             width: '40px',
             height: '40px',
-            minWidth: '40px',
-            minHeight: '40px',
-            maxWidth: '40px',
-            maxHeight: '40px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: '#FAFAFA',
+            backgroundColor: '#FFFFFF',
             border: '1px solid #E5E5E5',
             borderRadius: '8px',
-            fontSize: '10px',
-            fontWeight: 600,
-            color: '#666666',
+            cursor: 'pointer',
             boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-            userSelect: 'none',
-            boxSizing: 'border-box',
-            lineHeight: '1',
+            fontSize: '12px',
+            fontWeight: 600,
+            color: '#0A0A0A',
+            transition: 'all 150ms',
           }}
-          title={`Current zoom: ${Math.round(userZoom * 100)}%`}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = '#F5F5F5';
+            e.currentTarget.style.borderColor = '#0A0A0A';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = '#FFFFFF';
+            e.currentTarget.style.borderColor = '#E5E5E5';
+          }}
+          title="Fit to View (F) - Reset zoom and center room"
         >
           {Math.round(userZoom * 100)}%
-        </div>
+        </button>
         
         <button
           onClick={handleZoomOut}
           style={{
             width: '40px',
             height: '40px',
-            minWidth: '40px',
-            minHeight: '40px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -1008,8 +740,6 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
             cursor: 'pointer',
             boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
             transition: 'all 150ms',
-            boxSizing: 'border-box',
-            padding: 0,
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = '#F5F5F5';
@@ -1021,7 +751,7 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
           }}
           title="Zoom Out (-)"
         >
-          <Minus size={18} color="#0A0A0A" />
+          <Minus size={20} color="#0A0A0A" />
         </button>
       </div>
       
@@ -1050,8 +780,4 @@ const RoomCanvas = forwardRef<any, RoomCanvasProps>(({
       )}
     </div>
   );
-});
-
-RoomCanvas.displayName = 'RoomCanvas';
-
-export default RoomCanvas;
+}

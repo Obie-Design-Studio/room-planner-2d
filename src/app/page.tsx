@@ -326,54 +326,6 @@ export default function Home() {
               </div>
             </div>
 
-          {/* Show All Measurements Toggle */}
-          <div style={{ marginBottom: '24px', paddingBottom: '24px', borderBottom: '1px solid #EFEFEF' }}>
-            <button
-              onClick={() => setShowAllMeasurements(!showAllMeasurements)}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '12px 16px',
-                fontSize: '14px',
-                fontWeight: 500,
-                color: showAllMeasurements ? '#FFFFFF' : '#0A0A0A',
-                backgroundColor: showAllMeasurements ? '#0A0A0A' : '#FFFFFF',
-                border: showAllMeasurements ? 'none' : '1px solid #E5E5E5',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                transition: 'all 150ms',
-              }}
-              onMouseEnter={(e) => {
-                if (!showAllMeasurements) {
-                  e.currentTarget.style.backgroundColor = '#F5F5F5';
-                  e.currentTarget.style.borderColor = '#0A0A0A';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!showAllMeasurements) {
-                  e.currentTarget.style.backgroundColor = '#FFFFFF';
-                  e.currentTarget.style.borderColor = '#E5E5E5';
-                }
-              }}
-            >
-              <span>{showAllMeasurements ? 'Hide All Measurements' : 'Show All Measurements'}</span>
-              <Grid3x3 className="w-4 h-4" />
-            </button>
-            {showAllMeasurements && (
-              <p style={{
-                fontSize: '12px',
-                color: '#999999',
-                marginTop: '8px',
-                marginBottom: 0,
-                lineHeight: '1.4',
-              }}>
-                All measurements visible. Click a furniture item to edit it individually.
-              </p>
-            )}
-          </div>
-
           {/* Windows & Doors Section */}
           <div style={{ marginBottom: '24px' }}>
             <button
@@ -863,6 +815,7 @@ export default function Home() {
             onSelect={setSelectedId}
             onEdit={handleOpenEditor}
             showAllMeasurements={showAllMeasurements}
+            onToggleMeasurements={() => setShowAllMeasurements(!showAllMeasurements)}
             measurementUnit={measurementUnit}
             viewportWidth={viewport.width}
             viewportHeight={viewport.height}
