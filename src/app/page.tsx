@@ -91,8 +91,12 @@ export default function Home() {
     setCeilingHeight(ceiling);
     if (unit !== undefined) setMeasurementUnit(unit);
     
+    
     // Update roomType state to match config.roomType (convert from category to user-friendly label)
-    if (config.roomType) {
+    if (config.roomType === undefined) {
+      // Room type was cleared - reset to default
+      setRoomType('Living Room');
+    } else {
       const roomTypeMap: Record<string, string> = {
         'living': 'Living Room',
         'bedroom': 'Bedroom',
