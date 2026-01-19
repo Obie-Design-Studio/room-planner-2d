@@ -18,8 +18,8 @@ interface RoomCanvasProps {
   onSelect: (id: string | null) => void;
   onEdit: (id: string) => void;
   showAllMeasurements: boolean;
-  onToggleMeasurements?: () => void;
   measurementUnit?: Unit;
+  onToggleMeasurements?: () => void;
   viewportWidth: number;
   viewportHeight: number;
 }
@@ -333,7 +333,7 @@ export default function RoomCanvas({
     if (!stage) return;
 
     // Check if clicking on empty space or if Space key is pressed
-    const clickedOnEmpty = e.target === stage || !e.target.getLayer();
+    const clickedOnEmpty = e.target === stage || e.target.getLayer;
     
     if (clickedOnEmpty || isSpacePressed) {
       setIsPanning(true);
@@ -423,16 +423,6 @@ export default function RoomCanvas({
     }
   };
 
-  // Handle clicking empty canvas to deselect
-  const handleStageClick = (e: any) => {
-    // Check if clicked on the stage itself (background) or room floor
-    const clickedOnEmpty = e.target === e.target.getStage() || e.target.attrs?.name === 'room-floor';
-    
-    if (clickedOnEmpty && selectedId !== null) {
-      onSelect(null);
-    }
-  };
-
   // Space key detection for pan mode
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -510,7 +500,6 @@ export default function RoomCanvas({
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
-        onClick={handleStageClick}
       >
         <Layer 
           scale={{ x: scale, y: scale }}
@@ -519,7 +508,6 @@ export default function RoomCanvas({
         >
           <Group x={0} y={0}>
             <Rect
-              name="room-floor"
               x={-WALL_THICKNESS_PX / 2}
               y={-WALL_THICKNESS_PX / 2}
               width={roomConfig.width * PIXELS_PER_CM + WALL_THICKNESS_PX}
