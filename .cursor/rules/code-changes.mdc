@@ -1,0 +1,129 @@
+---
+description: Rules for making code changes safely without breaking working features
+globs:
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.js"
+  - "**/*.jsx"
+alwaysApply: true
+---
+
+# Git Commit & Deployment Protocol
+
+**CRITICAL: ALWAYS ask before committing or deploying.**
+
+Rules:
+- NEVER run `git commit` without explicit user approval
+- NEVER deploy without explicit user approval
+- ALWAYS ask: "Ready to commit these changes?"
+- ALWAYS show proposed commit message and wait for approval
+- ALWAYS ask: "Ready to deploy?" before any deployment
+
+No exceptions. Every commit and deployment requires user permission.
+
+---
+
+# Code Removal Protocol
+
+**Before removing ANY code, follow this checklist:**
+
+## Pre-Removal Checklist (Mandatory)
+
+1. ✅ Read the full file first (if not already in context)
+2. ✅ Identify exactly what code will be removed
+3. ✅ Ask: "Why was this code here?"
+4. ✅ Check if removing it breaks anything
+5. ✅ Show user what will be removed + explain why
+6. ✅ Wait for approval if removal is non-trivial
+
+## What Counts as "Non-Trivial Removal"?
+
+You MUST ask for approval before removing:
+- Any function or component (even if seems unused)
+- Any visual features (styles, shapes, rendering logic)
+- Any state management code
+- Any event handlers
+- Any code block over 3 lines
+
+## Diff Preview Format (Required)
+
+When removing code, present it like this:
+
+```
+📋 DIFF PREVIEW:
+
+Removing:
+- [Function/feature name]: [Why it's being removed]
+- Lines X-Y: [What this code did]
+
+Adding:
+- [What's replacing it, or "nothing" if pure deletion]
+
+Risk: [Potential issues from this removal]
+
+Proceed? (yes/no)
+```
+
+---
+
+# Tool Usage: Prefer search_replace
+
+**For existing files:**
+- ✅ Use `search_replace` by default (shows exact old → new changes)
+- ❌ Avoid `write` unless rewriting entire file with approval
+
+**Why:** `search_replace` makes it obvious what's changing. `write` can accidentally lose code.
+
+**Exception:** Only use `write` on existing files if:
+1. Intentionally rewriting the entire file, AND
+2. User has approved it
+
+---
+
+# Conservative Code Change Protocol
+
+**Default behavior: Minimal changes.**
+
+Rules:
+- If code works, leave it alone
+- Never "improve" or "refactor" working code without explicit user request
+- Make the smallest change that achieves the goal
+- Test ALL aspects of a feature after changing it (not just what you modified)
+
+## Before Modifying Working Code
+
+1. ✅ Verify current functionality works
+2. ✅ Make targeted, minimal change only
+3. ✅ Test ALL aspects of that feature (not just what changed)
+4. ✅ Confirm nothing regressed
+5. ✅ Compare before/after if visual feature
+
+**Never assume improving code is desired. Only change what's explicitly requested.**
+
+---
+
+# Change Verification Checklist
+
+After ANY code change:
+
+□ Original functionality still works?
+□ New functionality works?
+□ No regressions introduced?
+□ No unintended code removed?
+□ All aspects of feature tested (not just changed part)?
+
+---
+
+# Anti-Patterns to Avoid
+
+❌ "I'll refactor this for better code organization" → NO (unless asked)
+❌ Rewriting entire files when small change would work → NO
+❌ Removing "unused-looking" code without verification → NO
+❌ Committing without asking → NO
+❌ "Improving" working features without request → NO
+
+✅ Make smallest possible change
+✅ Preserve all working functionality
+✅ Ask before removing anything non-trivial
+✅ Test comprehensively after changes
+✅ Get approval for commits and deploys

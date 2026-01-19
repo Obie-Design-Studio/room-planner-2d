@@ -6,7 +6,7 @@ import { type Unit, formatMeasurement } from "@/lib/unitConversion";
 import FurnitureShape from "./FurnitureShape";
 import MeasurementOverlay from "./MeasurementOverlay";
 import GridBackground from "./GridBackground";
-import { Plus, Minus, Maximize2 } from "lucide-react";
+import { Plus, Minus, Maximize2, Ruler } from "lucide-react";
 
 interface RoomCanvasProps {
   roomConfig: RoomConfig;
@@ -15,7 +15,7 @@ interface RoomCanvasProps {
   onItemChangeEnd?: (id: string, updates: Partial<FurnitureItem>) => void;
   onItemDelete: (id: string) => void;
   selectedId: string | null;
-  onSelect: (id: string | null) => void;
+  onSelect: (id: string) => void;
   onEdit: (id: string) => void;
   showAllMeasurements: boolean;
   onToggleMeasurements?: () => void;
@@ -71,8 +71,9 @@ export default function RoomCanvas({
   // Create fixed bounds with buffer for door arcs on ALL walls
   // This prevents the room from jumping when doors move between walls
   const buffer = maxDoorLength; // Buffer extends in all directions
-  let minX = -WALL_THICKNESS_PX / 2 - buffer;
-  let minY = -WALL_THICKNESS_PX / 2 - buffer;
+  const dimensionLabelSpace = 120; // Space for room dimension labels (line at -100 + modest text space)
+  let minX = -WALL_THICKNESS_PX / 2 - buffer - dimensionLabelSpace;
+  let minY = -WALL_THICKNESS_PX / 2 - buffer - dimensionLabelSpace;
   let maxX = roomPxWidth + WALL_THICKNESS_PX / 2 + buffer;
   let maxY = roomPxHeight + WALL_THICKNESS_PX / 2 + buffer;
   
@@ -520,41 +521,61 @@ export default function RoomCanvas({
             
             {/* Room Dimensions - Always visible on top and left walls */}
             <Group>
-              {/* Top wall - Room width */}
-              <Line 
-                points={[0, -100, roomConfig.width * PIXELS_PER_CM, -100]} 
-                stroke="#0a0a0a" 
-                strokeWidth={2} 
-              />
-              <Line points={[0, -105, 0, -95]} stroke="#0a0a0a" strokeWidth={2} />
-              <Line points={[roomConfig.width * PIXELS_PER_CM, -105, roomConfig.width * PIXELS_PER_CM, -95]} stroke="#0a0a0a" strokeWidth={2} />
-              <Text 
-                x={roomConfig.width * PIXELS_PER_CM / 2} 
-                y={-100 - 15} 
-                text={formatMeasurement(roomConfig.width, measurementUnit)}
-                fontSize={16}
-                fill="#0a0a0a"
-                align="center"
-                offsetX={formatMeasurement(roomConfig.width, measurementUnit).length * 16 * 0.3}
-              />
-              
-              {/* Left wall - Room height */}
-              <Line 
-                points={[-100, 0, -100, roomConfig.height * PIXELS_PER_CM]} 
-                stroke="#0a0a0a" 
-                strokeWidth={2} 
-              />
-              <Line points={[-105, 0, -95, 0]} stroke="#0a0a0a" strokeWidth={2} />
-              <Line points={[-105, roomConfig.height * PIXELS_PER_CM, -95, roomConfig.height * PIXELS_PER_CM]} stroke="#0a0a0a" strokeWidth={2} />
-              <Text 
-                x={-100 - 30} 
-                y={roomConfig.height * PIXELS_PER_CM / 2} 
-                text={formatMeasurement(roomConfig.height, measurementUnit)}
-                fontSize={16}
-                fill="#0a0a0a"
-                align="center"
-                offsetY={8}
-              />
+              {(() => {
+                // Dynamic font size that scales with zoom (36-64px range)
+                const baseFontSize = 48;
+                const dimensionFontSize = Math.max(36, Math.min(64, baseFontSize + (userZoom - 1) * 12));
+                
+                // Top wall text
+                const topText = formatMeasurement(roomConfig.width, measurementUnit);
+                const topTextWidth = topText.length * dimensionFontSize * 0.6;
+                const topY = -100 - 15 - dimensionFontSize;
+                
+                // Left wall text
+                const leftText = formatMeasurement(roomConfig.height, measurementUnit);
+                const leftTextWidth = leftText.length * dimensionFontSize * 0.6;
+                const leftCenterY = roomConfig.height * PIXELS_PER_CM / 2;
+                
+                return (
+                  <>
+                    {/* Top wall - Room width */}
+                    <Line 
+                      points={[0, -100, roomConfig.width * PIXELS_PER_CM, -100]} 
+                      stroke="#0a0a0a" 
+                      strokeWidth={2} 
+                    />
+                    <Line points={[0, -105, 0, -95]} stroke="#0a0a0a" strokeWidth={2} />
+                    <Line points={[roomConfig.width * PIXELS_PER_CM, -105, roomConfig.width * PIXELS_PER_CM, -95]} stroke="#0a0a0a" strokeWidth={2} />
+                    <Text 
+                      x={roomConfig.width * PIXELS_PER_CM / 2 - topTextWidth / 2} 
+                      y={topY}
+                      text={topText}
+                      fontSize={dimensionFontSize}
+                      fontFamily="Arial, sans-serif"
+                      fontStyle="bold"
+                      fill="#0a0a0a"
+                    />
+                    
+                    {/* Left wall - Room height */}
+                    <Line 
+                      points={[-100, 0, -100, roomConfig.height * PIXELS_PER_CM]} 
+                      stroke="#0a0a0a" 
+                      strokeWidth={2} 
+                    />
+                    <Line points={[-105, 0, -95, 0]} stroke="#0a0a0a" strokeWidth={2} />
+                    <Line points={[-105, roomConfig.height * PIXELS_PER_CM, -95, roomConfig.height * PIXELS_PER_CM]} stroke="#0a0a0a" strokeWidth={2} />
+                    <Text 
+                      x={-100 - 20 - leftTextWidth}
+                      y={leftCenterY - dimensionFontSize / 2}
+                      text={leftText}
+                      fontSize={dimensionFontSize}
+                      fontFamily="Arial, sans-serif"
+                      fontStyle="bold"
+                      fill="#0a0a0a"
+                    />
+                  </>
+                );
+              })()}
             </Group>
             
             {items.map((item) => (
@@ -592,7 +613,44 @@ export default function RoomCanvas({
         </Layer>
       </Stage>
       
-      {/* Zoom Controls */}
+      {/* Scale Reference - Fixed at bottom-left of viewport */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: '20px',
+          left: '20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px',
+          pointerEvents: 'none',
+          zIndex: 100,
+        }}
+      >
+        {/* Scale box - 10cm reference */}
+        <div
+          style={{
+            width: '32px',
+            height: '32px',
+            backgroundColor: '#fafafa',
+            border: '1px solid #d4d4d4',
+          }}
+        />
+        {/* Label below box */}
+        <div
+          style={{
+            fontSize: '11px',
+            fontFamily: 'Arial, sans-serif',
+            fontWeight: '500',
+            color: '#a3a3a3',
+            textAlign: 'center',
+            marginTop: '-2px',
+          }}
+        >
+          = {formatMeasurement(10, measurementUnit)}
+        </div>
+      </div>
+      
+      {/* Measurement Toggle & Zoom Controls */}
       <div
         style={{
           position: 'absolute',
@@ -604,6 +662,41 @@ export default function RoomCanvas({
           zIndex: 10,
         }}
       >
+        {/* Show All Measurements Toggle */}
+        {onToggleMeasurements && (
+          <button
+            onClick={onToggleMeasurements}
+            style={{
+              width: '40px',
+              height: '40px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: showAllMeasurements ? '#0A0A0A' : '#FFFFFF',
+              border: showAllMeasurements ? 'none' : '1px solid #E5E5E5',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+              transition: 'all 150ms',
+            }}
+            onMouseEnter={(e) => {
+              if (!showAllMeasurements) {
+                e.currentTarget.style.backgroundColor = '#F5F5F5';
+                e.currentTarget.style.borderColor = '#0A0A0A';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!showAllMeasurements) {
+                e.currentTarget.style.backgroundColor = '#FFFFFF';
+                e.currentTarget.style.borderColor = '#E5E5E5';
+              }
+            }}
+            title={showAllMeasurements ? 'Hide All Measurements' : 'Show All Measurements'}
+          >
+            <Ruler size={20} color={showAllMeasurements ? '#FFFFFF' : '#0A0A0A'} />
+          </button>
+        )}
+        
         <button
           onClick={handleZoomIn}
           style={{

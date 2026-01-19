@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import type { RoomConfig, FurnitureItem } from "@/types";
-import type { Unit } from "@/lib/unitConversion";
 import ColorPicker from "@/components/ui/ColorPicker";
 import Input from '@/components/ui/Input';
 import ItemEditModal from "@/components/ui/ItemEditModal";
@@ -28,7 +27,6 @@ export default function Home() {
   const [items, setItems] = useState<FurnitureItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showAllMeasurements, setShowAllMeasurements] = useState(false);
-  const [measurementUnit, setMeasurementUnit] = useState<Unit>('cm');
   const [viewport, setViewport] = useState({ width: 800, height: 600 });
   const [ceilingHeight, setCeilingHeight] = useState(250);
   const [roomName, setRoomName] = useState('Untitled Room');
@@ -41,7 +39,6 @@ export default function Home() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(320);
-  const [roomType, setRoomType] = useState<string>('Living Room');
 
   useEffect(() => {
     const handleResize = () => {
@@ -75,37 +72,10 @@ export default function Home() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const handleUpdateRoomSettings = (
-    name: string, 
-    config: RoomConfig, 
-    ceiling: number, 
-    unit?: Unit,
-    windowWidth?: number, 
-    windowHeight?: number, 
-    windowFloorDistance?: number,
-    doorWidth?: number, 
-    doorHeight?: number
-  ) => {
+  const handleUpdateRoomSettings = (name: string, config: RoomConfig, ceiling: number) => {
     setRoomName(name);
     setRoomConfig(config);
     setCeilingHeight(ceiling);
-    if (unit !== undefined) setMeasurementUnit(unit);
-    
-    
-    // Update roomType state to match config.roomType (convert from category to user-friendly label)
-    if (config.roomType === undefined) {
-      // Room type was cleared - reset to default
-      setRoomType('Living Room');
-    } else {
-      const roomTypeMap: Record<string, string> = {
-        'living': 'Living Room',
-        'bedroom': 'Bedroom',
-        'kitchen': 'Kitchen',
-        'office': 'Office',
-        'bathroom': 'Bathroom',
-      };
-      setRoomType(roomTypeMap[config.roomType] || 'Living Room');
-    }
   };
 
   const handleAddFurnitureFromLibrary = (furniture: any) => {
@@ -898,7 +868,6 @@ export default function Home() {
             onEdit={handleOpenEditor}
             showAllMeasurements={showAllMeasurements}
             onToggleMeasurements={() => setShowAllMeasurements(!showAllMeasurements)}
-            measurementUnit={measurementUnit}
             viewportWidth={viewport.width}
             viewportHeight={viewport.height}
           />
@@ -921,7 +890,6 @@ export default function Home() {
         roomName={roomName}
         roomConfig={roomConfig}
         ceilingHeight={ceilingHeight}
-        measurementUnit={measurementUnit}
         onClose={() => setIsRoomSettingsModalOpen(false)}
         onUpdate={handleUpdateRoomSettings}
       />
@@ -930,14 +898,6 @@ export default function Home() {
         isOpen={isFurnitureLibraryOpen}
         onClose={() => setIsFurnitureLibraryOpen(false)}
         onAddFurniture={handleAddFurnitureFromLibrary}
-        defaultCategory={
-          roomType === 'Living Room' ? 'living' :
-          roomType === 'Bedroom' ? 'bedroom' :
-          roomType === 'Kitchen' ? 'kitchen' :
-          roomType === 'Office' ? 'office' :
-          roomType === 'Bathroom' ? 'bathroom' :
-          'all'
-        }
       />
 
       <CustomFurnitureModal
