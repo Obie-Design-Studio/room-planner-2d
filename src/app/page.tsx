@@ -10,7 +10,7 @@ import ItemEditModal from "@/components/ui/ItemEditModal";
 import RoomSettingsModal from "@/components/ui/RoomSettingsModal";
 import FurnitureLibraryModal from "@/components/ui/FurnitureLibraryModal";
 import CustomFurnitureModal from "@/components/ui/CustomFurnitureModal";
-import { Armchair, Table, Bed, RectangleHorizontal, DoorOpen, Trash2, Settings, ChevronDown, ChevronUp, Plus, Grid3x3 } from "lucide-react";
+import { Armchair, Table, Bed, RectangleHorizontal, DoorOpen, Trash2, Settings, ChevronDown, ChevronUp, Plus, Grid3x3, Menu, X } from "lucide-react";
 import { PIXELS_PER_CM, WALL_THICKNESS_PX } from "@/lib/constants";
 import { getDefaultFurnitureForRoom, FURNITURE_LIBRARY, getFurnitureByType, type RoomType } from "@/lib/furnitureLibrary";
 
@@ -38,11 +38,34 @@ export default function Home() {
   const [isFurnitureOpen, setIsFurnitureOpen] = useState(true);
   const [isFurnitureLibraryOpen, setIsFurnitureLibraryOpen] = useState(false);
   const [isCustomFurnitureOpen, setIsCustomFurnitureOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(320);
+  const [roomType, setRoomType] = useState<string>('Living Room');
 
   useEffect(() => {
     const handleResize = () => {
+      const windowWidth = window.innerWidth;
+      const isMobileView = windowWidth < 768;
+      const isTabletView = windowWidth >= 768 && windowWidth < 1024;
+      
+      setIsMobile(isMobileView);
+      
+      // Sidebar width based on screen size
+      let calculatedSidebarWidth = 0;
+      if (isMobileView) {
+        calculatedSidebarWidth = 0; // Mobile: sidebar is overlay, doesn't reduce canvas width
+        setSidebarWidth(320); // But sidebar itself is still 320px
+      } else if (isTabletView) {
+        calculatedSidebarWidth = 280; // Tablet: 280px sidebar
+        setSidebarWidth(280);
+      } else {
+        calculatedSidebarWidth = 320; // Desktop: 320px sidebar
+        setSidebarWidth(320);
+      }
+      
       setViewport({
-        width: window.innerWidth - 320, // reserved for sidebar
+        width: windowWidth - calculatedSidebarWidth,
         height: window.innerHeight - 64, // reserved for header
       });
     };
@@ -67,6 +90,18 @@ export default function Home() {
     setRoomConfig(config);
     setCeilingHeight(ceiling);
     if (unit !== undefined) setMeasurementUnit(unit);
+    
+    // Update roomType state to match config.roomType (convert from category to user-friendly label)
+    if (config.roomType) {
+      const roomTypeMap: Record<string, string> = {
+        'living': 'Living Room',
+        'bedroom': 'Bedroom',
+        'kitchen': 'Kitchen',
+        'office': 'Office',
+        'bathroom': 'Bathroom',
+      };
+      setRoomType(roomTypeMap[config.roomType] || 'Living Room');
+    }
   };
 
   const handleAddFurnitureFromLibrary = (furniture: any) => {
@@ -201,20 +236,50 @@ export default function Home() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0 32px',
+        padding: isMobile ? '0 16px' : '0 32px',
         backgroundColor: '#FFFFFF',
         borderBottom: '1px solid #EFEFEF'
       }}>
-        {/* Left: Title */}
-        <h1 style={{ 
-          fontSize: '20px',
-          fontWeight: 600,
-          color: '#0A0A0A',
-          letterSpacing: '-0.02em',
-          margin: 0
-        }}>
-          Room Planner
-        </h1>
+        {/* Left: Hamburger menu (mobile) + Title */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {isMobile && (
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '40px',
+                height: '40px',
+                padding: 0,
+                color: '#0A0A0A',
+                backgroundColor: 'transparent',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                transition: 'all 150ms',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#F5F5F5';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+              aria-label={isSidebarOpen ? 'Close menu' : 'Open menu'}
+            >
+              {isSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          )}
+          <h1 style={{ 
+            fontSize: isMobile ? '18px' : '20px',
+            fontWeight: 600,
+            color: '#0A0A0A',
+            letterSpacing: '-0.02em',
+            margin: 0
+          }}>
+            Room Planner
+          </h1>
+        </div>
         
         {/* Center: Room name + dimensions */}
         <div style={{ 
@@ -240,18 +305,25 @@ export default function Home() {
         </div>
         
         {/* Right: Empty spacer for balance */}
-        <div style={{ width: '140px' }}></div>
+        <div style={{ width: isMobile ? '0px' : '140px' }}></div>
       </header>
 
       {/* Main Body */}
       <div className="flex-1 flex overflow-hidden min-h-0">
         {/* Sidebar */}
         <aside style={{ 
-          width: '320px', 
+          width: `${sidebarWidth}px`,
           display: 'flex', 
           flexDirection: 'column', 
           borderRight: '1px solid #EFEFEF',
-          backgroundColor: '#FAFAFA'
+          backgroundColor: '#FAFAFA',
+          position: isMobile ? 'fixed' : 'relative',
+          top: isMobile ? '64px' : 'auto',
+          left: isMobile ? (isSidebarOpen ? '0' : `-${sidebarWidth}px`) : 'auto',
+          height: isMobile ? 'calc(100vh - 64px)' : 'auto',
+          zIndex: isMobile ? 50 : 'auto',
+          transition: isMobile ? 'left 250ms ease-in-out' : 'none',
+          boxShadow: isMobile && isSidebarOpen ? '2px 0 8px rgba(0, 0, 0, 0.1)' : 'none',
         }}>
           <div style={{ 
             flex: 1, 
@@ -802,7 +874,13 @@ export default function Home() {
           className="flex-1 relative min-h-0"
           style={{ backgroundColor: '#FAFAF8' }}
           onClick={(e) => {
-            if (e.target === e.currentTarget) setSelectedId(null);
+            if (e.target === e.currentTarget) {
+              setSelectedId(null);
+              // Auto-close sidebar on mobile when clicking canvas
+              if (isMobile && isSidebarOpen) {
+                setIsSidebarOpen(false);
+              }
+            }
           }}
 
         >
@@ -848,6 +926,14 @@ export default function Home() {
         isOpen={isFurnitureLibraryOpen}
         onClose={() => setIsFurnitureLibraryOpen(false)}
         onAddFurniture={handleAddFurnitureFromLibrary}
+        defaultCategory={
+          roomType === 'Living Room' ? 'living' :
+          roomType === 'Bedroom' ? 'bedroom' :
+          roomType === 'Kitchen' ? 'kitchen' :
+          roomType === 'Office' ? 'office' :
+          roomType === 'Bathroom' ? 'bathroom' :
+          'all'
+        }
       />
 
       <CustomFurnitureModal
