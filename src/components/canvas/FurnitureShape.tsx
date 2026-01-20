@@ -451,24 +451,20 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
       const scaleX = node.scaleX();
       const scaleY = node.scaleY();
       
-      // Calculate the old dimensions before resetting scale
-      const oldWidthPx = widthPx;
-      const oldHeightPx = heightPx;
+      // Get the current center position that Konva has already set based on anchor point
+      const newCenterX = node.x();
+      const newCenterY = node.y();
       
-      // Get the current center position BEFORE any changes
-      const currentCenterX = node.x();
-      const currentCenterY = node.y();
+      // Calculate new dimensions
+      const newWidthPx = widthPx * scaleX;
+      const newHeightPx = heightPx * scaleY;
       
-      // Calculate the OLD top-left position (before resize)
-      const oldTopLeftX = currentCenterX - (oldWidthPx / 2);
-      const oldTopLeftY = currentCenterY - (oldHeightPx / 2);
-      
-      // Reset scale
+      // Reset scale to 1 (apply scale to dimensions instead)
       node.scaleX(1);
       node.scaleY(1);
       
-      let newWidthCm = Math.round((widthPx * scaleX) / PIXELS_PER_CM);
-      let newHeightCm = Math.round((heightPx * scaleY) / PIXELS_PER_CM);
+      let newWidthCm = Math.round(newWidthPx / PIXELS_PER_CM);
+      let newHeightCm = Math.round(newHeightPx / PIXELS_PER_CM);
       
       // For doors and windows, lock height to wall thickness
       if (isWallObject) {
@@ -488,21 +484,12 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
         if (newRotation < 0) newRotation += 360;
       }
       
-      const newWidthPx = newWidthCm * PIXELS_PER_CM;
-      const newHeightPx = newHeightCm * PIXELS_PER_CM;
+      const finalWidthPx = newWidthCm * PIXELS_PER_CM;
+      const finalHeightPx = newHeightCm * PIXELS_PER_CM;
       
-      // KEEP TOP-LEFT CORNER FIXED: Use the old top-left position
-      // This prevents the furniture from jumping during resize
-      const newTopLeftX = oldTopLeftX;
-      const newTopLeftY = oldTopLeftY;
-      
-      // Calculate the new center position based on fixed top-left
-      const newCenterX = newTopLeftX + (newWidthPx / 2);
-      const newCenterY = newTopLeftY + (newHeightPx / 2);
-      
-      // Update the node position to the new center
-      node.x(newCenterX);
-      node.y(newCenterY);
+      // Calculate top-left position from the center (which Konva has already positioned correctly)
+      const newTopLeftX = newCenterX - (finalWidthPx / 2);
+      const newTopLeftY = newCenterY - (finalHeightPx / 2);
       
       if (!isWallObject) {
         // Check if new position/rotation would be outside room
@@ -541,6 +528,14 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
         height: newHeightCm,
         rotation: newRotation
       };
+      
+      // Update node to use rounded dimensions for consistent display
+      const roundedCenterX = newTopLeftX + (finalWidthPx / 2);
+      const roundedCenterY = newTopLeftY + (finalHeightPx / 2);
+      node.x(roundedCenterX);
+      node.y(roundedCenterY);
+      node.rotation(newRotation);
+      
       onChange(item.id, updates);
       
       // Save to history after transform ends
@@ -1367,6 +1362,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
           }}
           flipEnabled={false}
           rotateEnabled={false}
+          centeredScaling={false}
           anchorSize={10}
           anchorStroke="#0A0A0A"
           anchorStrokeWidth={2}
