@@ -50,6 +50,14 @@ const MeasurementOverlay: React.FC<Props> = ({
   hoveredItemId = null,
   showLabels = false,
 }) => {
+  // Debug logging
+  console.log('MeasurementOverlay render:', { 
+    itemId: item.id,
+    viewMode, 
+    hasOnToggleMeasurement: !!onToggleMeasurement,
+    hiddenMeasurementsSize: hiddenMeasurements.size 
+  });
+  
   const [editingDirection, setEditingDirection] = useState<MeasurementDirection>(null);
   const [editValue, setEditValue] = useState('');
   const [inputPosition, setInputPosition] = useState({ x: 0, y: 0 });
@@ -484,7 +492,7 @@ const MeasurementOverlay: React.FC<Props> = ({
   };
 
   // Helper component: LARGE dimension label for wall objects (doors/windows) - 2x size
-  const WallDimensionLabel = ({ x, y, text, color = '#1a1a1a' }: { x: number; y: number; text: string; color?: string }) => {
+  const WallDimensionLabel = ({ x, y, text, color = '#1a1a1a', measurementId }: { x: number; y: number; text: string; color?: string; measurementId?: string }) => {
     const actualFontSize = wallFontSize;
     const padding = 14;
     
@@ -497,28 +505,64 @@ const MeasurementOverlay: React.FC<Props> = ({
     const boxX = x - boxWidth / 2;
     const boxY = y - boxHeight / 2;
     
+    // Interactive state
+    const isInMeasurementsView = viewMode === 'measurements';
+    const isHidden = measurementId ? hiddenMeasurements.has(measurementId) : false;
+    const isHovered = measurementId ? hoveredMeasurement === measurementId : false;
+    
+    // Apply opacity for hidden state
+    const opacity = isHidden ? 0.15 : 1.0;
+    const strokeColor = isInMeasurementsView && isHovered ? '#3b82f6' : '#e5e5e5';
+    const fillColor = isInMeasurementsView && isHovered ? '#3b82f6' : color;
+    
     return (
-      <Group>
+      <Group
+        listening={isInMeasurementsView && !!measurementId}
+        opacity={opacity}
+        onClick={(e) => {
+          console.log('WallDimensionLabel clicked!', { measurementId, isInMeasurementsView, hasOnToggle: !!onToggleMeasurement });
+          if (isInMeasurementsView && onToggleMeasurement && measurementId) {
+            e.cancelBubble = true;
+            console.log('Toggling measurement:', measurementId);
+            onToggleMeasurement(measurementId);
+          }
+        }}
+        onMouseEnter={(e) => {
+          if (isInMeasurementsView && measurementId) {
+            setHoveredMeasurement(measurementId);
+            const stage = e.target.getStage();
+            if (stage) stage.container().style.cursor = 'pointer';
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (isInMeasurementsView && measurementId) {
+            setHoveredMeasurement(null);
+            const stage = e.target.getStage();
+            if (stage) stage.container().style.cursor = 'default';
+          }
+        }}
+      >
         <Rect
           x={boxX}
           y={boxY}
           width={boxWidth}
           height={boxHeight}
           fill="white"
-          stroke="#e5e5e5"
-          strokeWidth={1}
+          stroke={strokeColor}
+          strokeWidth={isInMeasurementsView && isHovered ? 2 : 1}
           cornerRadius={4}
         />
         <Text
           x={boxX}
           y={y - actualFontSize / 2}
           text={text}
-          fill={color}
+          fill={fillColor}
           fontSize={actualFontSize}
           fontFamily="Arial, sans-serif"
           fontStyle="bold"
           align="center"
           width={boxWidth}
+          listening={false}
         />
       </Group>
     );
@@ -689,12 +733,16 @@ const MeasurementOverlay: React.FC<Props> = ({
         listening={isInMeasurementsView}
         hitStrokeWidth={isInMeasurementsView ? 20 : strokeWidth}
         onClick={(e) => {
+          console.log('LINE onClick fired!', { measurementId, isInMeasurementsView, hasOnToggle: !!onToggleMeasurement });
           if (isInMeasurementsView && onToggleMeasurement) {
             e.cancelBubble = true;
             if (measurementClickTimeRef) {
               measurementClickTimeRef.current = Date.now();
             }
+            console.log('Calling onToggleMeasurement with:', measurementId);
             onToggleMeasurement(measurementId);
+          } else {
+            console.log('NOT toggling - conditions not met:', { isInMeasurementsView, hasOnToggle: !!onToggleMeasurement });
           }
         }}
         onMouseEnter={(e) => {
@@ -783,12 +831,16 @@ const MeasurementOverlay: React.FC<Props> = ({
       <Group
         listening={isInMeasurementsView}
         onClick={(e) => {
+          console.log('LABEL onClick fired!', { measurementId, isInMeasurementsView, hasOnToggle: !!onToggleMeasurement });
           if (isInMeasurementsView && onToggleMeasurement) {
             e.cancelBubble = true;
             if (measurementClickTimeRef) {
               measurementClickTimeRef.current = Date.now();
             }
+            console.log('Calling onToggleMeasurement with:', measurementId);
             onToggleMeasurement(measurementId);
+          } else {
+            console.log('NOT toggling - conditions not met:', { isInMeasurementsView, hasOnToggle: !!onToggleMeasurement });
           }
         }}
         onMouseEnter={(e) => {
@@ -901,6 +953,7 @@ const MeasurementOverlay: React.FC<Props> = ({
         />,
         <WallDimensionLabel
           key={`${item.id}-top-width-label`}
+          measurementId={`${item.id}-top-width`}
           x={itemWidthPos.x} 
           y={itemWidthPos.y} 
           text={itemWidthText}
@@ -1056,6 +1109,7 @@ const MeasurementOverlay: React.FC<Props> = ({
         />,
         <WallDimensionLabel 
           key={`${item.id}-bottom-width-label`}
+          measurementId={`${item.id}-bottom-width`}
           x={x + w / 2} 
           y={measureY + 25} 
           text={formatMeasurement(item.width, unit)}
@@ -1103,6 +1157,7 @@ const MeasurementOverlay: React.FC<Props> = ({
             />,
             <WallDimensionLabel 
               key={`${item.id}-bottom-gap-label`}
+              measurementId={`${item.id}-bottom-gap`}
               x={(prevEndX + x) / 2} 
               y={measureY + 25} 
               text={formatMeasurement(gapDist, unit)}
@@ -1171,6 +1226,7 @@ const MeasurementOverlay: React.FC<Props> = ({
         />,
         <WallDimensionLabel 
           key={`${item.id}-left-width-label`}
+          measurementId={`${item.id}-left-width`}
           x={measureX - 60} 
           y={visualCenterY} 
           text={formatMeasurement(item.width, unit)}
@@ -1218,6 +1274,7 @@ const MeasurementOverlay: React.FC<Props> = ({
             />,
             <WallDimensionLabel 
               key={`${item.id}-left-gap-label`}
+              measurementId={`${item.id}-left-gap`}
               x={measureX - 60} 
               y={(prevEndY + windowStartY) / 2} 
               text={formatMeasurement(gapDist, unit)}
@@ -1286,6 +1343,7 @@ const MeasurementOverlay: React.FC<Props> = ({
         />,
         <WallDimensionLabel 
           key={`${item.id}-right-width-label`}
+          measurementId={`${item.id}-right-width`}
           x={measureX + 50} 
           y={visualCenterY} 
           text={formatMeasurement(item.width, unit)}
@@ -1333,6 +1391,7 @@ const MeasurementOverlay: React.FC<Props> = ({
             />,
             <WallDimensionLabel 
               key={`${item.id}-right-gap-label`}
+              measurementId={`${item.id}-right-gap`}
               x={measureX + 50} 
               y={(prevEndY + windowStartY) / 2} 
               text={formatMeasurement(gapDist, unit)}
