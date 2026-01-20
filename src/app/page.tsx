@@ -99,6 +99,7 @@ export default function Home() {
   const [sidebarWidth, setSidebarWidth] = useState(320);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
+  const [hoveredDimension, setHoveredDimension] = useState<string | null>(null);
 
   // Load saved room on mount
   useEffect(() => {
@@ -548,14 +549,67 @@ export default function Home() {
                   <div style={{ 
                     fontSize: '13px', 
                     color: '#999999',
-                    cursor: 'help'
+                    position: 'relative',
+                    display: 'inline-block'
                   }}>
-                    <span title="Width">{roomConfig.width}</span>
+                    <span 
+                      onMouseEnter={() => setHoveredDimension('width')}
+                      onMouseLeave={() => setHoveredDimension(null)}
+                      style={{ cursor: 'help', position: 'relative' }}
+                    >
+                      {roomConfig.width}
+                    </span>
                     {' × '}
-                    <span title="Length">{roomConfig.height}</span>
+                    <span 
+                      onMouseEnter={() => setHoveredDimension('length')}
+                      onMouseLeave={() => setHoveredDimension(null)}
+                      style={{ cursor: 'help', position: 'relative' }}
+                    >
+                      {roomConfig.height}
+                    </span>
                     {' × '}
-                    <span title="Height (floor to ceiling)">{ceilingHeight}</span>
+                    <span 
+                      onMouseEnter={() => setHoveredDimension('height')}
+                      onMouseLeave={() => setHoveredDimension(null)}
+                      style={{ cursor: 'help', position: 'relative' }}
+                    >
+                      {ceilingHeight}
+                    </span>
                     {' cm'}
+                    
+                    {/* Custom tooltip */}
+                    {hoveredDimension && (
+                      <div style={{
+                        position: 'absolute',
+                        bottom: '100%',
+                        left: '0',
+                        marginBottom: '8px',
+                        padding: '6px 10px',
+                        backgroundColor: '#1a1a1a',
+                        color: '#ffffff',
+                        fontSize: '12px',
+                        borderRadius: '6px',
+                        whiteSpace: 'nowrap',
+                        zIndex: 1000,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                        pointerEvents: 'none'
+                      }}>
+                        {hoveredDimension === 'width' && `Width: ${roomConfig.width} cm`}
+                        {hoveredDimension === 'length' && `Length: ${roomConfig.height} cm`}
+                        {hoveredDimension === 'height' && `Height (floor to ceiling): ${ceilingHeight} cm`}
+                        {/* Arrow */}
+                        <div style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: '12px',
+                          width: 0,
+                          height: 0,
+                          borderLeft: '6px solid transparent',
+                          borderRight: '6px solid transparent',
+                          borderTop: '6px solid #1a1a1a'
+                        }} />
+                      </div>
+                    )}
                   </div>
                 </div>
                 <button
