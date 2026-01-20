@@ -91,6 +91,9 @@ export default function RoomCanvas({
   const [isSnapping, setIsSnapping] = useState(false);
   const [selectedManualMeasurement, setSelectedManualMeasurement] = useState<string | null>(null);
   
+  // Toolbar tooltip state
+  const [hoveredTool, setHoveredTool] = useState<string | null>(null);
+  
   // Reset drawing state and update cursor when drawing mode changes
   useEffect(() => {
     const stage = stageRef.current;
@@ -1429,223 +1432,461 @@ export default function RoomCanvas({
       >
         {/* Show Labels Toggle */}
         {onToggleLabels && (
-          <button
-            onClick={onToggleLabels}
-            style={{
-              width: '40px',
-              height: '40px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: showLabels ? '#0A0A0A' : '#FFFFFF',
-              border: showLabels ? 'none' : '1px solid #E5E5E5',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-              transition: 'all 150ms',
-            }}
-            onMouseEnter={(e) => {
-              if (!showLabels) {
-                e.currentTarget.style.backgroundColor = '#F5F5F5';
-                e.currentTarget.style.borderColor = '#0A0A0A';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!showLabels) {
-                e.currentTarget.style.backgroundColor = '#FFFFFF';
-                e.currentTarget.style.borderColor = '#E5E5E5';
-              }
-            }}
-            title={showLabels ? 'Hide Labels' : 'Show Labels'}
-          >
-            <Eye size={20} color={showLabels ? '#FFFFFF' : '#0A0A0A'} />
-          </button>
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={onToggleLabels}
+              onMouseEnter={(e) => {
+                setHoveredTool('labels');
+                if (!showLabels) {
+                  e.currentTarget.style.backgroundColor = '#F5F5F5';
+                  e.currentTarget.style.borderColor = '#0A0A0A';
+                }
+              }}
+              onMouseLeave={(e) => {
+                setHoveredTool(null);
+                if (!showLabels) {
+                  e.currentTarget.style.backgroundColor = '#FFFFFF';
+                  e.currentTarget.style.borderColor = '#E5E5E5';
+                }
+              }}
+              style={{
+                width: '40px',
+                height: '40px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: showLabels ? '#0A0A0A' : '#FFFFFF',
+                border: showLabels ? 'none' : '1px solid #E5E5E5',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                transition: 'all 150ms',
+              }}
+            >
+              <Eye size={20} color={showLabels ? '#FFFFFF' : '#0A0A0A'} />
+            </button>
+            {hoveredTool === 'labels' && (
+              <div style={{
+                position: 'absolute',
+                right: '100%',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                marginRight: '12px',
+                padding: '8px 12px',
+                backgroundColor: '#1a1a1a',
+                color: '#ffffff',
+                fontSize: '12px',
+                borderRadius: '6px',
+                whiteSpace: 'nowrap',
+                zIndex: 1000,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                pointerEvents: 'none'
+              }}>
+                {showLabels ? 'Hide furniture labels' : 'Show furniture labels'}
+                <div style={{
+                  position: 'absolute',
+                  left: '100%',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: 0,
+                  height: 0,
+                  borderTop: '6px solid transparent',
+                  borderBottom: '6px solid transparent',
+                  borderLeft: '6px solid #1a1a1a'
+                }} />
+              </div>
+            )}
+          </div>
         )}
         
         {/* Show All Measurements Toggle */}
         {onToggleMeasurements && (
-          <button
-            onClick={onToggleMeasurements}
-            style={{
-              width: '40px',
-              height: '40px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: showAllMeasurements ? '#0A0A0A' : '#FFFFFF',
-              border: showAllMeasurements ? 'none' : '1px solid #E5E5E5',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-              transition: 'all 150ms',
-            }}
-            onMouseEnter={(e) => {
-              if (!showAllMeasurements) {
-                e.currentTarget.style.backgroundColor = '#F5F5F5';
-                e.currentTarget.style.borderColor = '#0A0A0A';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!showAllMeasurements) {
-                e.currentTarget.style.backgroundColor = '#FFFFFF';
-                e.currentTarget.style.borderColor = '#E5E5E5';
-              }
-            }}
-            title={showAllMeasurements ? 'Hide All Measurements' : 'Show All Measurements'}
-          >
-            <Ruler size={20} color={showAllMeasurements ? '#FFFFFF' : '#0A0A0A'} />
-          </button>
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={onToggleMeasurements}
+              onMouseEnter={(e) => {
+                setHoveredTool('measurements');
+                if (!showAllMeasurements) {
+                  e.currentTarget.style.backgroundColor = '#F5F5F5';
+                  e.currentTarget.style.borderColor = '#0A0A0A';
+                }
+              }}
+              onMouseLeave={(e) => {
+                setHoveredTool(null);
+                if (!showAllMeasurements) {
+                  e.currentTarget.style.backgroundColor = '#FFFFFF';
+                  e.currentTarget.style.borderColor = '#E5E5E5';
+                }
+              }}
+              style={{
+                width: '40px',
+                height: '40px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: showAllMeasurements ? '#0A0A0A' : '#FFFFFF',
+                border: showAllMeasurements ? 'none' : '1px solid #E5E5E5',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                transition: 'all 150ms',
+              }}
+            >
+              <Ruler size={20} color={showAllMeasurements ? '#FFFFFF' : '#0A0A0A'} />
+            </button>
+            {hoveredTool === 'measurements' && (
+              <div style={{
+                position: 'absolute',
+                right: '100%',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                marginRight: '12px',
+                padding: '8px 12px',
+                backgroundColor: '#1a1a1a',
+                color: '#ffffff',
+                fontSize: '12px',
+                borderRadius: '6px',
+                whiteSpace: 'nowrap',
+                zIndex: 1000,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                pointerEvents: 'none'
+              }}>
+                {showAllMeasurements ? 'Hide all measurements' : 'Show distance measurements'}
+                <div style={{
+                  position: 'absolute',
+                  left: '100%',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: 0,
+                  height: 0,
+                  borderTop: '6px solid transparent',
+                  borderBottom: '6px solid transparent',
+                  borderLeft: '6px solid #1a1a1a'
+                }} />
+              </div>
+            )}
+          </div>
         )}
         
         {/* Draw Manual Measurement Toggle */}
         {onToggleDrawingMode && (
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={onToggleDrawingMode}
+              onMouseEnter={(e) => {
+                setHoveredTool('drawing');
+                if (!isDrawingMeasurement) {
+                  e.currentTarget.style.backgroundColor = '#F5F5F5';
+                  e.currentTarget.style.borderColor = '#0A0A0A';
+                }
+              }}
+              onMouseLeave={(e) => {
+                setHoveredTool(null);
+                if (!isDrawingMeasurement) {
+                  e.currentTarget.style.backgroundColor = '#FFFFFF';
+                  e.currentTarget.style.borderColor = '#E5E5E5';
+                }
+              }}
+              style={{
+                width: '40px',
+                height: '40px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: isDrawingMeasurement ? '#0A0A0A' : '#FFFFFF',
+                border: isDrawingMeasurement ? 'none' : '1px solid #E5E5E5',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                transition: 'all 150ms',
+              }}
+            >
+              <PenLine size={20} color={isDrawingMeasurement ? '#FFFFFF' : '#0A0A0A'} />
+            </button>
+            {hoveredTool === 'drawing' && (
+              <div style={{
+                position: 'absolute',
+                right: '100%',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                marginRight: '12px',
+                padding: '8px 12px',
+                backgroundColor: '#1a1a1a',
+                color: '#ffffff',
+                fontSize: '12px',
+                borderRadius: '6px',
+                whiteSpace: 'nowrap',
+                zIndex: 1000,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                pointerEvents: 'none'
+              }}>
+                {isDrawingMeasurement ? 'Exit drawing mode (ESC)' : 'Draw custom measurement lines'}
+                <div style={{
+                  position: 'absolute',
+                  left: '100%',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: 0,
+                  height: 0,
+                  borderTop: '6px solid transparent',
+                  borderBottom: '6px solid transparent',
+                  borderLeft: '6px solid #1a1a1a'
+                }} />
+              </div>
+            )}
+          </div>
+        )}
+        
+        <div style={{ position: 'relative' }}>
           <button
-            onClick={onToggleDrawingMode}
+            onClick={handleZoomIn}
+            onMouseEnter={(e) => {
+              setHoveredTool('zoom-in');
+              e.currentTarget.style.backgroundColor = '#F5F5F5';
+              e.currentTarget.style.borderColor = '#0A0A0A';
+            }}
+            onMouseLeave={(e) => {
+              setHoveredTool(null);
+              e.currentTarget.style.backgroundColor = '#FFFFFF';
+              e.currentTarget.style.borderColor = '#E5E5E5';
+            }}
             style={{
               width: '40px',
               height: '40px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: isDrawingMeasurement ? '#0A0A0A' : '#FFFFFF',
-              border: isDrawingMeasurement ? 'none' : '1px solid #E5E5E5',
+              backgroundColor: '#FFFFFF',
+              border: '1px solid #E5E5E5',
               borderRadius: '8px',
               cursor: 'pointer',
               boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
               transition: 'all 150ms',
             }}
+          >
+            <Plus size={20} color="#0A0A0A" />
+          </button>
+          {hoveredTool === 'zoom-in' && (
+            <div style={{
+              position: 'absolute',
+              right: '100%',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              marginRight: '12px',
+              padding: '8px 12px',
+              backgroundColor: '#1a1a1a',
+              color: '#ffffff',
+              fontSize: '12px',
+              borderRadius: '6px',
+              whiteSpace: 'nowrap',
+              zIndex: 1000,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              pointerEvents: 'none'
+            }}>
+              Zoom in (+)
+              <div style={{
+                position: 'absolute',
+                left: '100%',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                width: 0,
+                height: 0,
+                borderTop: '6px solid transparent',
+                borderBottom: '6px solid transparent',
+                borderLeft: '6px solid #1a1a1a'
+              }} />
+            </div>
+          )}
+        </div>
+        
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={handleResetView}
             onMouseEnter={(e) => {
-              if (!isDrawingMeasurement) {
-                e.currentTarget.style.backgroundColor = '#F5F5F5';
-                e.currentTarget.style.borderColor = '#0A0A0A';
-              }
+              setHoveredTool('fit');
+              e.currentTarget.style.backgroundColor = '#F5F5F5';
+              e.currentTarget.style.borderColor = '#0A0A0A';
             }}
             onMouseLeave={(e) => {
-              if (!isDrawingMeasurement) {
-                e.currentTarget.style.backgroundColor = '#FFFFFF';
-                e.currentTarget.style.borderColor = '#E5E5E5';
-              }
+              setHoveredTool(null);
+              e.currentTarget.style.backgroundColor = '#FFFFFF';
+              e.currentTarget.style.borderColor = '#E5E5E5';
             }}
-            title={isDrawingMeasurement ? 'Exit Drawing Mode (ESC)' : 'Draw Manual Measurement'}
+            style={{
+              width: '40px',
+              height: '40px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: '#FFFFFF',
+              border: '1px solid #E5E5E5',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+              transition: 'all 150ms',
+            }}
           >
-            <PenLine size={20} color={isDrawingMeasurement ? '#FFFFFF' : '#0A0A0A'} />
+            <Maximize2 size={18} color="#0A0A0A" />
           </button>
-        )}
+          {hoveredTool === 'fit' && (
+            <div style={{
+              position: 'absolute',
+              right: '100%',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              marginRight: '12px',
+              padding: '8px 12px',
+              backgroundColor: '#1a1a1a',
+              color: '#ffffff',
+              fontSize: '12px',
+              borderRadius: '6px',
+              whiteSpace: 'nowrap',
+              zIndex: 1000,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              pointerEvents: 'none'
+            }}>
+              Fit to view (F or 0)
+              <div style={{
+                position: 'absolute',
+                left: '100%',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                width: 0,
+                height: 0,
+                borderTop: '6px solid transparent',
+                borderBottom: '6px solid transparent',
+                borderLeft: '6px solid #1a1a1a'
+              }} />
+            </div>
+          )}
+        </div>
         
-        <button
-          onClick={handleZoomIn}
-          style={{
-            width: '40px',
-            height: '40px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: '#FFFFFF',
-            border: '1px solid #E5E5E5',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-            transition: 'all 150ms',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#F5F5F5';
-            e.currentTarget.style.borderColor = '#0A0A0A';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#FFFFFF';
-            e.currentTarget.style.borderColor = '#E5E5E5';
-          }}
-          title="Zoom In (+)"
-        >
-          <Plus size={20} color="#0A0A0A" />
-        </button>
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={handleResetView}
+            onMouseEnter={(e) => {
+              setHoveredTool('zoom-display');
+              e.currentTarget.style.backgroundColor = '#F5F5F5';
+              e.currentTarget.style.borderColor = '#0A0A0A';
+            }}
+            onMouseLeave={(e) => {
+              setHoveredTool(null);
+              e.currentTarget.style.backgroundColor = '#FFFFFF';
+              e.currentTarget.style.borderColor = '#E5E5E5';
+            }}
+            style={{
+              width: '40px',
+              height: '40px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: '#FFFFFF',
+              border: '1px solid #E5E5E5',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+              fontSize: '12px',
+              fontWeight: 600,
+              color: '#0A0A0A',
+              transition: 'all 150ms',
+            }}
+          >
+            {Math.round(userZoom * 100)}%
+          </button>
+          {hoveredTool === 'zoom-display' && (
+            <div style={{
+              position: 'absolute',
+              right: '100%',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              marginRight: '12px',
+              padding: '8px 12px',
+              backgroundColor: '#1a1a1a',
+              color: '#ffffff',
+              fontSize: '12px',
+              borderRadius: '6px',
+              whiteSpace: 'nowrap',
+              zIndex: 1000,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              pointerEvents: 'none'
+            }}>
+              Current zoom level (click to reset)
+              <div style={{
+                position: 'absolute',
+                left: '100%',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                width: 0,
+                height: 0,
+                borderTop: '6px solid transparent',
+                borderBottom: '6px solid transparent',
+                borderLeft: '6px solid #1a1a1a'
+              }} />
+            </div>
+          )}
+        </div>
         
-        <button
-          onClick={handleResetView}
-          style={{
-            width: '40px',
-            height: '40px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: '#FFFFFF',
-            border: '1px solid #E5E5E5',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-            transition: 'all 150ms',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#F5F5F5';
-            e.currentTarget.style.borderColor = '#0A0A0A';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#FFFFFF';
-            e.currentTarget.style.borderColor = '#E5E5E5';
-          }}
-          title="Fit to View (F or 0) - Reset zoom and center room"
-        >
-          <Maximize2 size={18} color="#0A0A0A" />
-        </button>
-        
-        <button
-          onClick={handleResetView}
-          style={{
-            width: '40px',
-            height: '40px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: '#FFFFFF',
-            border: '1px solid #E5E5E5',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-            fontSize: '12px',
-            fontWeight: 600,
-            color: '#0A0A0A',
-            transition: 'all 150ms',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#F5F5F5';
-            e.currentTarget.style.borderColor = '#0A0A0A';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#FFFFFF';
-            e.currentTarget.style.borderColor = '#E5E5E5';
-          }}
-          title="Fit to View (F) - Reset zoom and center room"
-        >
-          {Math.round(userZoom * 100)}%
-        </button>
-        
-        <button
-          onClick={handleZoomOut}
-          style={{
-            width: '40px',
-            height: '40px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: '#FFFFFF',
-            border: '1px solid #E5E5E5',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-            transition: 'all 150ms',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#F5F5F5';
-            e.currentTarget.style.borderColor = '#0A0A0A';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#FFFFFF';
-            e.currentTarget.style.borderColor = '#E5E5E5';
-          }}
-          title="Zoom Out (-)"
-        >
-          <Minus size={20} color="#0A0A0A" />
-        </button>
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={handleZoomOut}
+            onMouseEnter={(e) => {
+              setHoveredTool('zoom-out');
+              e.currentTarget.style.backgroundColor = '#F5F5F5';
+              e.currentTarget.style.borderColor = '#0A0A0A';
+            }}
+            onMouseLeave={(e) => {
+              setHoveredTool(null);
+              e.currentTarget.style.backgroundColor = '#FFFFFF';
+              e.currentTarget.style.borderColor = '#E5E5E5';
+            }}
+            style={{
+              width: '40px',
+              height: '40px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: '#FFFFFF',
+              border: '1px solid #E5E5E5',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+              transition: 'all 150ms',
+            }}
+          >
+            <Minus size={20} color="#0A0A0A" />
+          </button>
+          {hoveredTool === 'zoom-out' && (
+            <div style={{
+              position: 'absolute',
+              right: '100%',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              marginRight: '12px',
+              padding: '8px 12px',
+              backgroundColor: '#1a1a1a',
+              color: '#ffffff',
+              fontSize: '12px',
+              borderRadius: '6px',
+              whiteSpace: 'nowrap',
+              zIndex: 1000,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              pointerEvents: 'none'
+            }}>
+              Zoom out (-)
+              <div style={{
+                position: 'absolute',
+                left: '100%',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                width: 0,
+                height: 0,
+                borderTop: '6px solid transparent',
+                borderBottom: '6px solid transparent',
+                borderLeft: '6px solid #1a1a1a'
+              }} />
+            </div>
+          )}
+        </div>
       </div>
       
       {/* Zoom Tooltip - shows near cursor during Ctrl+Scroll zoom */}
