@@ -687,6 +687,7 @@ const MeasurementOverlay: React.FC<Props> = ({
         dash={dashPattern}
         opacity={opacity}
         listening={isInMeasurementsView}
+        hitStrokeWidth={isInMeasurementsView ? 20 : strokeWidth}
         onClick={(e) => {
           if (isInMeasurementsView && onToggleMeasurement) {
             e.cancelBubble = true;
