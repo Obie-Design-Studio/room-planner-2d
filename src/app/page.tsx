@@ -546,45 +546,27 @@ export default function Home() {
                   }}>
                     {roomName}
                   </div>
-                  <div style={{ 
-                    fontSize: '13px', 
-                    color: '#999999',
-                    position: 'relative',
-                    display: 'inline-block'
-                  }}>
-                    <span 
-                      onMouseEnter={() => setHoveredDimension('width')}
-                      onMouseLeave={() => setHoveredDimension(null)}
-                      style={{ cursor: 'help', position: 'relative' }}
-                    >
-                      {roomConfig.width}
-                    </span>
-                    {' × '}
-                    <span 
-                      onMouseEnter={() => setHoveredDimension('length')}
-                      onMouseLeave={() => setHoveredDimension(null)}
-                      style={{ cursor: 'help', position: 'relative' }}
-                    >
-                      {roomConfig.height}
-                    </span>
-                    {' × '}
-                    <span 
-                      onMouseEnter={() => setHoveredDimension('height')}
-                      onMouseLeave={() => setHoveredDimension(null)}
-                      style={{ cursor: 'help', position: 'relative' }}
-                    >
-                      {ceilingHeight}
-                    </span>
-                    {' cm'}
+                  <div 
+                    onMouseEnter={() => setHoveredDimension('all')}
+                    onMouseLeave={() => setHoveredDimension(null)}
+                    style={{ 
+                      fontSize: '13px', 
+                      color: '#999999',
+                      position: 'relative',
+                      display: 'inline-block',
+                      cursor: 'help'
+                    }}
+                  >
+                    {roomConfig.width} × {roomConfig.height} × {ceilingHeight} cm
                     
-                    {/* Custom tooltip */}
+                    {/* Custom tooltip showing all dimensions */}
                     {hoveredDimension && (
                       <div style={{
                         position: 'absolute',
                         bottom: '100%',
                         left: '0',
                         marginBottom: '8px',
-                        padding: '6px 10px',
+                        padding: '8px 12px',
                         backgroundColor: '#1a1a1a',
                         color: '#ffffff',
                         fontSize: '12px',
@@ -592,11 +574,12 @@ export default function Home() {
                         whiteSpace: 'nowrap',
                         zIndex: 1000,
                         boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                        pointerEvents: 'none'
+                        pointerEvents: 'none',
+                        lineHeight: '1.6'
                       }}>
-                        {hoveredDimension === 'width' && `Width: ${roomConfig.width} cm`}
-                        {hoveredDimension === 'length' && `Length: ${roomConfig.height} cm`}
-                        {hoveredDimension === 'height' && `Height (floor to ceiling): ${ceilingHeight} cm`}
+                        <div>Width: {roomConfig.width} cm</div>
+                        <div>Length: {roomConfig.height} cm</div>
+                        <div>Height (floor to ceiling): {ceilingHeight} cm</div>
                         {/* Arrow */}
                         <div style={{
                           position: 'absolute',
