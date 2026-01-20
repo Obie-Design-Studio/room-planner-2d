@@ -556,7 +556,7 @@ export default function Home() {
             letterSpacing: '-0.02em',
             margin: 0
           }}>
-            {roomName}{hasUnsavedChanges ? ' *' : ''}
+            {roomName}
           </h1>
         </div>
         
@@ -585,7 +585,7 @@ export default function Home() {
                   }}
                 >
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    📁 {roomName}{hasUnsavedChanges ? ' *' : ''}
+                    📁 {roomName}
                   </span>
                   <ChevronDown size={14} />
                 </button>
@@ -1317,7 +1317,7 @@ export default function Home() {
                 color: '#0A0A0A',
                 textAlign: 'center'
               }}>
-                📁 {roomName}{hasUnsavedChanges ? ' *' : ''}
+                📁 {roomName}
               </div>
               
               {/* Room Management */}
