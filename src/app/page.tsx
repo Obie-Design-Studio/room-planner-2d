@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
-import type { RoomConfig, FurnitureItem } from "@/types";
+import type { RoomConfig, FurnitureItem, ManualMeasurement } from "@/types";
 import ColorPicker from "@/components/ui/ColorPicker";
 import Input from '@/components/ui/Input';
 import ItemEditModal from "@/components/ui/ItemEditModal";
@@ -38,6 +38,8 @@ export default function Home() {
   const [showLabels, setShowLabels] = useState(false);
   const [viewport, setViewport] = useState({ width: 800, height: 600 });
   const [hiddenMeasurements, setHiddenMeasurements] = useState<Set<string>>(new Set());
+  const [manualMeasurements, setManualMeasurements] = useState<ManualMeasurement[]>([]);
+  const [isDrawingMeasurement, setIsDrawingMeasurement] = useState(false);
   
   // Handler to toggle individual measurement visibility
   const handleToggleMeasurement = (measurementId: string) => {
@@ -50,6 +52,23 @@ export default function Home() {
       }
       return newSet;
     });
+  };
+  
+  // Handlers for manual measurement drawing
+  const handleAddManualMeasurement = (measurement: ManualMeasurement) => {
+    setManualMeasurements(prev => [...prev, measurement]);
+  };
+  
+  const handleDeleteManualMeasurement = (id: string) => {
+    setManualMeasurements(prev => prev.filter(m => m.id !== id));
+  };
+  
+  const handleToggleDrawingMode = () => {
+    setIsDrawingMeasurement(prev => !prev);
+    // Deselect any selected furniture when entering drawing mode
+    if (!isDrawingMeasurement) {
+      setSelectedId(null);
+    }
   };
   
   // Handler to toggle measurements (mutually exclusive with labels)
@@ -107,6 +126,10 @@ export default function Home() {
           // Restore hidden measurements
           if (result.room.hidden_measurements) {
             setHiddenMeasurements(new Set(result.room.hidden_measurements));
+          }
+          // Restore manual measurements
+          if (result.room.manual_measurements) {
+            setManualMeasurements(result.room.manual_measurements);
           }
         }
       }
@@ -166,7 +189,8 @@ export default function Home() {
       default_door_height_cm: 210, 
       wall_color: '#FFFFFF', 
       current_view: 'blueprint',
-      hidden_measurements: Array.from(hiddenMeasurements)
+      hidden_measurements: Array.from(hiddenMeasurements),
+      manual_measurements: manualMeasurements
     };
     const roomItems = items.map(item => ({ type: item.type, label: item.type, x: item.x, y: item.y, width: item.width, height: item.height, rotation: item.rotation, color: item.color }));
     const result = await saveRoom(roomData, roomItems);
@@ -205,6 +229,12 @@ export default function Home() {
         setHiddenMeasurements(new Set(result.room.hidden_measurements));
       } else {
         setHiddenMeasurements(new Set());
+      }
+      // Restore manual measurements
+      if (result.room.manual_measurements) {
+        setManualMeasurements(result.room.manual_measurements);
+      } else {
+        setManualMeasurements([]);
       }
       // Save this room ID as the last loaded room
       localStorage.setItem('lastRoomId', roomId);
@@ -1063,6 +1093,11 @@ export default function Home() {
             onStageRef={(stage) => { stageRef.current = stage; }}
             hiddenMeasurements={hiddenMeasurements}
             onToggleMeasurement={handleToggleMeasurement}
+            manualMeasurements={manualMeasurements}
+            isDrawingMeasurement={isDrawingMeasurement}
+            onToggleDrawingMode={handleToggleDrawingMode}
+            onAddManualMeasurement={handleAddManualMeasurement}
+            onDeleteManualMeasurement={handleDeleteManualMeasurement}
           />
         </div>
       </div>

@@ -23,6 +23,7 @@ export interface Room {
   wall_color: string;
   current_view: string;
   hidden_measurements?: string[]; // Array of measurement IDs that are hidden
+  manual_measurements?: { id: string; startX: number; startY: number; endX: number; endY: number }[]; // Manual measurement lines
 }
 
 export interface RoomItem {

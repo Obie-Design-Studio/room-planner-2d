@@ -26,3 +26,11 @@ export interface WallObject {
 }
 
 export type ViewMode = 'blueprint' | 'measurements' | 'materials';
+
+export interface ManualMeasurement {
+  id: string;
+  startX: number; // in cm
+  startY: number; // in cm
+  endX: number; // in cm
+  endY: number; // in cm
+}

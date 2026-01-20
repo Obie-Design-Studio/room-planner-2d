@@ -1,12 +1,12 @@
 import React, { useRef, useEffect, useState } from "react";
-import { Stage, Layer, Rect, Group, Line, Text } from "react-konva";
+import { Stage, Layer, Rect, Group, Line, Text, Circle } from "react-konva";
 import { PIXELS_PER_CM, WALL_THICKNESS_PX } from "@/lib/constants";
-import { RoomConfig, FurnitureItem } from "@/types";
+import { RoomConfig, FurnitureItem, ManualMeasurement } from "@/types";
 import { type Unit, formatMeasurement } from "@/lib/unitConversion";
 import FurnitureShape from "./FurnitureShape";
 import MeasurementOverlay from "./MeasurementOverlay";
 import GridBackground from "./GridBackground";
-import { Plus, Minus, Maximize2, Ruler, Eye } from "lucide-react";
+import { Plus, Minus, Maximize2, Ruler, Eye, PenLine, Trash2 } from "lucide-react";
 
 interface RoomCanvasProps {
   roomConfig: RoomConfig;
@@ -27,6 +27,11 @@ interface RoomCanvasProps {
   onStageRef?: (stage: any) => void;
   hiddenMeasurements?: Set<string>;
   onToggleMeasurement?: (measurementId: string) => void;
+  manualMeasurements?: ManualMeasurement[];
+  isDrawingMeasurement?: boolean;
+  onToggleDrawingMode?: () => void;
+  onAddManualMeasurement?: (measurement: ManualMeasurement) => void;
+  onDeleteManualMeasurement?: (id: string) => void;
 }
 
 export default function RoomCanvas({
@@ -48,6 +53,11 @@ export default function RoomCanvas({
   onStageRef,
   hiddenMeasurements = new Set(),
   onToggleMeasurement,
+  manualMeasurements = [],
+  isDrawingMeasurement = false,
+  onToggleDrawingMode,
+  onAddManualMeasurement,
+  onDeleteManualMeasurement,
 }: RoomCanvasProps) {
   const stageRef = useRef<any>(null);
 
@@ -71,6 +81,19 @@ export default function RoomCanvas({
   const [showZoomTooltip, setShowZoomTooltip] = useState(false);
   const [zoomTooltipPos, setZoomTooltipPos] = useState({ x: 0, y: 0 });
   const zoomTooltipTimeout = useRef<NodeJS.Timeout | null>(null);
+  
+  // Manual measurement drawing state
+  const [drawingStart, setDrawingStart] = useState<{ x: number; y: number } | null>(null);
+  const [drawingPreview, setDrawingPreview] = useState<{ x: number; y: number } | null>(null);
+  const [selectedManualMeasurement, setSelectedManualMeasurement] = useState<string | null>(null);
+  
+  // Reset drawing state when drawing mode is toggled off
+  useEffect(() => {
+    if (!isDrawingMeasurement) {
+      setDrawingStart(null);
+      setDrawingPreview(null);
+    }
+  }, [isDrawingMeasurement]);
 
   // Calculate optimal scale and position
   const roomPxWidth = roomConfig.width * PIXELS_PER_CM;
@@ -354,6 +377,42 @@ export default function RoomCanvas({
     // Fixed: e.target.getLayer() was missing () - it was always truthy as a function reference
     const clickedOnEmpty = e.target === stage || e.target === e.target.getLayer();
     
+    // Handle manual measurement drawing mode
+    if (isDrawingMeasurement && clickedOnEmpty && !isSpacePressed) {
+      const pos = stage.getPointerPosition();
+      if (!pos) return;
+      
+      // Convert screen position to canvas coordinates (in cm)
+      const canvasX = (pos.x - stagePos.x - baseCenterOffsetX) / scale;
+      const canvasY = (pos.y - stagePos.y - baseCenterOffsetY) / scale;
+      
+      // Convert to cm (relative to room origin)
+      const cmX = canvasX / PIXELS_PER_CM;
+      const cmY = canvasY / PIXELS_PER_CM;
+      
+      if (!drawingStart) {
+        // First click: set start point
+        setDrawingStart({ x: cmX, y: cmY });
+        setDrawingPreview({ x: cmX, y: cmY });
+      } else {
+        // Second click: create the measurement
+        if (onAddManualMeasurement) {
+          const measurement: ManualMeasurement = {
+            id: `manual-${Date.now()}`,
+            startX: drawingStart.x,
+            startY: drawingStart.y,
+            endX: cmX,
+            endY: cmY,
+          };
+          onAddManualMeasurement(measurement);
+        }
+        // Reset drawing state
+        setDrawingStart(null);
+        setDrawingPreview(null);
+      }
+      return; // Don't start panning
+    }
+    
     if (clickedOnEmpty || isSpacePressed) {
       setIsPanning(true);
       const pos = stage.getPointerPosition();
@@ -371,6 +430,23 @@ export default function RoomCanvas({
     // Update cursor when space is pressed
     if (isSpacePressed && !isPanning) {
       stage.container().style.cursor = 'grab';
+    }
+    
+    // Update cursor for drawing mode
+    if (isDrawingMeasurement && !isSpacePressed) {
+      stage.container().style.cursor = 'crosshair';
+    }
+    
+    // Update preview line while drawing
+    if (isDrawingMeasurement && drawingStart) {
+      const pos = stage.getPointerPosition();
+      if (pos) {
+        const canvasX = (pos.x - stagePos.x - baseCenterOffsetX) / scale;
+        const canvasY = (pos.y - stagePos.y - baseCenterOffsetY) / scale;
+        const cmX = canvasX / PIXELS_PER_CM;
+        const cmY = canvasY / PIXELS_PER_CM;
+        setDrawingPreview({ x: cmX, y: cmY });
+      }
     }
 
     if (isPanning) {
@@ -442,7 +518,7 @@ export default function RoomCanvas({
     }
   };
 
-  // Space key detection for pan mode
+  // Space key detection for pan mode, ESC to cancel drawing, Delete to remove selected measurement
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Space' && !isSpacePressed) {
@@ -453,6 +529,27 @@ export default function RoomCanvas({
           stage.container().style.cursor = 'grab';
         }
       }
+      
+      // ESC cancels drawing or deselects manual measurement
+      if (e.code === 'Escape') {
+        if (drawingStart) {
+          setDrawingStart(null);
+          setDrawingPreview(null);
+        } else if (selectedManualMeasurement) {
+          setSelectedManualMeasurement(null);
+        } else if (isDrawingMeasurement && onToggleDrawingMode) {
+          onToggleDrawingMode();
+        }
+      }
+      
+      // Delete or Backspace to delete selected manual measurement
+      if ((e.code === 'Delete' || e.code === 'Backspace') && selectedManualMeasurement) {
+        e.preventDefault();
+        if (onDeleteManualMeasurement) {
+          onDeleteManualMeasurement(selectedManualMeasurement);
+          setSelectedManualMeasurement(null);
+        }
+      }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
@@ -461,7 +558,7 @@ export default function RoomCanvas({
         setIsSpacePressed(false);
         const stage = stageRef.current;
         if (stage && !isPanning) {
-          stage.container().style.cursor = 'default';
+          stage.container().style.cursor = isDrawingMeasurement ? 'crosshair' : 'default';
         }
       }
     };
@@ -869,6 +966,191 @@ export default function RoomCanvas({
               }
               return null;
             })}
+            
+            {/* Manual Measurement Lines */}
+            {manualMeasurements.map((measurement) => {
+              const startPx = { x: measurement.startX * PIXELS_PER_CM, y: measurement.startY * PIXELS_PER_CM };
+              const endPx = { x: measurement.endX * PIXELS_PER_CM, y: measurement.endY * PIXELS_PER_CM };
+              const midX = (startPx.x + endPx.x) / 2;
+              const midY = (startPx.y + endPx.y) / 2;
+              
+              // Calculate distance in cm
+              const dx = measurement.endX - measurement.startX;
+              const dy = measurement.endY - measurement.startY;
+              const distanceCm = Math.sqrt(dx * dx + dy * dy);
+              const distanceText = formatMeasurement(distanceCm, measurementUnit);
+              
+              // Calculate angle for the label
+              const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+              
+              const isSelected = selectedManualMeasurement === measurement.id;
+              const lineColor = isSelected ? '#ef4444' : '#8b5cf6'; // Red when selected, purple normally
+              
+              return (
+                <Group key={measurement.id}>
+                  {/* Main line */}
+                  <Line
+                    points={[startPx.x, startPx.y, endPx.x, endPx.y]}
+                    stroke={lineColor}
+                    strokeWidth={isSelected ? 3 : 2}
+                    dash={[8, 4]}
+                    hitStrokeWidth={20}
+                    onClick={() => setSelectedManualMeasurement(measurement.id)}
+                    onMouseEnter={(e) => {
+                      const stage = e.target.getStage();
+                      if (stage) stage.container().style.cursor = 'pointer';
+                    }}
+                    onMouseLeave={(e) => {
+                      const stage = e.target.getStage();
+                      if (stage) stage.container().style.cursor = isDrawingMeasurement ? 'crosshair' : 'default';
+                    }}
+                  />
+                  
+                  {/* Start point */}
+                  <Circle
+                    x={startPx.x}
+                    y={startPx.y}
+                    radius={6}
+                    fill={lineColor}
+                  />
+                  
+                  {/* End point */}
+                  <Circle
+                    x={endPx.x}
+                    y={endPx.y}
+                    radius={6}
+                    fill={lineColor}
+                  />
+                  
+                  {/* Distance label background */}
+                  <Rect
+                    x={midX - 40}
+                    y={midY - 12}
+                    width={80}
+                    height={24}
+                    fill="white"
+                    stroke={lineColor}
+                    strokeWidth={1}
+                    cornerRadius={4}
+                  />
+                  
+                  {/* Distance label text */}
+                  <Text
+                    x={midX - 40}
+                    y={midY - 8}
+                    width={80}
+                    text={distanceText}
+                    fill={lineColor}
+                    fontSize={14}
+                    fontStyle="bold"
+                    align="center"
+                  />
+                  
+                  {/* Delete button when selected */}
+                  {isSelected && (
+                    <Group
+                      x={endPx.x + 10}
+                      y={endPx.y - 10}
+                      onClick={() => {
+                        if (onDeleteManualMeasurement) {
+                          onDeleteManualMeasurement(measurement.id);
+                          setSelectedManualMeasurement(null);
+                        }
+                      }}
+                      onMouseEnter={(e) => {
+                        const stage = e.target.getStage();
+                        if (stage) stage.container().style.cursor = 'pointer';
+                      }}
+                      onMouseLeave={(e) => {
+                        const stage = e.target.getStage();
+                        if (stage) stage.container().style.cursor = isDrawingMeasurement ? 'crosshair' : 'default';
+                      }}
+                    >
+                      <Circle
+                        x={0}
+                        y={0}
+                        radius={12}
+                        fill="#ef4444"
+                      />
+                      <Text
+                        x={-4}
+                        y={-6}
+                        text="×"
+                        fill="white"
+                        fontSize={14}
+                        fontStyle="bold"
+                      />
+                    </Group>
+                  )}
+                </Group>
+              );
+            })}
+            
+            {/* Drawing preview line */}
+            {isDrawingMeasurement && drawingStart && drawingPreview && (
+              <Group>
+                {/* Preview line */}
+                <Line
+                  points={[
+                    drawingStart.x * PIXELS_PER_CM,
+                    drawingStart.y * PIXELS_PER_CM,
+                    drawingPreview.x * PIXELS_PER_CM,
+                    drawingPreview.y * PIXELS_PER_CM,
+                  ]}
+                  stroke="#8b5cf6"
+                  strokeWidth={2}
+                  dash={[8, 4]}
+                  opacity={0.7}
+                />
+                
+                {/* Start point */}
+                <Circle
+                  x={drawingStart.x * PIXELS_PER_CM}
+                  y={drawingStart.y * PIXELS_PER_CM}
+                  radius={6}
+                  fill="#8b5cf6"
+                />
+                
+                {/* Preview distance label */}
+                {(() => {
+                  const dx = drawingPreview.x - drawingStart.x;
+                  const dy = drawingPreview.y - drawingStart.y;
+                  const distanceCm = Math.sqrt(dx * dx + dy * dy);
+                  const distanceText = formatMeasurement(distanceCm, measurementUnit);
+                  const midX = (drawingStart.x + drawingPreview.x) / 2 * PIXELS_PER_CM;
+                  const midY = (drawingStart.y + drawingPreview.y) / 2 * PIXELS_PER_CM;
+                  
+                  if (distanceCm < 1) return null; // Don't show label for very short distances
+                  
+                  return (
+                    <>
+                      <Rect
+                        x={midX - 40}
+                        y={midY - 12}
+                        width={80}
+                        height={24}
+                        fill="white"
+                        stroke="#8b5cf6"
+                        strokeWidth={1}
+                        cornerRadius={4}
+                        opacity={0.9}
+                      />
+                      <Text
+                        x={midX - 40}
+                        y={midY - 8}
+                        width={80}
+                        text={distanceText}
+                        fill="#8b5cf6"
+                        fontSize={14}
+                        fontStyle="bold"
+                        align="center"
+                        opacity={0.9}
+                      />
+                    </>
+                  );
+                })()}
+              </Group>
+            )}
           </Group>
         </Layer>
       </Stage>
@@ -989,6 +1271,41 @@ export default function RoomCanvas({
             title={showAllMeasurements ? 'Hide All Measurements' : 'Show All Measurements'}
           >
             <Ruler size={20} color={showAllMeasurements ? '#FFFFFF' : '#0A0A0A'} />
+          </button>
+        )}
+        
+        {/* Draw Manual Measurement Toggle */}
+        {onToggleDrawingMode && (
+          <button
+            onClick={onToggleDrawingMode}
+            style={{
+              width: '40px',
+              height: '40px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: isDrawingMeasurement ? '#0A0A0A' : '#FFFFFF',
+              border: isDrawingMeasurement ? 'none' : '1px solid #E5E5E5',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+              transition: 'all 150ms',
+            }}
+            onMouseEnter={(e) => {
+              if (!isDrawingMeasurement) {
+                e.currentTarget.style.backgroundColor = '#F5F5F5';
+                e.currentTarget.style.borderColor = '#0A0A0A';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isDrawingMeasurement) {
+                e.currentTarget.style.backgroundColor = '#FFFFFF';
+                e.currentTarget.style.borderColor = '#E5E5E5';
+              }
+            }}
+            title={isDrawingMeasurement ? 'Exit Drawing Mode (ESC)' : 'Draw Manual Measurement'}
+          >
+            <PenLine size={20} color={isDrawingMeasurement ? '#FFFFFF' : '#0A0A0A'} />
           </button>
         )}
         
