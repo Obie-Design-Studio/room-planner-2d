@@ -27,6 +27,7 @@ interface RoomCanvasProps {
   onStageRef?: (stage: any) => void;
   hiddenMeasurements?: Set<string>;
   onToggleMeasurement?: (measurementId: string) => void;
+  hiddenMeasurementsForExport?: Set<string>; // Measurements to completely hide during PDF export
   manualMeasurements?: ManualMeasurement[];
   isDrawingMeasurement?: boolean;
   onToggleDrawingMode?: () => void;
@@ -53,6 +54,7 @@ export default function RoomCanvas({
   onStageRef,
   hiddenMeasurements = new Set(),
   onToggleMeasurement,
+  hiddenMeasurementsForExport = new Set(),
   manualMeasurements = [],
   isDrawingMeasurement = false,
   onToggleDrawingMode,
@@ -1100,6 +1102,7 @@ export default function RoomCanvas({
                     hiddenMeasurements={hiddenMeasurements}
                     onToggleMeasurement={onToggleMeasurement}
                     viewMode={showAllMeasurements ? 'measurements' : 'blueprint'}
+                    hiddenMeasurementsForExport={hiddenMeasurementsForExport}
                   />
                 );
               }

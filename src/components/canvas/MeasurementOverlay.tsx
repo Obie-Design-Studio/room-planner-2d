@@ -26,6 +26,7 @@ interface Props {
   pinnedMeasurements?: Set<string>;
   hoveredItemId?: string | null;
   showLabels?: boolean;
+  hiddenMeasurementsForExport?: Set<string>; // Measurements to completely hide during PDF export
 }
 
 type MeasurementDirection = 'left' | 'right' | 'top' | 'bottom' | null;
@@ -49,6 +50,7 @@ const MeasurementOverlay: React.FC<Props> = ({
   pinnedMeasurements = new Set(),
   hoveredItemId = null,
   showLabels = false,
+  hiddenMeasurementsForExport = new Set(),
 }) => {
   const [editingDirection, setEditingDirection] = useState<MeasurementDirection>(null);
   const [editValue, setEditValue] = useState('');
@@ -502,6 +504,11 @@ const MeasurementOverlay: React.FC<Props> = ({
     const isHidden = measurementId ? hiddenMeasurements.has(measurementId) : false;
     const isHovered = measurementId ? hoveredMeasurement === measurementId : false;
     
+    // If this measurement is in export-hidden mode, don't render it at all
+    if (measurementId && hiddenMeasurementsForExport.has(measurementId)) {
+      return null;
+    }
+    
     // Apply opacity for hidden state
     const opacity = isHidden ? 0.15 : 1.0;
     const strokeColor = isInMeasurementsView && isHovered ? '#3b82f6' : '#e5e5e5';
@@ -686,6 +693,11 @@ const MeasurementOverlay: React.FC<Props> = ({
     lineType?: 'room' | 'item' | 'edge' | 'spacing';
     [key: string]: any;
   }) => {
+    // If this measurement is in export-hidden mode, don't render it at all
+    if (hiddenMeasurementsForExport.has(measurementId)) {
+      return null;
+    }
+    
     const isHidden = hiddenMeasurements.has(measurementId);
     const isHovered = hoveredMeasurement === measurementId;
     const isPinned = pinnedMeasurements.has(measurementId);
@@ -792,6 +804,11 @@ const MeasurementOverlay: React.FC<Props> = ({
     
     const boxX = x - boxWidth / 2;
     const boxY = y - boxHeight / 2;
+    
+    // If this measurement is in export-hidden mode, don't render it at all
+    if (hiddenMeasurementsForExport.has(measurementId)) {
+      return null;
+    }
     
     const isHidden = hiddenMeasurements.has(measurementId);
     const isHovered = hoveredMeasurement === measurementId;

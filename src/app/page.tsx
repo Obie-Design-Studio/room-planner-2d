@@ -244,6 +244,9 @@ export default function Home() {
     }
   };
 
+  // State to track measurements that should be completely hidden during PDF export
+  const [hiddenMeasurementsForExport, setHiddenMeasurementsForExport] = useState<Set<string>>(new Set());
+
   const handleExport = async (format: 'pdf' | 'png' | 'json') => {
     const stageElement = document.querySelector('.konvajs-content canvas') as HTMLCanvasElement;
     if (format === 'json') { 
@@ -252,7 +255,19 @@ export default function Home() {
       await exportAsPNG(stageElement, roomName); 
     } else if (format === 'pdf') { 
       if (stageRef.current) {
-        await exportCompletePDF({ current: stageRef.current }, roomName, roomConfig, ceilingHeight, items);
+        await exportCompletePDF(
+          { current: stageRef.current }, 
+          roomName, 
+          roomConfig, 
+          ceilingHeight, 
+          items,
+          {
+            setShowLabels,
+            setShowAllMeasurements,
+            hiddenMeasurements,
+            setHiddenMeasurementsForExport,
+          }
+        );
       } else {
         alert('Canvas not ready. Please try again.');
       }
@@ -1093,6 +1108,7 @@ export default function Home() {
             onStageRef={(stage) => { stageRef.current = stage; }}
             hiddenMeasurements={hiddenMeasurements}
             onToggleMeasurement={handleToggleMeasurement}
+            hiddenMeasurementsForExport={hiddenMeasurementsForExport}
             manualMeasurements={manualMeasurements}
             isDrawingMeasurement={isDrawingMeasurement}
             onToggleDrawingMode={handleToggleDrawingMode}

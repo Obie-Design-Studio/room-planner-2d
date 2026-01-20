@@ -641,9 +641,33 @@ export async function exportMeasurementsAsPDF(
 }
 
 /**
- * Export a complete PDF with both blueprint and measurements views
- * Page 1: Blueprint (clean room layout with furniture names on hover effect note)
- * Page 2: Measurements (room layout with all measurements visible)
+ * Export options for complete PDF
+ */
+export interface ExportPDFOptions {
+  stageRef: any; // Konva Stage ref
+  roomName: string;
+  roomConfig: RoomConfig;
+  ceilingHeight: number;
+  items: FurnitureItem[];
+  // Callbacks to toggle canvas state for different views
+  setShowLabels?: (show: boolean) => void;
+  setShowAllMeasurements?: (show: boolean) => void;
+  // Hidden measurements to completely remove from measurement view
+  hiddenMeasurements?: Set<string>;
+  setHiddenMeasurementsForExport?: (ids: Set<string>) => void;
+}
+
+/**
+ * Helper function to wait for canvas re-render
+ */
+function waitForRender(ms: number = 100): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Export a complete PDF with both eye view and measurements views
+ * Page 1: Eye View (labels on furniture, clean layout)
+ * Page 2: Measurements (with hidden measurements completely removed)
  * Page 3+: Item list with dimensions and details
  */
 export async function exportCompletePDF(
@@ -651,7 +675,13 @@ export async function exportCompletePDF(
   roomName: string,
   roomConfig: RoomConfig,
   ceilingHeight: number,
-  items: FurnitureItem[]
+  items: FurnitureItem[],
+  options?: {
+    setShowLabels?: (show: boolean) => void;
+    setShowAllMeasurements?: (show: boolean) => void;
+    hiddenMeasurements?: Set<string>;
+    setHiddenMeasurementsForExport?: (ids: Set<string>) => void;
+  }
 ): Promise<boolean> {
   try {
     console.log('[PDF Export Complete] Starting combined PDF export...');
@@ -665,6 +695,9 @@ export async function exportCompletePDF(
     const stage = stageRef.current;
     const PIXELS_PER_CM = 4;
     const WALL_THICKNESS_CM = 2.5;
+    
+    // Store original state to restore later
+    const originalHiddenMeasurements = options?.hiddenMeasurements ? new Set(options.hiddenMeasurements) : new Set<string>();
     
     // === STEP 1: Calculate content bounding box ===
     let minX = -WALL_THICKNESS_CM;
@@ -732,9 +765,11 @@ export async function exportCompletePDF(
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
     const margin = 15;
+    const headerHeight = 22; // Space for title and room info
+    const footerHeight = 10; // Space for timestamp
     const contentArea = {
       width: pageWidth - margin * 2,
-      height: pageHeight - margin * 2 - 15, // Reserve 15mm for footer
+      height: pageHeight - headerHeight - footerHeight - margin,
     };
     
     console.log('[PDF Export Complete] PDF setup:', { orientation, pageWidth, pageHeight, contentArea });
@@ -753,21 +788,26 @@ export async function exportCompletePDF(
       pdf.text(timestamp, pageWidth - margin, pageHeight - 5, { align: 'right' });
     };
     
-    // === PAGE 1: BLUEPRINT VIEW ===
-    console.log('[PDF Export Complete] Generating Page 1: Blueprint...');
+    // Helper: Add header
+    const addHeader = (title: string) => {
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(0, 0, 0);
+      pdf.text(title, margin, margin);
+      
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(100, 100, 100);
+      pdf.text(
+        `${roomConfig.width} × ${roomConfig.height} cm  •  Ceiling: ${ceilingHeight} cm`,
+        margin,
+        margin + 6
+      );
+    };
     
-    // Export canvas as PNG (cropped to content)
-    const blueprintDataUrl = stage.toDataURL({
-      x: cropX,
-      y: cropY,
-      width: cropWidth,
-      height: cropHeight,
-      pixelRatio: 2, // Higher quality
-    });
-    
-    // Calculate image dimensions to fit page while maintaining aspect ratio
+    // Calculate image dimensions to fit content area while maintaining aspect ratio
     const contentAspect = contentWidthPx / contentHeightPx;
-    let imgWidth, imgHeight;
+    let imgWidth: number, imgHeight: number;
     
     if (contentAspect > contentArea.width / contentArea.height) {
       imgWidth = contentArea.width;
@@ -778,41 +818,57 @@ export async function exportCompletePDF(
     }
     
     const imgX = margin + (contentArea.width - imgWidth) / 2;
-    const imgY = margin + (contentArea.height - imgHeight) / 2;
+    const imgY = headerHeight + (contentArea.height - imgHeight) / 2;
     
-    // Add blueprint image
-    pdf.addImage(blueprintDataUrl, 'PNG', imgX, imgY, imgWidth, imgHeight);
+    // === PAGE 1: EYE VIEW (Labels) ===
+    console.log('[PDF Export Complete] Generating Page 1: Eye View (Labels)...');
     
-    // Add title
-    pdf.setFontSize(16);
-    pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(0, 0, 0);
-    pdf.text(`${roomName} - Blueprint`, margin, 10);
+    // Set canvas to labels view (no measurements)
+    if (options?.setShowLabels) {
+      options.setShowLabels(true);
+    }
+    if (options?.setShowAllMeasurements) {
+      options.setShowAllMeasurements(false);
+    }
     
-    // Add room info
-    pdf.setFontSize(10);
-    pdf.setFont('helvetica', 'normal');
-    pdf.setTextColor(100, 100, 100);
-    pdf.text(
-      `${roomConfig.width} × ${roomConfig.height} cm  •  Ceiling: ${ceilingHeight} cm`,
-      margin,
-      16
-    );
+    // Wait for canvas to re-render
+    await waitForRender(150);
     
-    // Add note about furniture
-    pdf.setFontSize(9);
-    pdf.setTextColor(120, 120, 120);
-    pdf.text(
-      'Note: Furniture items are labeled with their type and positioned as shown',
-      margin,
-      pageHeight - margin - 5
-    );
+    // Export canvas as PNG (cropped to content)
+    const eyeViewDataUrl = stage.toDataURL({
+      x: cropX,
+      y: cropY,
+      width: cropWidth,
+      height: cropHeight,
+      pixelRatio: 2, // Higher quality
+    });
     
+    // Add header and image
+    addHeader(`${roomName} - Eye View`);
+    pdf.addImage(eyeViewDataUrl, 'PNG', imgX, imgY, imgWidth, imgHeight);
     addFooter();
     
     // === PAGE 2: MEASUREMENTS VIEW ===
-    console.log('[PDF Export Complete] Generating Page 2: Measurements...');
+    console.log('[PDF Export Complete] Generating Page 2: Measurements View...');
     pdf.addPage();
+    
+    // Set canvas to measurements view
+    if (options?.setShowLabels) {
+      options.setShowLabels(false);
+    }
+    if (options?.setShowAllMeasurements) {
+      options.setShowAllMeasurements(true);
+    }
+    
+    // For export, completely hide the hidden measurements by setting them to export mode
+    // The MeasurementOverlay will check for this and render hidden ones as completely invisible
+    if (options?.setHiddenMeasurementsForExport && originalHiddenMeasurements.size > 0) {
+      // Signal to the canvas that we're in export mode - hidden measurements should be fully hidden
+      options.setHiddenMeasurementsForExport(originalHiddenMeasurements);
+    }
+    
+    // Wait for canvas to re-render
+    await waitForRender(150);
     
     // Export canvas with measurements visible (same crop area)
     const measurementsDataUrl = stage.toDataURL({
@@ -823,25 +879,14 @@ export async function exportCompletePDF(
       pixelRatio: 2,
     });
     
-    // Add measurements image (same size/position as blueprint)
+    // Reset export mode for hidden measurements
+    if (options?.setHiddenMeasurementsForExport) {
+      options.setHiddenMeasurementsForExport(new Set());
+    }
+    
+    // Add header and image
+    addHeader(`${roomName} - Measurements`);
     pdf.addImage(measurementsDataUrl, 'PNG', imgX, imgY, imgWidth, imgHeight);
-    
-    // Add title
-    pdf.setFontSize(16);
-    pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(0, 0, 0);
-    pdf.text(`${roomName} - Measurements`, margin, 10);
-    
-    // Add room info
-    pdf.setFontSize(10);
-    pdf.setFont('helvetica', 'normal');
-    pdf.setTextColor(100, 100, 100);
-    pdf.text(
-      `${roomConfig.width} × ${roomConfig.height} cm  •  Ceiling: ${ceilingHeight} cm`,
-      margin,
-      16
-    );
-    
     addFooter();
     
     // === PAGE 3+: ITEM LIST ===
@@ -854,58 +899,90 @@ export async function exportCompletePDF(
       pdf.setFontSize(16);
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(0, 0, 0);
-      pdf.text('Item List', margin, 10);
+      pdf.text(`${roomName} - Item List`, margin, margin);
       
-      let yPos = 20;
+      let yPos = margin + 12;
       const lineHeight = 6;
       const maxY = pageHeight - margin - 10;
       
-      items.forEach((item, index) => {
+      // Group items by type
+      const doors = items.filter(i => i.type?.toLowerCase() === 'door');
+      const windows = items.filter(i => i.type?.toLowerCase() === 'window');
+      const furniture = items.filter(i => {
+        const t = i.type?.toLowerCase();
+        return t !== 'door' && t !== 'window';
+      });
+      
+      // Helper to render item group
+      const renderItemGroup = (groupName: string, groupItems: FurnitureItem[]) => {
+        if (groupItems.length === 0) return;
+        
         // Check if we need a new page
-        if (yPos + lineHeight * 4 > maxY) {
+        if (yPos + lineHeight * 3 > maxY) {
           addFooter();
           pdf.addPage();
           pdf.setFontSize(16);
           pdf.setFont('helvetica', 'bold');
-          pdf.text('Item List (continued)', margin, 10);
-          yPos = 20;
+          pdf.text(`${roomName} - Item List (continued)`, margin, margin);
+          yPos = margin + 12;
         }
         
-        const isWindow = item.type?.toLowerCase() === 'window';
-        const isDoor = item.type?.toLowerCase() === 'door';
-        
-        // Item name (bold)
-        pdf.setFontSize(11);
+        // Group header
+        pdf.setFontSize(12);
         pdf.setFont('helvetica', 'bold');
-        pdf.setTextColor(0, 0, 0);
-        pdf.text(`${index + 1}. ${item.type || 'Unknown'}`, margin, yPos);
-        yPos += lineHeight;
+        pdf.setTextColor(60, 60, 60);
+        pdf.text(groupName, margin, yPos);
+        yPos += lineHeight + 2;
         
-        // Dimensions
-        pdf.setFontSize(10);
-        pdf.setFont('helvetica', 'normal');
-        pdf.setTextColor(80, 80, 80);
-        
-        if (isWindow) {
-          pdf.text(`   Dimensions: ${item.width} × ${item.height} cm`, margin + 5, yPos);
-          yPos += lineHeight - 1;
-          if (item.floorDistance !== undefined) {
-            pdf.text(`   Floor Distance: ${item.floorDistance} cm`, margin + 5, yPos);
-            yPos += lineHeight - 1;
+        groupItems.forEach((item, index) => {
+          // Check if we need a new page
+          if (yPos + lineHeight * 3 > maxY) {
+            addFooter();
+            pdf.addPage();
+            pdf.setFontSize(16);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text(`${roomName} - Item List (continued)`, margin, margin);
+            yPos = margin + 12;
           }
-        } else if (isDoor) {
-          pdf.text(`   Dimensions: ${item.width} × ${item.height} cm`, margin + 5, yPos);
-          yPos += lineHeight - 1;
-        } else {
-          // Regular furniture
-          pdf.text(`   Dimensions: ${item.width} × ${item.height} cm`, margin + 5, yPos);
-          yPos += lineHeight - 1;
-        }
+          
+          const isWindow = item.type?.toLowerCase() === 'window';
+          
+          // Item name
+          pdf.setFontSize(10);
+          pdf.setFont('helvetica', 'bold');
+          pdf.setTextColor(0, 0, 0);
+          pdf.text(`${index + 1}. ${item.type || 'Unknown'}`, margin + 5, yPos);
+          
+          // Dimensions on same line
+          pdf.setFont('helvetica', 'normal');
+          pdf.setTextColor(80, 80, 80);
+          let dimText = `${item.width} × ${item.height} cm`;
+          if (isWindow && item.floorDistance !== undefined) {
+            dimText += ` (${item.floorDistance} cm from floor)`;
+          }
+          pdf.text(dimText, margin + 60, yPos);
+          
+          yPos += lineHeight;
+        });
         
-        yPos += 3; // Extra spacing between items
-      });
+        yPos += 4; // Extra spacing between groups
+      };
+      
+      // Render each group
+      renderItemGroup('Doors', doors);
+      renderItemGroup('Windows', windows);
+      renderItemGroup('Furniture', furniture);
       
       addFooter();
+    }
+    
+    // === RESTORE ORIGINAL CANVAS STATE ===
+    console.log('[PDF Export Complete] Restoring canvas state...');
+    if (options?.setShowLabels) {
+      options.setShowLabels(false);
+    }
+    if (options?.setShowAllMeasurements) {
+      options.setShowAllMeasurements(false);
     }
     
     // === DOWNLOAD ===
