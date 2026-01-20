@@ -108,7 +108,11 @@ export default function Home() {
         const result = await loadRoom(savedRoomId);
         if (result.success && result.room) {
           setRoomName(result.room.name);
-          setRoomConfig({ width: result.room.width_cm, height: result.room.length_cm });
+          setRoomConfig({ 
+            width: result.room.width_cm, 
+            height: result.room.length_cm,
+            roomType: result.room.room_type as any // Restore room type
+          });
           setCeilingHeight(result.room.ceiling_height_cm);
           if (result.items) {
             setItems(result.items.map((item: any) => ({
@@ -179,7 +183,7 @@ export default function Home() {
   const handleSaveRoom = async () => {
     const roomData = { 
       name: roomName, 
-      room_type: 'Living Room', 
+      room_type: roomConfig.roomType || 'Living Room', // Use actual room type or default
       width_cm: roomConfig.width, 
       length_cm: roomConfig.height, 
       ceiling_height_cm: ceilingHeight, 
@@ -212,7 +216,11 @@ export default function Home() {
     const result = await loadRoom(roomId);
     if (result.success && result.room) {
       setRoomName(result.room.name);
-      setRoomConfig({ width: result.room.width_cm, height: result.room.length_cm });
+      setRoomConfig({ 
+        width: result.room.width_cm, 
+        height: result.room.length_cm,
+        roomType: result.room.room_type as any // Restore room type
+      });
       setCeilingHeight(result.room.ceiling_height_cm);
       if (result.items) { 
         setItems(result.items.map((item: any) => ({ 
