@@ -551,6 +551,15 @@ const MeasurementOverlay: React.FC<Props> = ({
           stroke={strokeColor}
           strokeWidth={isInMeasurementsView && isHovered ? 2 : 1}
           cornerRadius={4}
+          listening={isInMeasurementsView && !!measurementId}
+          onClick={(e) => {
+            console.log('WallDimensionLabel RECT clicked!', { measurementId, isInMeasurementsView, hasOnToggle: !!onToggleMeasurement });
+            if (isInMeasurementsView && onToggleMeasurement && measurementId) {
+              e.cancelBubble = true;
+              console.log('Toggling from WallDimensionLabel RECT:', measurementId);
+              onToggleMeasurement(measurementId);
+            }
+          }}
         />
         <Text
           x={boxX}
@@ -873,6 +882,15 @@ const MeasurementOverlay: React.FC<Props> = ({
           shadowColor="rgba(0,0,0,0.1)"
           shadowBlur={2}
           shadowOffset={{ x: 0, y: 1 }}
+          listening={isInMeasurementsView}
+          onClick={(e) => {
+            console.log('RECT onClick fired!', { measurementId, isInMeasurementsView, hasOnToggle: !!onToggleMeasurement });
+            if (isInMeasurementsView && onToggleMeasurement) {
+              e.cancelBubble = true;
+              console.log('Calling onToggleMeasurement from RECT:', measurementId);
+              onToggleMeasurement(measurementId);
+            }
+          }}
         />
         <Text
           x={boxX}
