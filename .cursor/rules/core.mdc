@@ -1,20 +1,10 @@
 ---
-description: Core workflow rules - project scope, commits, responses, progress checks
+description: Core workflow rules - commits, responses, progress checks
 alwaysApply: true
 ---
 
-# Active Project Scope (CRITICAL)
-
-Before giving any instructions, code, or analysis, confirm the active project:
-- App name
-- Local folder path
-- GitHub repository name
-- Supabase project name (if applicable)
-
-Rules:
-- Never assume the active project
-- Never mix context between projects
-- If the active project is not confirmed, STOP and ask
+# Note
+Project confirmation rules are in the global `.cursor/rules/project-confirmation.mdc` file.
 
 # Repository Access
 
