@@ -244,13 +244,19 @@ export default function RoomCanvas({
       const swingsOutward = item.rotation >= 180;
       const isDoor = itemType === 'door';
       
-      // Windows always need buffer (they extend outside)
-      // Doors only need buffer if they swing outward
-      const needsBuffer = !isDoor || swingsOutward;
+      // ONLY DOORS need arc buffers (they swing open)
+      // Windows are just openings - NO arc buffer needed!
+      const isWindow = itemType === 'window';
       
-      if (!needsBuffer) {
+      if (isWindow) {
+        console.log('⚪ Window - no arc buffer needed (just an opening):', item.type);
+        return; // Windows don't have arcs
+      }
+      
+      // For doors: only add buffer if they swing outward
+      if (isDoor && !swingsOutward) {
         console.log('⚪ Door swings INWARD - no buffer needed:', item.type, `rotation=${item.rotation}°`);
-        return; // Skip this door - no buffer needed
+        return; // Skip inward-swinging doors
       }
       
       // CRITICAL FIX: Door/window arcs use WIDTH (smaller dimension), not height!
