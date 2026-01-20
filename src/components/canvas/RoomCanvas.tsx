@@ -221,28 +221,55 @@ export default function RoomCanvas({
   const roomPxWidth = roomConfig.width * PIXELS_PER_CM;
   const roomPxHeight = roomConfig.height * PIXELS_PER_CM;
   
-  // Find the maximum door length to create a fixed buffer zone
-  let maxDoorLength = 0;
+  // Smart bounds calculation: only add buffer where doors/windows actually are
+  // This allows better zoom when doors are only on some walls (e.g., 120% when doors on left only)
+  
+  const dimensionLabelSpace = 160; // Space for wall dimension labels (always on all sides)
+  
+  // Detect which walls have doors/windows and their sizes
+  let maxDoorOnTop = 0;
+  let maxDoorOnBottom = 0;
+  let maxDoorOnLeft = 0;
+  let maxDoorOnRight = 0;
+  
   items.forEach((item) => {
-    if (item.type?.toLowerCase() === 'door') {
+    const itemType = item.type?.toLowerCase();
+    if (itemType === 'door' || itemType === 'window') {
+      const itemY = item.y * PIXELS_PER_CM;
+      const itemX = item.x * PIXELS_PER_CM;
       const doorLength = item.width * PIXELS_PER_CM;
-      maxDoorLength = Math.max(maxDoorLength, doorLength);
+      
+      // Top wall: y is near 0
+      if (itemY < WALL_THICKNESS_PX * 2) {
+        maxDoorOnTop = Math.max(maxDoorOnTop, doorLength);
+      }
+      // Bottom wall: y is near room height
+      else if (itemY > roomPxHeight - WALL_THICKNESS_PX * 2) {
+        maxDoorOnBottom = Math.max(maxDoorOnBottom, doorLength);
+      }
+      // Left wall: x is near 0
+      else if (itemX < WALL_THICKNESS_PX * 2) {
+        maxDoorOnLeft = Math.max(maxDoorOnLeft, doorLength);
+      }
+      // Right wall: x is near room width
+      else if (itemX > roomPxWidth - WALL_THICKNESS_PX * 2) {
+        maxDoorOnRight = Math.max(maxDoorOnRight, doorLength);
+      }
     }
   });
   
-  // Create fixed bounds with buffer for door arcs on ALL walls
-  // This prevents the room from jumping when doors move between walls
-  const buffer = maxDoorLength; // Buffer extends in all directions
-  const dimensionLabelSpace = 160; // Space for room dimension labels (line at -100 + modest text space)
-  let minX = -WALL_THICKNESS_PX / 2 - buffer - dimensionLabelSpace;
-  let minY = -WALL_THICKNESS_PX / 2 - buffer - dimensionLabelSpace;
-  let maxX = roomPxWidth + WALL_THICKNESS_PX / 2 + buffer;
-  let maxY = roomPxHeight + WALL_THICKNESS_PX / 2 + buffer;
+  // Add buffer only on sides that have doors/windows
+  // This allows tighter fit and better zoom when doors are only on some walls!
+  let minX = -WALL_THICKNESS_PX / 2 - dimensionLabelSpace - maxDoorOnLeft;
+  let minY = -WALL_THICKNESS_PX / 2 - dimensionLabelSpace - maxDoorOnTop;
+  let maxX = roomPxWidth + WALL_THICKNESS_PX / 2 + maxDoorOnRight;
+  let maxY = roomPxHeight + WALL_THICKNESS_PX / 2 + maxDoorOnBottom;
   
   const contentWidth = maxX - minX;
   const contentHeight = maxY - minY;
   
-  // Adaptive padding that scales with viewport and zoom
+  // Adaptive padding based on viewport size only (NOT scaled with zoom)
+  // This allows "Fit to View" to calculate optimal zoom levels above 100%
   // Smaller viewports get smaller padding (maximize space)
   // Larger viewports get larger padding (nicer appearance)
   const PADDING_RATIO = 0.04; // 4% of smaller viewport dimension
@@ -250,11 +277,7 @@ export default function RoomCanvas({
   const MAX_PADDING = 60; // Maximum for large screens
   
   const smallerViewportDim = Math.min(viewportWidth, viewportHeight);
-  const calculatedBasePadding = smallerViewportDim * PADDING_RATIO;
-  const basePadding = Math.max(MIN_PADDING, Math.min(MAX_PADDING, calculatedBasePadding));
-  
-  // Scale padding with zoom for consistency
-  const padding = basePadding * userZoom;
+  const padding = Math.max(MIN_PADDING, Math.min(MAX_PADDING, smallerViewportDim * PADDING_RATIO));
   
   // Base scale to fit content
   const baseScale = Math.min(
