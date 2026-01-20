@@ -318,10 +318,11 @@ export default function RoomCanvas({
   // CONTENT BOUNDS (for scale calculation - includes door arcs)
   // Door arcs visually overlap dimension label space (not additive)
   // Use MAX of dimension space or door arc, not sum
-  let minX = -WALL_THICKNESS_PX / 2 - Math.max(dimensionLabelSpace, maxDoorOnLeft);
-  let minY = -WALL_THICKNESS_PX / 2 - Math.max(dimensionLabelSpace, maxDoorOnTop);
-  let maxX = roomPxWidth + WALL_THICKNESS_PX / 2 + maxDoorOnRight;
-  let maxY = roomPxHeight + WALL_THICKNESS_PX / 2 + maxDoorOnBottom;
+  // Walls now extend OUTWARD only: from -WALL_THICKNESS_PX to 0 and roomPx to roomPx+WALL_THICKNESS_PX
+  let minX = -WALL_THICKNESS_PX - Math.max(dimensionLabelSpace, maxDoorOnLeft);
+  let minY = -WALL_THICKNESS_PX - Math.max(dimensionLabelSpace, maxDoorOnTop);
+  let maxX = roomPxWidth + WALL_THICKNESS_PX + maxDoorOnRight;
+  let maxY = roomPxHeight + WALL_THICKNESS_PX + maxDoorOnBottom;
   
   const contentWidth = maxX - minX;
   const contentHeight = maxY - minY;
@@ -957,48 +958,45 @@ export default function RoomCanvas({
                 
                 // TOP WALL
                 const topDoors = getDoorsOnWall('top').sort((a, b) => a.x - b.x);
+                // TOP WALL - extends OUTWARD only (inner edge at y=0)
                 if (topDoors.length === 0) {
-                  // No doors - draw full wall
                   segments.push(
                     <Rect
                       key="wall-top"
-                      x={-WALL_THICKNESS_PX / 2}
-                      y={-WALL_THICKNESS_PX / 2}
-                      width={roomWidthPx + WALL_THICKNESS_PX}
+                      x={-WALL_THICKNESS_PX}
+                      y={-WALL_THICKNESS_PX}
+                      width={roomWidthPx + 2 * WALL_THICKNESS_PX}
                       height={WALL_THICKNESS_PX}
                       fill="black"
                     />
                   );
                 } else {
-                  // Draw wall segments around doors
-                  let currentX = -WALL_THICKNESS_PX / 2;
+                  let currentX = -WALL_THICKNESS_PX;
                   topDoors.forEach((door, i) => {
                     const doorStartPx = door.x * PIXELS_PER_CM;
                     const doorEndPx = (door.x + door.width) * PIXELS_PER_CM;
                     
-                    // Segment before door
-                    if (doorStartPx > currentX + WALL_THICKNESS_PX / 2) {
+                    if (doorStartPx > currentX + WALL_THICKNESS_PX) {
                       segments.push(
                         <Rect
                           key={`wall-top-${i}-before`}
                           x={currentX}
-                          y={-WALL_THICKNESS_PX / 2}
-                          width={doorStartPx - currentX + WALL_THICKNESS_PX / 2}
+                          y={-WALL_THICKNESS_PX}
+                          width={doorStartPx - currentX}
                           height={WALL_THICKNESS_PX}
                           fill="black"
                         />
                       );
                     }
-                    currentX = doorEndPx - WALL_THICKNESS_PX / 2;
+                    currentX = doorEndPx;
                   });
-                  // Final segment after last door
-                  if (currentX < roomWidthPx + WALL_THICKNESS_PX / 2) {
+                  if (currentX < roomWidthPx + WALL_THICKNESS_PX) {
                     segments.push(
                       <Rect
                         key="wall-top-end"
                         x={currentX}
-                        y={-WALL_THICKNESS_PX / 2}
-                        width={roomWidthPx + WALL_THICKNESS_PX / 2 - currentX}
+                        y={-WALL_THICKNESS_PX}
+                        width={roomWidthPx + WALL_THICKNESS_PX - currentX}
                         height={WALL_THICKNESS_PX}
                         fill="black"
                       />
@@ -1006,46 +1004,46 @@ export default function RoomCanvas({
                   }
                 }
                 
-                // BOTTOM WALL
+                // BOTTOM WALL - extends OUTWARD only (inner edge at y=roomHeightPx)
                 const bottomDoors = getDoorsOnWall('bottom').sort((a, b) => a.x - b.x);
                 if (bottomDoors.length === 0) {
                   segments.push(
                     <Rect
                       key="wall-bottom"
-                      x={-WALL_THICKNESS_PX / 2}
-                      y={roomHeightPx - WALL_THICKNESS_PX / 2}
-                      width={roomWidthPx + WALL_THICKNESS_PX}
+                      x={-WALL_THICKNESS_PX}
+                      y={roomHeightPx}
+                      width={roomWidthPx + 2 * WALL_THICKNESS_PX}
                       height={WALL_THICKNESS_PX}
                       fill="black"
                     />
                   );
                 } else {
-                  let currentX = -WALL_THICKNESS_PX / 2;
+                  let currentX = -WALL_THICKNESS_PX;
                   bottomDoors.forEach((door, i) => {
                     const doorStartPx = door.x * PIXELS_PER_CM;
                     const doorEndPx = (door.x + door.width) * PIXELS_PER_CM;
                     
-                    if (doorStartPx > currentX + WALL_THICKNESS_PX / 2) {
+                    if (doorStartPx > currentX + WALL_THICKNESS_PX) {
                       segments.push(
                         <Rect
                           key={`wall-bottom-${i}-before`}
                           x={currentX}
-                          y={roomHeightPx - WALL_THICKNESS_PX / 2}
-                          width={doorStartPx - currentX + WALL_THICKNESS_PX / 2}
+                          y={roomHeightPx}
+                          width={doorStartPx - currentX}
                           height={WALL_THICKNESS_PX}
                           fill="black"
                         />
                       );
                     }
-                    currentX = doorEndPx - WALL_THICKNESS_PX / 2;
+                    currentX = doorEndPx;
                   });
-                  if (currentX < roomWidthPx + WALL_THICKNESS_PX / 2) {
+                  if (currentX < roomWidthPx + WALL_THICKNESS_PX) {
                     segments.push(
                       <Rect
                         key="wall-bottom-end"
                         x={currentX}
-                        y={roomHeightPx - WALL_THICKNESS_PX / 2}
-                        width={roomWidthPx + WALL_THICKNESS_PX / 2 - currentX}
+                        y={roomHeightPx}
+                        width={roomWidthPx + WALL_THICKNESS_PX - currentX}
                         height={WALL_THICKNESS_PX}
                         fill="black"
                       />
@@ -1053,94 +1051,94 @@ export default function RoomCanvas({
                   }
                 }
                 
-                // LEFT WALL
+                // LEFT WALL - extends OUTWARD only (inner edge at x=0)
                 const leftDoors = getDoorsOnWall('left').sort((a, b) => a.y - b.y);
                 if (leftDoors.length === 0) {
                   segments.push(
                     <Rect
                       key="wall-left"
-                      x={-WALL_THICKNESS_PX / 2}
-                      y={-WALL_THICKNESS_PX / 2}
+                      x={-WALL_THICKNESS_PX}
+                      y={-WALL_THICKNESS_PX}
                       width={WALL_THICKNESS_PX}
-                      height={roomHeightPx + WALL_THICKNESS_PX}
+                      height={roomHeightPx + 2 * WALL_THICKNESS_PX}
                       fill="black"
                     />
                   );
                 } else {
-                  let currentY = -WALL_THICKNESS_PX / 2;
+                  let currentY = -WALL_THICKNESS_PX;
                   leftDoors.forEach((door, i) => {
                     const doorStartPx = door.y * PIXELS_PER_CM;
                     const doorEndPx = (door.y + door.width) * PIXELS_PER_CM;
                     
-                    if (doorStartPx > currentY + WALL_THICKNESS_PX / 2) {
+                    if (doorStartPx > currentY + WALL_THICKNESS_PX) {
                       segments.push(
                         <Rect
                           key={`wall-left-${i}-before`}
-                          x={-WALL_THICKNESS_PX / 2}
+                          x={-WALL_THICKNESS_PX}
                           y={currentY}
                           width={WALL_THICKNESS_PX}
-                          height={doorStartPx - currentY + WALL_THICKNESS_PX / 2}
+                          height={doorStartPx - currentY}
                           fill="black"
                         />
                       );
                     }
-                    currentY = doorEndPx - WALL_THICKNESS_PX / 2;
+                    currentY = doorEndPx;
                   });
-                  if (currentY < roomHeightPx + WALL_THICKNESS_PX / 2) {
+                  if (currentY < roomHeightPx + WALL_THICKNESS_PX) {
                     segments.push(
                       <Rect
                         key="wall-left-end"
-                        x={-WALL_THICKNESS_PX / 2}
+                        x={-WALL_THICKNESS_PX}
                         y={currentY}
                         width={WALL_THICKNESS_PX}
-                        height={roomHeightPx + WALL_THICKNESS_PX / 2 - currentY}
+                        height={roomHeightPx + WALL_THICKNESS_PX - currentY}
                         fill="black"
                       />
                     );
                   }
                 }
                 
-                // RIGHT WALL
+                // RIGHT WALL - extends OUTWARD only (inner edge at x=roomWidthPx)
                 const rightDoors = getDoorsOnWall('right').sort((a, b) => a.y - b.y);
                 if (rightDoors.length === 0) {
                   segments.push(
                     <Rect
                       key="wall-right"
-                      x={roomWidthPx - WALL_THICKNESS_PX / 2}
-                      y={-WALL_THICKNESS_PX / 2}
+                      x={roomWidthPx}
+                      y={-WALL_THICKNESS_PX}
                       width={WALL_THICKNESS_PX}
-                      height={roomHeightPx + WALL_THICKNESS_PX}
+                      height={roomHeightPx + 2 * WALL_THICKNESS_PX}
                       fill="black"
                     />
                   );
                 } else {
-                  let currentY = -WALL_THICKNESS_PX / 2;
+                  let currentY = -WALL_THICKNESS_PX;
                   rightDoors.forEach((door, i) => {
                     const doorStartPx = door.y * PIXELS_PER_CM;
                     const doorEndPx = (door.y + door.width) * PIXELS_PER_CM;
                     
-                    if (doorStartPx > currentY + WALL_THICKNESS_PX / 2) {
+                    if (doorStartPx > currentY + WALL_THICKNESS_PX) {
                       segments.push(
                         <Rect
                           key={`wall-right-${i}-before`}
-                          x={roomWidthPx - WALL_THICKNESS_PX / 2}
+                          x={roomWidthPx}
                           y={currentY}
                           width={WALL_THICKNESS_PX}
-                          height={doorStartPx - currentY + WALL_THICKNESS_PX / 2}
+                          height={doorStartPx - currentY}
                           fill="black"
                         />
                       );
                     }
-                    currentY = doorEndPx - WALL_THICKNESS_PX / 2;
+                    currentY = doorEndPx;
                   });
-                  if (currentY < roomHeightPx + WALL_THICKNESS_PX / 2) {
+                  if (currentY < roomHeightPx + WALL_THICKNESS_PX) {
                     segments.push(
                       <Rect
                         key="wall-right-end"
-                        x={roomWidthPx - WALL_THICKNESS_PX / 2}
+                        x={roomWidthPx}
                         y={currentY}
                         width={WALL_THICKNESS_PX}
-                        height={roomHeightPx + WALL_THICKNESS_PX / 2 - currentY}
+                        height={roomHeightPx + WALL_THICKNESS_PX - currentY}
                         fill="black"
                       />
                     );

@@ -288,10 +288,11 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
         
         // Furniture must stay inside the inner room (grid area), not overlap walls
         // Also respect gray zones created by spanning inner walls
-        const innerRoomMinX = Math.max(WALL_THICKNESS_PX / 2, effectiveBounds.minX * PIXELS_PER_CM);
-        const innerRoomMinY = Math.max(WALL_THICKNESS_PX / 2, effectiveBounds.minY * PIXELS_PER_CM);
-        const innerRoomMaxX = Math.min(roomWidthPx - WALL_THICKNESS_PX / 2, effectiveBounds.maxX * PIXELS_PER_CM);
-        const innerRoomMaxY = Math.min(roomHeightPx - WALL_THICKNESS_PX / 2, effectiveBounds.maxY * PIXELS_PER_CM);
+        // Walls extend OUTWARD only - inner room is from (0,0) to (roomWidthPx, roomHeightPx)
+        const innerRoomMinX = Math.max(0, effectiveBounds.minX * PIXELS_PER_CM);
+        const innerRoomMinY = Math.max(0, effectiveBounds.minY * PIXELS_PER_CM);
+        const innerRoomMaxX = Math.min(roomWidthPx, effectiveBounds.maxX * PIXELS_PER_CM);
+        const innerRoomMaxY = Math.min(roomHeightPx, effectiveBounds.maxY * PIXELS_PER_CM);
         
         // Clamp position to keep furniture fully inside inner room (grid area)
         let clampedTopLeftX = Math.max(innerRoomMinX, Math.min(topLeftX, innerRoomMaxX - visualWidthPx));
