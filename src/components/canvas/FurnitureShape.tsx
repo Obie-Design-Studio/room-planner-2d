@@ -1133,27 +1133,24 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
           const availableHeight = heightPx - (2 * padding);
           
           // Determine text rotation to keep it readable
-          // Strategy: Try to keep text horizontal (0°) when possible
-          // If furniture is wide, use horizontal text. If tall, consider vertical.
+          // Strategy: ALWAYS keep text horizontal (left-to-right) by counter-rotating
           const currentRotation = item.rotation || 0;
           let textRotation = 0;
           
-          // For readability: always prefer left-to-right or top-to-bottom
-          // Counter-rotate to keep text readable
-          if (currentRotation === 180) {
-            textRotation = -180; // Counter-rotate to make horizontal again
+          // Counter-rotate to ALWAYS keep text horizontal (0° in world coordinates)
+          // This ensures text is always left-to-right, never sideways or upside down
+          if (currentRotation === 90) {
+            textRotation = -90; // Counter-rotate to horizontal
+          } else if (currentRotation === 180) {
+            textRotation = -180; // Counter-rotate to horizontal
           } else if (currentRotation === 270) {
-            textRotation = -270; // Counter-rotate (or +90) to make readable
+            textRotation = -270; // Counter-rotate to horizontal (or +90)
           }
-          // At 0° and 90°, keep text as-is (readable)
+          // Result: Text is ALWAYS horizontal regardless of furniture rotation
           
-          // Determine if we should use horizontal or vertical text layout
-          // Prefer horizontal unless furniture is much taller than wide
-          const useHorizontalLayout = widthPx >= heightPx * 0.7; // Prefer horizontal in most cases
-          
-          // Calculate available space for text based on layout
-          const textAvailableWidth = useHorizontalLayout ? availableWidth : availableHeight;
-          const textAvailableHeight = useHorizontalLayout ? availableHeight : availableWidth;
+          // Always use available space as-is (text is now always horizontal)
+          const textAvailableWidth = availableWidth;
+          const textAvailableHeight = availableHeight;
           
           // Calculate dimensions text
           const isRotated90 = currentRotation === 90 || currentRotation === 270;
