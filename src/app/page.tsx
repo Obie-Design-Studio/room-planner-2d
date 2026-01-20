@@ -41,17 +41,13 @@ export default function Home() {
   
   // Handler to toggle individual measurement visibility
   const handleToggleMeasurement = (measurementId: string) => {
-    console.log('handleToggleMeasurement called with:', measurementId);
     setHiddenMeasurements(prev => {
       const newSet = new Set(prev);
       if (newSet.has(measurementId)) {
-        console.log('Showing measurement:', measurementId);
         newSet.delete(measurementId);
       } else {
-        console.log('Hiding measurement:', measurementId);
         newSet.add(measurementId);
       }
-      console.log('New hidden set:', Array.from(newSet));
       return newSet;
     });
   };

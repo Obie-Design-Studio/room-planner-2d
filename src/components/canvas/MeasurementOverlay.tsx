@@ -50,14 +50,6 @@ const MeasurementOverlay: React.FC<Props> = ({
   hoveredItemId = null,
   showLabels = false,
 }) => {
-  // Debug logging
-  console.log('MeasurementOverlay render:', { 
-    itemId: item.id,
-    viewMode, 
-    hasOnToggleMeasurement: !!onToggleMeasurement,
-    hiddenMeasurementsSize: hiddenMeasurements.size 
-  });
-  
   const [editingDirection, setEditingDirection] = useState<MeasurementDirection>(null);
   const [editValue, setEditValue] = useState('');
   const [inputPosition, setInputPosition] = useState({ x: 0, y: 0 });
@@ -492,9 +484,9 @@ const MeasurementOverlay: React.FC<Props> = ({
   };
 
   // Helper component: LARGE dimension label for wall objects (doors/windows) - 2x size
-  const WallDimensionLabel = ({ x, y, text, color = '#1a1a1a', measurementId }: { x: number; y: number; text: string; color?: string; measurementId?: string }) => {
+  const WallDimensionLabel = ({ x, y, text, color = '#1a1a1a', measurementId, showBackground = true }: { x: number; y: number; text: string; color?: string; measurementId?: string; showBackground?: boolean }) => {
     const actualFontSize = wallFontSize;
-    const padding = 14;
+    const padding = showBackground ? 14 : 4;
     
     // Use very generous width to ensure text fits
     const estimatedWidth = text.length * actualFontSize * 0.7 + 40;
@@ -520,10 +512,8 @@ const MeasurementOverlay: React.FC<Props> = ({
         listening={isInMeasurementsView && !!measurementId}
         opacity={opacity}
         onClick={(e) => {
-          console.log('WallDimensionLabel clicked!', { measurementId, isInMeasurementsView, hasOnToggle: !!onToggleMeasurement });
           if (isInMeasurementsView && onToggleMeasurement && measurementId) {
             e.cancelBubble = true;
-            console.log('Toggling measurement:', measurementId);
             onToggleMeasurement(measurementId);
           }
         }}
@@ -542,25 +532,25 @@ const MeasurementOverlay: React.FC<Props> = ({
           }
         }}
       >
-        <Rect
-          x={boxX}
-          y={boxY}
-          width={boxWidth}
-          height={boxHeight}
-          fill="white"
-          stroke={strokeColor}
-          strokeWidth={isInMeasurementsView && isHovered ? 2 : 1}
-          cornerRadius={4}
-          listening={isInMeasurementsView && !!measurementId}
-          onClick={(e) => {
-            console.log('WallDimensionLabel RECT clicked!', { measurementId, isInMeasurementsView, hasOnToggle: !!onToggleMeasurement });
-            if (isInMeasurementsView && onToggleMeasurement && measurementId) {
-              e.cancelBubble = true;
-              console.log('Toggling from WallDimensionLabel RECT:', measurementId);
-              onToggleMeasurement(measurementId);
-            }
-          }}
-        />
+        {showBackground && (
+          <Rect
+            x={boxX}
+            y={boxY}
+            width={boxWidth}
+            height={boxHeight}
+            fill="white"
+            stroke={strokeColor}
+            strokeWidth={isInMeasurementsView && isHovered ? 2 : 1}
+            cornerRadius={4}
+            listening={isInMeasurementsView && !!measurementId}
+            onClick={(e) => {
+              if (isInMeasurementsView && onToggleMeasurement && measurementId) {
+                e.cancelBubble = true;
+                onToggleMeasurement(measurementId);
+              }
+            }}
+          />
+        )}
         <Text
           x={boxX}
           y={y - actualFontSize / 2}
@@ -571,7 +561,13 @@ const MeasurementOverlay: React.FC<Props> = ({
           fontStyle="bold"
           align="center"
           width={boxWidth}
-          listening={false}
+          listening={isInMeasurementsView && !!measurementId && !showBackground}
+          onClick={!showBackground ? (e) => {
+            if (isInMeasurementsView && onToggleMeasurement && measurementId) {
+              e.cancelBubble = true;
+              onToggleMeasurement(measurementId);
+            }
+          } : undefined}
         />
       </Group>
     );
@@ -742,16 +738,12 @@ const MeasurementOverlay: React.FC<Props> = ({
         listening={isInMeasurementsView}
         hitStrokeWidth={isInMeasurementsView ? 20 : strokeWidth}
         onClick={(e) => {
-          console.log('LINE onClick fired!', { measurementId, isInMeasurementsView, hasOnToggle: !!onToggleMeasurement });
           if (isInMeasurementsView && onToggleMeasurement) {
             e.cancelBubble = true;
             if (measurementClickTimeRef) {
               measurementClickTimeRef.current = Date.now();
             }
-            console.log('Calling onToggleMeasurement with:', measurementId);
             onToggleMeasurement(measurementId);
-          } else {
-            console.log('NOT toggling - conditions not met:', { isInMeasurementsView, hasOnToggle: !!onToggleMeasurement });
           }
         }}
         onMouseEnter={(e) => {
@@ -840,16 +832,12 @@ const MeasurementOverlay: React.FC<Props> = ({
       <Group
         listening={isInMeasurementsView}
         onClick={(e) => {
-          console.log('LABEL onClick fired!', { measurementId, isInMeasurementsView, hasOnToggle: !!onToggleMeasurement });
           if (isInMeasurementsView && onToggleMeasurement) {
             e.cancelBubble = true;
             if (measurementClickTimeRef) {
               measurementClickTimeRef.current = Date.now();
             }
-            console.log('Calling onToggleMeasurement with:', measurementId);
             onToggleMeasurement(measurementId);
-          } else {
-            console.log('NOT toggling - conditions not met:', { isInMeasurementsView, hasOnToggle: !!onToggleMeasurement });
           }
         }}
         onMouseEnter={(e) => {
@@ -884,10 +872,8 @@ const MeasurementOverlay: React.FC<Props> = ({
           shadowOffset={{ x: 0, y: 1 }}
           listening={isInMeasurementsView}
           onClick={(e) => {
-            console.log('RECT onClick fired!', { measurementId, isInMeasurementsView, hasOnToggle: !!onToggleMeasurement });
             if (isInMeasurementsView && onToggleMeasurement) {
               e.cancelBubble = true;
-              console.log('Calling onToggleMeasurement from RECT:', measurementId);
               onToggleMeasurement(measurementId);
             }
           }}
@@ -976,6 +962,7 @@ const MeasurementOverlay: React.FC<Props> = ({
           y={itemWidthPos.y} 
           text={itemWidthText}
           color={COLORS.dimension}
+          showBackground={false}
         />
       );
       
@@ -1132,6 +1119,7 @@ const MeasurementOverlay: React.FC<Props> = ({
           y={measureY + 25} 
           text={formatMeasurement(item.width, unit)}
           color={COLORS.dimension}
+          showBackground={false}
         />
       );
       
@@ -1249,6 +1237,7 @@ const MeasurementOverlay: React.FC<Props> = ({
           y={visualCenterY} 
           text={formatMeasurement(item.width, unit)}
           color={COLORS.dimension}
+          showBackground={false}
         />
       );
       
@@ -1366,6 +1355,7 @@ const MeasurementOverlay: React.FC<Props> = ({
           y={visualCenterY} 
           text={formatMeasurement(item.width, unit)}
           color={COLORS.dimension}
+          showBackground={false}
         />
       );
       
