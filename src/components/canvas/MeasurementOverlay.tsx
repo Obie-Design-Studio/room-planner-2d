@@ -1503,16 +1503,33 @@ const MeasurementOverlay: React.FC<Props> = ({
     const availableHeight = h - (2 * MIN_PADDING_PX);
     const LINE_HEIGHT = 1.2;
     
-    // Account for potential multi-line label (estimate 2 lines max)
+    // Calculate label font size
     let labelFontSize = Math.min(availableWidth, availableHeight) * 0.3;
     labelFontSize = labelFontSize * Math.sqrt(zoom);
     labelFontSize = Math.max(14, Math.min(42, labelFontSize));
     
+    // Determine if label will be multi-line (match logic from FurnitureShape.tsx)
+    const labelText = item.type; // Use type as label text
+    const words = labelText.split(' ');
+    const canSplitIntoLines = words.length > 1;
+    const singleLineWidth = labelFontSize * labelText.length * 0.55;
+    
+    let isMultiLine = false;
+    if (canSplitIntoLines && singleLineWidth > availableWidth) {
+      const estimatedLineWidth = labelFontSize * (labelText.length / 2) * 0.6;
+      const estimatedHeight = labelFontSize * 2 * LINE_HEIGHT;
+      if (estimatedLineWidth <= availableWidth && estimatedHeight <= availableHeight) {
+        isMultiLine = true;
+      }
+    }
+    
     // Position dimension text below label with spacing
-    // Account for multi-line labels (up to 2 lines)
-    const TEXT_SPACING = 8; // Space between label and dimension
-    const estimatedLabelHeight = labelFontSize * 2 * LINE_HEIGHT; // Assume max 2 lines
-    labelYOffset = estimatedLabelHeight / 2 + TEXT_SPACING + dimensionFontSize / 2;
+    const TEXT_SPACING = 10; // Space between label and dimension
+    const labelHeight = isMultiLine 
+      ? labelFontSize * 2 * LINE_HEIGHT  // 2 lines
+      : labelFontSize;                    // 1 line
+    
+    labelYOffset = labelHeight / 2 + TEXT_SPACING + dimensionFontSize / 2;
   } else {
     // Calculate vertical offset to position label below the rotation button
     const labelVerticalOffset = buttonRadius + dimensionFontSize + 10; // Button radius + font size + spacing
@@ -1537,13 +1554,13 @@ const MeasurementOverlay: React.FC<Props> = ({
       {/* Furniture dimensions - shown subtly on the furniture itself */}
       {!isWall && (
         <Group x={midX} y={midY} rotation={rotation}>
-          {/* Nested group to counter-rotate text for readability */}
-          <Group x={0} y={labelYOffset} rotation={dimensionTextRotation}>
+          {/* Counter-rotate text for readability, apply offset within rotated frame */}
+          <Group x={0} y={0} rotation={dimensionTextRotation}>
             {/* Dimension text without background - auto-sized to fit */}
             <Text
               text={dimensionText}
               x={-w / 2}
-              y={-dimensionFontSize / 2}
+              y={labelYOffset - (dimensionFontSize / 2)}
               fontSize={dimensionFontSize}
               fontFamily="-apple-system, BlinkMacSystemFont, 'Inter', sans-serif"
               fill="#ffffff"
