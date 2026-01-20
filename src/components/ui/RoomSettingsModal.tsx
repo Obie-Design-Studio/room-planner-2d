@@ -17,6 +17,7 @@ interface RoomSettingsModalProps {
   defaultWindowFloorDistance?: number;
   defaultDoorWidth?: number;
   defaultDoorHeight?: number;
+  isFirstTimeSetup?: boolean;
   onClose: () => void;
   onUpdate: (name: string, config: RoomConfig, ceiling: number, unit?: Unit, windowWidth?: number, windowHeight?: number, windowFloorDistance?: number, doorWidth?: number, doorHeight?: number) => void;
 }
@@ -32,6 +33,7 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
   defaultWindowFloorDistance,
   defaultDoorWidth,
   defaultDoorHeight,
+  isFirstTimeSetup = false,
   onClose,
   onUpdate,
 }) => {
@@ -176,6 +178,52 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
         {/* Content */}
         <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* First-time setup guidance banner */}
+            {isFirstTimeSetup && (
+              <div style={{
+                padding: '16px',
+                backgroundColor: '#F0F9FF',
+                border: '1px solid #BAE6FD',
+                borderRadius: '12px',
+                display: 'flex',
+                gap: '12px',
+                alignItems: 'flex-start',
+              }}>
+                <div style={{
+                  width: '24px',
+                  height: '24px',
+                  borderRadius: '50%',
+                  backgroundColor: '#0EA5E9',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  fontSize: '14px',
+                  color: '#FFFFFF',
+                  fontWeight: 600,
+                }}>
+                  1
+                </div>
+                <div>
+                  <div style={{
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    color: '#0369A1',
+                    marginBottom: '4px',
+                  }}>
+                    Enter your room dimensions
+                  </div>
+                  <div style={{
+                    fontSize: '13px',
+                    color: '#0284C7',
+                    lineHeight: '1.4',
+                  }}>
+                    Start by setting the width and length of your room below. You can always adjust these later.
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Room Type Dropdown */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <label
@@ -271,7 +319,17 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
               </select>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: '1fr 1fr', 
+              gap: '12px',
+              padding: isFirstTimeSetup ? '12px' : '0',
+              margin: isFirstTimeSetup ? '-12px' : '0',
+              backgroundColor: isFirstTimeSetup ? '#F0F9FF' : 'transparent',
+              borderRadius: isFirstTimeSetup ? '12px' : '0',
+              border: isFirstTimeSetup ? '2px solid #0EA5E9' : 'none',
+              transition: 'all 300ms ease',
+            }}>
               <Input
                 label="Width (cm)"
                 type="number"

@@ -1573,7 +1573,7 @@ export default function RoomCanvas({
                 }
                 toolTooltipTimeout.current = setTimeout(() => {
                   setHoveredTool('labels');
-                }, 1000);
+                }, 400); // 0.4 second tooltip delay
                 if (!showLabels) {
                   e.currentTarget.style.backgroundColor = '#F5F5F5';
                   e.currentTarget.style.borderColor = '#0A0A0A';
@@ -1650,7 +1650,7 @@ export default function RoomCanvas({
                 }
                 toolTooltipTimeout.current = setTimeout(() => {
                   setHoveredTool('measurements');
-                }, 1000);
+                }, 400); // 0.4 second tooltip delay
                 if (!showAllMeasurements) {
                   e.currentTarget.style.backgroundColor = '#F5F5F5';
                   e.currentTarget.style.borderColor = '#0A0A0A';
@@ -1727,7 +1727,7 @@ export default function RoomCanvas({
                 }
                 toolTooltipTimeout.current = setTimeout(() => {
                   setHoveredTool('drawing');
-                }, 1000);
+                }, 400); // 0.4 second tooltip delay
                 if (!isDrawingMeasurement) {
                   e.currentTarget.style.backgroundColor = '#F5F5F5';
                   e.currentTarget.style.borderColor = '#0A0A0A';
@@ -1802,7 +1802,7 @@ export default function RoomCanvas({
               }
               toolTooltipTimeout.current = setTimeout(() => {
                 setHoveredTool('zoom-in');
-              }, 1000);
+              }, 400); // 0.4 second tooltip delay
               e.currentTarget.style.backgroundColor = '#F5F5F5';
               e.currentTarget.style.borderColor = '#0A0A0A';
             }}
@@ -1872,7 +1872,7 @@ export default function RoomCanvas({
               }
               toolTooltipTimeout.current = setTimeout(() => {
                 setHoveredTool('fit');
-              }, 1000);
+              }, 400); // 0.4 second tooltip delay
               e.currentTarget.style.backgroundColor = '#F5F5F5';
               e.currentTarget.style.borderColor = '#0A0A0A';
             }}
@@ -1942,7 +1942,7 @@ export default function RoomCanvas({
               }
               toolTooltipTimeout.current = setTimeout(() => {
                 setHoveredTool('zoom-display');
-              }, 1000);
+              }, 400); // 0.4 second tooltip delay
               e.currentTarget.style.backgroundColor = '#F5F5F5';
               e.currentTarget.style.borderColor = '#0A0A0A';
             }}
@@ -2015,7 +2015,7 @@ export default function RoomCanvas({
               }
               toolTooltipTimeout.current = setTimeout(() => {
                 setHoveredTool('zoom-out');
-              }, 1000);
+              }, 400); // 0.4 second tooltip delay
               e.currentTarget.style.backgroundColor = '#F5F5F5';
               e.currentTarget.style.borderColor = '#0A0A0A';
             }}

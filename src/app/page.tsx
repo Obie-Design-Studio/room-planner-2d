@@ -109,6 +109,8 @@ export default function Home() {
   const [notification, setNotification] = useState<{ message: string; type: 'error' | 'success' | 'info'; title?: string } | null>(null);
   const [hoveredDimension, setHoveredDimension] = useState<string | null>(null);
   const dimensionTooltipTimeout = useRef<NodeJS.Timeout | null>(null);
+  const [showStartPlanningButton, setShowStartPlanningButton] = useState(true); // Show button initially, hide after clicking
+  const [isFirstTimeSetup, setIsFirstTimeSetup] = useState(false); // Track if modal opened from "Start planning"
 
   // Load saved room on mount
   useEffect(() => {
@@ -166,6 +168,8 @@ export default function Home() {
           if (result.room.manual_measurements) {
             setManualMeasurements(result.room.manual_measurements);
           }
+          // Room loaded successfully, hide the start planning button
+          setShowStartPlanningButton(false);
         }
       }
       // Mark initialization complete (whether room was loaded or not)
@@ -295,6 +299,7 @@ export default function Home() {
     setManualMeasurements([]);
     setSelectedId(null);
     setHasUnsavedChanges(false);
+    setShowStartPlanningButton(true); // Show "Start planning" for new room
     localStorage.removeItem('lastRoomId'); // Clear last room
   };
 
@@ -361,6 +366,8 @@ export default function Home() {
       }
       // Save this room ID as the last loaded room
       localStorage.setItem('lastRoomId', roomId);
+      // Room loaded successfully, hide start planning button
+      setShowStartPlanningButton(false);
       setIsLoadModalOpen(false);
     } else { 
       setNotification({ 
@@ -681,7 +688,8 @@ export default function Home() {
 
       {/* Main Body */}
       <div className="flex-1 flex overflow-hidden min-h-0">
-        {/* Sidebar */}
+        {/* Sidebar - hidden when showing Start Planning button */}
+        {!(items.length === 0 && showStartPlanningButton) && (
         <aside style={{ 
           width: `${sidebarWidth}px`,
           display: 'flex', 
@@ -738,7 +746,7 @@ export default function Home() {
                       }
                       dimensionTooltipTimeout.current = setTimeout(() => {
                         setHoveredDimension('all');
-                      }, 1000); // 1 second delay
+                      }, 400); // 0.4 second delay
                     }}
                     onMouseLeave={() => {
                       if (dimensionTooltipTimeout.current) {
@@ -1351,6 +1359,7 @@ export default function Home() {
             </div>
           )}
         </aside>
+        )}
 
         {/* Canvas Area */}
         <div
@@ -1369,8 +1378,8 @@ export default function Home() {
         >
           {/* Show nothing while initializing (prevents flicker) */}
           {isInitializing ? null : 
-            /* Show empty state when no items */
-            items.length === 0 ? (
+            /* Show "Start planning" button only when explicitly enabled AND no items */
+            (items.length === 0 && showStartPlanningButton) ? (
               <div style={{
                 position: 'absolute',
                 top: '50%',
@@ -1381,14 +1390,30 @@ export default function Home() {
                 alignItems: 'center',
                 gap: '16px'
               }}>
+                {/* CSS for shining animation */}
+                <style>{`
+                  @keyframes shineRotate {
+                    0% {
+                      transform: rotate(0deg);
+                    }
+                    100% {
+                      transform: rotate(360deg);
+                    }
+                  }
+                `}</style>
                 <button
-                  onClick={() => setIsRoomSettingsModalOpen(true)}
+                  onClick={() => {
+                    setShowStartPlanningButton(false);
+                    setIsFirstTimeSetup(true);
+                    setIsRoomSettingsModalOpen(true);
+                  }}
                   style={{
+                    position: 'relative',
                     width: '200px',
                     height: '200px',
                     borderRadius: '50%',
                     backgroundColor: '#FFFFFF',
-                    border: '3px solid #0A0A0A',
+                    border: 'none',
                     cursor: 'pointer',
                     fontSize: '20px',
                     fontWeight: 600,
@@ -1397,7 +1422,8 @@ export default function Home() {
                     transition: 'all 200ms ease',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center'
+                    justifyContent: 'center',
+                    overflow: 'visible',
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.transform = 'scale(1.05)';
@@ -1408,7 +1434,41 @@ export default function Home() {
                     e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.12)';
                   }}
                 >
-                  Start Plan
+                  {/* Static dark border underneath */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '-4px',
+                    left: '-4px',
+                    right: '-4px',
+                    bottom: '-4px',
+                    borderRadius: '50%',
+                    border: '4px solid #0A0A0A',
+                    zIndex: -2,
+                  }} />
+                  {/* Animated shining ball */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '-4px',
+                    left: '-4px',
+                    right: '-4px',
+                    bottom: '-4px',
+                    borderRadius: '50%',
+                    background: 'conic-gradient(from 0deg, transparent 0%, transparent 90%, #FFFFFF 95%, transparent 100%)',
+                    animation: 'shineRotate 3s linear infinite',
+                    zIndex: -1,
+                  }} />
+                  {/* Inner white circle to mask the gradient */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '0',
+                    left: '0',
+                    right: '0',
+                    bottom: '0',
+                    borderRadius: '50%',
+                    backgroundColor: '#FFFFFF',
+                    zIndex: -1,
+                  }} />
+                  Start planning
                 </button>
               </div>
             ) : (
@@ -1458,7 +1518,11 @@ export default function Home() {
         roomName={roomName}
         roomConfig={roomConfig}
         ceilingHeight={ceilingHeight}
-        onClose={() => setIsRoomSettingsModalOpen(false)}
+        isFirstTimeSetup={isFirstTimeSetup}
+        onClose={() => {
+          setIsRoomSettingsModalOpen(false);
+          setIsFirstTimeSetup(false);
+        }}
         onUpdate={handleUpdateRoomSettings}
       />
 
