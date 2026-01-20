@@ -201,7 +201,10 @@ export default function Home() {
       }
       alert('Room saved successfully!'); 
     } else { 
-      alert('Failed to save room: ' + result.error); 
+      // Extract error message from error object
+      const err = result.error as { message?: string; details?: string } | undefined;
+      const errorMessage = err?.message || err?.details || (result.error ? JSON.stringify(result.error) : 'Unknown error');
+      alert('Failed to save room: ' + errorMessage); 
     }
   };
 
