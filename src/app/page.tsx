@@ -102,8 +102,6 @@ export default function Home() {
   const [sidebarWidth, setSidebarWidth] = useState(320);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
-  const [hoveredDimension, setHoveredDimension] = useState<string | null>(null);
-  const dimensionTooltipTimeout = useRef<NodeJS.Timeout | null>(null);
 
   // Load saved room on mount
   useEffect(() => {
@@ -727,73 +725,14 @@ export default function Home() {
                 borderRadius: '12px',
                 border: '1px solid #EFEFEF',
               }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
                   <div style={{ 
-                    fontSize: '14px', 
-                    fontWeight: 600, 
-                    color: '#0A0A0A'
+                    fontSize: '16px', 
+                    fontWeight: 700, 
+                    color: '#0A0A0A',
+                    letterSpacing: '-0.01em'
                   }}>
                     {roomName}
-                  </div>
-                  <div 
-                    onMouseEnter={() => {
-                      if (dimensionTooltipTimeout.current) {
-                        clearTimeout(dimensionTooltipTimeout.current);
-                      }
-                      dimensionTooltipTimeout.current = setTimeout(() => {
-                        setHoveredDimension('all');
-                      }, 1000); // 1 second delay
-                    }}
-                    onMouseLeave={() => {
-                      if (dimensionTooltipTimeout.current) {
-                        clearTimeout(dimensionTooltipTimeout.current);
-                      }
-                      setHoveredDimension(null);
-                    }}
-                    style={{ 
-                      fontSize: '13px', 
-                      color: '#999999',
-                      position: 'relative',
-                      display: 'inline-block',
-                      cursor: 'help'
-                    }}
-                  >
-                    {roomConfig.width} × {roomConfig.height} × {ceilingHeight} cm
-                    
-                    {/* Custom tooltip showing all dimensions */}
-                    {hoveredDimension && (
-                      <div style={{
-                        position: 'absolute',
-                        bottom: '100%',
-                        left: '0',
-                        marginBottom: '8px',
-                        padding: '8px 12px',
-                        backgroundColor: '#1a1a1a',
-                        color: '#ffffff',
-                        fontSize: '12px',
-                        borderRadius: '6px',
-                        whiteSpace: 'nowrap',
-                        zIndex: 1000,
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                        pointerEvents: 'none',
-                        lineHeight: '1.6'
-                      }}>
-                        <div>Width: {roomConfig.width} cm</div>
-                        <div>Length: {roomConfig.height} cm</div>
-                        <div>Height (floor to ceiling): {ceilingHeight} cm</div>
-                        {/* Arrow */}
-                        <div style={{
-                          position: 'absolute',
-                          top: '100%',
-                          left: '12px',
-                          width: 0,
-                          height: 0,
-                          borderLeft: '6px solid transparent',
-                          borderRight: '6px solid transparent',
-                          borderTop: '6px solid #1a1a1a'
-                        }} />
-                      </div>
-                    )}
                   </div>
                 </div>
                 <button
