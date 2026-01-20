@@ -1113,15 +1113,24 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
         {!isWallObject && !isWall && (isHovered || showLabels) && !isSelected && (() => {
           const labelText = getFurnitureName();
           
-          // Smart font sizing with proper padding - accounts for shape orientation
-          const MIN_PADDING_PX = 20; // Increased padding for better readability
+          // Smart font sizing with adaptive padding based on furniture size
           const MIN_FONT_SIZE = 14;
           const MAX_FONT_SIZE = 42;
           const LINE_HEIGHT = 1.2; // Line spacing multiplier
           
+          // ADAPTIVE PADDING: Scale with furniture size for better proportions
+          // Smaller objects get less padding (more text space), larger get more padding
+          const PADDING_RATIO = 0.06; // 6% of smaller dimension
+          const MIN_PADDING_PX = 8;   // Minimum for small items
+          const MAX_PADDING_PX = 25;  // Maximum for large items
+          
           // Use ACTUAL dimensions (widthPx x heightPx are already the visual dimensions after rotation)
-          const availableWidth = widthPx - (2 * MIN_PADDING_PX);
-          const availableHeight = heightPx - (2 * MIN_PADDING_PX);
+          const smallerDimension = Math.min(widthPx, heightPx);
+          const calculatedPadding = smallerDimension * PADDING_RATIO;
+          const padding = Math.max(MIN_PADDING_PX, Math.min(MAX_PADDING_PX, calculatedPadding));
+          
+          const availableWidth = widthPx - (2 * padding);
+          const availableHeight = heightPx - (2 * padding);
           
           // Determine text rotation to keep it readable
           // Strategy: Try to keep text horizontal (0°) when possible
