@@ -1497,17 +1497,22 @@ const MeasurementOverlay: React.FC<Props> = ({
   let labelYOffset = 0;
   
   if (showLabels) {
-    // Estimate label font size (same calculation as in FurnitureShape.tsx)
-    const MIN_PADDING_PX = 16;
+    // Estimate label font size (same calculation as in FurnitureShape.tsx - updated to match new padding)
+    const MIN_PADDING_PX = 20;
     const availableWidth = w - (2 * MIN_PADDING_PX);
     const availableHeight = h - (2 * MIN_PADDING_PX);
+    const LINE_HEIGHT = 1.2;
+    
+    // Account for potential multi-line label (estimate 2 lines max)
     let labelFontSize = Math.min(availableWidth, availableHeight) * 0.3;
     labelFontSize = labelFontSize * Math.sqrt(zoom);
-    labelFontSize = Math.max(16, Math.min(48, labelFontSize));
+    labelFontSize = Math.max(14, Math.min(42, labelFontSize));
     
     // Position dimension text below label with spacing
+    // Account for multi-line labels (up to 2 lines)
     const TEXT_SPACING = 8; // Space between label and dimension
-    labelYOffset = labelFontSize / 2 + TEXT_SPACING + dimensionFontSize / 2;
+    const estimatedLabelHeight = labelFontSize * 2 * LINE_HEIGHT; // Assume max 2 lines
+    labelYOffset = estimatedLabelHeight / 2 + TEXT_SPACING + dimensionFontSize / 2;
   } else {
     // Calculate vertical offset to position label below the rotation button
     const labelVerticalOffset = buttonRadius + dimensionFontSize + 10; // Button radius + font size + spacing
@@ -1518,24 +1523,36 @@ const MeasurementOverlay: React.FC<Props> = ({
     labelYOffset = spaceBelow > labelVerticalOffset + 15 ? labelVerticalOffset : -labelVerticalOffset;
   }
   
+  // Determine dimension text rotation to keep it readable
+  // Match the label text rotation strategy
+  let dimensionTextRotation = 0;
+  if (rotation === 180) {
+    dimensionTextRotation = -180; // Counter-rotate to make horizontal
+  } else if (rotation === 270) {
+    dimensionTextRotation = -270; // Counter-rotate to make readable
+  }
+  
   return (
     <Group listening={true} name="measurement-overlay">
       {/* Furniture dimensions - shown subtly on the furniture itself */}
       {!isWall && (
         <Group x={midX} y={midY} rotation={rotation}>
-          {/* Dimension text without background - auto-sized to fit */}
-          <Text
-            text={dimensionText}
-            x={-w / 2}
-            y={labelYOffset - (dimensionFontSize / 2)}
-            fontSize={dimensionFontSize}
-            fontFamily="-apple-system, BlinkMacSystemFont, 'Inter', sans-serif"
-            fill="#ffffff"
-            align="center"
-            width={w}
-            listening={false}
-            ellipsis={true}
-          />
+          {/* Nested group to counter-rotate text for readability */}
+          <Group x={0} y={labelYOffset} rotation={dimensionTextRotation}>
+            {/* Dimension text without background - auto-sized to fit */}
+            <Text
+              text={dimensionText}
+              x={-w / 2}
+              y={-dimensionFontSize / 2}
+              fontSize={dimensionFontSize}
+              fontFamily="-apple-system, BlinkMacSystemFont, 'Inter', sans-serif"
+              fill="#ffffff"
+              align="center"
+              width={w}
+              listening={false}
+              ellipsis={true}
+            />
+          </Group>
         </Group>
       )}
       

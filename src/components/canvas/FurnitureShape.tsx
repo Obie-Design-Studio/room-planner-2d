@@ -1114,35 +1114,78 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
           const labelText = getFurnitureName();
           
           // Smart font sizing with proper padding - accounts for shape orientation
-          const MIN_PADDING_PX = 16; // Minimum padding on each side
-          const MIN_FONT_SIZE = 16;
-          const MAX_FONT_SIZE = 48;
+          const MIN_PADDING_PX = 20; // Increased padding for better readability
+          const MIN_FONT_SIZE = 14;
+          const MAX_FONT_SIZE = 42;
+          const LINE_HEIGHT = 1.2; // Line spacing multiplier
           
           // Use ACTUAL dimensions (widthPx x heightPx are already the visual dimensions after rotation)
           const availableWidth = widthPx - (2 * MIN_PADDING_PX);
           const availableHeight = heightPx - (2 * MIN_PADDING_PX);
           
-          // Start with base font size: use 30% of the SMALLER dimension
-          let fontSize = Math.min(availableWidth, availableHeight) * 0.3;
+          // Determine text rotation to keep it readable
+          // Strategy: Try to keep text horizontal (0°) when possible
+          // If furniture is wide, use horizontal text. If tall, consider vertical.
+          const currentRotation = item.rotation || 0;
+          let textRotation = 0;
           
-          // Check if text fits horizontally (approximate width: fontSize * length * 0.55)
-          const estimatedTextWidth = fontSize * labelText.length * 0.55;
+          // For readability: always prefer left-to-right or top-to-bottom
+          // Counter-rotate to keep text readable
+          if (currentRotation === 180) {
+            textRotation = -180; // Counter-rotate to make horizontal again
+          } else if (currentRotation === 270) {
+            textRotation = -270; // Counter-rotate (or +90) to make readable
+          }
+          // At 0° and 90°, keep text as-is (readable)
           
-          // If text is too wide, scale down to fit
-          if (estimatedTextWidth > availableWidth) {
-            fontSize = availableWidth / (labelText.length * 0.55);
+          // Determine if we should use horizontal or vertical text layout
+          // Prefer horizontal unless furniture is much taller than wide
+          const useHorizontalLayout = widthPx >= heightPx * 0.7; // Prefer horizontal in most cases
+          
+          // Calculate available space for text based on layout
+          const textAvailableWidth = useHorizontalLayout ? availableWidth : availableHeight;
+          const textAvailableHeight = useHorizontalLayout ? availableHeight : availableWidth;
+          
+          // Try multi-line text first (split on spaces)
+          const words = labelText.split(' ');
+          const canSplitIntoLines = words.length > 1;
+          
+          // Start with a reasonable font size
+          let fontSize = Math.min(textAvailableWidth, textAvailableHeight) * 0.3;
+          fontSize = fontSize * Math.sqrt(zoom);
+          
+          // Check if single-line text fits
+          const singleLineWidth = fontSize * labelText.length * 0.55;
+          let useMultiLine = false;
+          
+          if (canSplitIntoLines && singleLineWidth > textAvailableWidth) {
+            // Try multi-line
+            // Estimate: if we split into 2 lines, each line is roughly half the width
+            const estimatedLineWidth = fontSize * (labelText.length / 2) * 0.6;
+            const estimatedHeight = fontSize * 2 * LINE_HEIGHT;
+            
+            if (estimatedLineWidth <= textAvailableWidth && estimatedHeight <= textAvailableHeight) {
+              useMultiLine = true;
+            } else {
+              // Multi-line won't help, scale down font instead
+              fontSize = textAvailableWidth / (labelText.length * 0.55);
+            }
+          } else if (singleLineWidth > textAvailableWidth) {
+            // Scale down to fit
+            fontSize = textAvailableWidth / (labelText.length * 0.55);
           }
           
           // Don't let font get taller than available height
-          if (fontSize > availableHeight * 0.8) {
-            fontSize = availableHeight * 0.8;
-          }
-          
-          // Apply zoom factor for consistency (sqrt gives gentler scaling)
-          fontSize = fontSize * Math.sqrt(zoom);
+          const maxHeightBasedFont = useMultiLine 
+            ? textAvailableHeight / (2 * LINE_HEIGHT) 
+            : textAvailableHeight * 0.7;
+          fontSize = Math.min(fontSize, maxHeightBasedFont);
           
           // Clamp to min/max
           fontSize = Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, fontSize));
+          
+          // For multi-line, join words with newline
+          const displayText = useMultiLine ? words.join('\n') : labelText;
           
           return (
             <>
@@ -1167,21 +1210,24 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
                 fill="transparent"
                 listening={false}
               />
-              {/* Label - properly centered with padding */}
-              <Text
-                text={labelText}
-                x={MIN_PADDING_PX}
-                y={(heightPx - fontSize) / 2}
-                fontSize={fontSize}
-                fontFamily="-apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Display', sans-serif"
-                fontStyle="700"
-                fill="#FFFFFF"
-                align="center"
-                verticalAlign="middle"
-                width={availableWidth}
-                listening={false}
-                ellipsis={true}
-              />
+              {/* Label - properly centered with padding and readable orientation */}
+              <Group x={widthPx / 2} y={heightPx / 2} rotation={textRotation}>
+                <Text
+                  text={displayText}
+                  x={-textAvailableWidth / 2}
+                  y={useMultiLine ? -fontSize * LINE_HEIGHT : -fontSize / 2}
+                  fontSize={fontSize}
+                  fontFamily="-apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Display', sans-serif"
+                  fontStyle="700"
+                  fill="#FFFFFF"
+                  align="center"
+                  verticalAlign="middle"
+                  width={textAvailableWidth}
+                  lineHeight={LINE_HEIGHT}
+                  listening={false}
+                  wrap="none"
+                />
+              </Group>
             </>
           );
         })()}
