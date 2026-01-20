@@ -64,9 +64,25 @@ const MeasurementOverlay: React.FC<Props> = ({
   const rotation = item.rotation || 0;
   const isRotated90 = rotation === 90 || rotation === 270;
   
+  const isWallObject = item.type.toLowerCase() === 'window' || item.type.toLowerCase() === 'door';
+  const isWall = item.type.toLowerCase() === 'wall';
+  
+  // For walls, determine orientation by rotation property
+  // rotation 0 or 180 = horizontal wall (length runs left-right)
+  // rotation 90 or 270 = vertical wall (length runs top-bottom)
+  const isVerticalWall = isWall && (rotation === 90 || rotation === 270);
+  
   // Visual dimensions (what you see on screen after rotation)
-  const w = (isRotated90 ? item.height : item.width) * PIXELS_PER_CM;
-  const h = (isRotated90 ? item.width : item.height) * PIXELS_PER_CM;
+  let w, h;
+  if (isWall) {
+    // For walls: if vertical (rotated 90/270), swap dimensions visually
+    w = (isVerticalWall ? item.height : item.width) * PIXELS_PER_CM;
+    h = (isVerticalWall ? item.width : item.height) * PIXELS_PER_CM;
+  } else {
+    // For regular furniture: use rotation property
+    w = (isRotated90 ? item.height : item.width) * PIXELS_PER_CM;
+    h = (isRotated90 ? item.width : item.height) * PIXELS_PER_CM;
+  }
   
   // Actual item dimensions (for labels)
   const actualWidth = item.width;
@@ -74,9 +90,6 @@ const MeasurementOverlay: React.FC<Props> = ({
   
   const roomW = room.width * PIXELS_PER_CM;
   const roomH = room.height * PIXELS_PER_CM;
-
-  const isWallObject = item.type.toLowerCase() === 'window' || item.type.toLowerCase() === 'door';
-  const isWall = item.type.toLowerCase() === 'wall';
   
   // Color-coded measurement types - Updated palette
   const COLORS = {
@@ -1560,10 +1573,6 @@ const MeasurementOverlay: React.FC<Props> = ({
       
       {/* Left gap - amber line from wall/obstacle to furniture */}
       {Math.round((x - leftBound) / PIXELS_PER_CM) >= 5 && (() => {
-        // For thin items (walls), offset the label vertically to avoid overlap with right measurement
-        const isThinItem = w < 50; // Less than 50px wide (about 12cm)
-        const leftLabelY = isThinItem ? midY - 30 : midY + labelOffset + 5;
-        
         return (
           <>
             <InteractiveMeasurementLine
@@ -1575,7 +1584,7 @@ const MeasurementOverlay: React.FC<Props> = ({
             <InteractiveDimensionLabel
               measurementId={`${item.id}-furniture-left`}
               x={adjustLabelX((leftBound + x) / 2, formatMeasurement(Math.round((x - leftBound) / PIXELS_PER_CM), unit).length * fontSize * 0.6)} 
-              y={leftLabelY} 
+              y={midY} 
               text={formatMeasurement(Math.round((x - leftBound) / PIXELS_PER_CM), unit)}
               color={COLORS.distance}
               isSecondary={true}
@@ -1586,10 +1595,6 @@ const MeasurementOverlay: React.FC<Props> = ({
 
       {/* Right gap - amber line from furniture to wall/obstacle */}
       {Math.round((rightBound - (x + w)) / PIXELS_PER_CM) >= 5 && (() => {
-        // For thin items (walls), offset the label vertically to avoid overlap with left measurement
-        const isThinItem = w < 50; // Less than 50px wide (about 12cm)
-        const rightLabelY = isThinItem ? midY + 30 : midY + labelOffset + 5;
-        
         return (
           <>
             <InteractiveMeasurementLine
@@ -1601,7 +1606,7 @@ const MeasurementOverlay: React.FC<Props> = ({
             <InteractiveDimensionLabel
               measurementId={`${item.id}-furniture-right`}
               x={adjustLabelX((x + w + rightBound) / 2, formatMeasurement(Math.round((rightBound - (x + w)) / PIXELS_PER_CM), unit).length * fontSize * 0.6)} 
-              y={rightLabelY} 
+              y={midY} 
               text={formatMeasurement(Math.round((rightBound - (x + w)) / PIXELS_PER_CM), unit)}
               color={COLORS.distance}
               isSecondary={true}
@@ -1612,10 +1617,6 @@ const MeasurementOverlay: React.FC<Props> = ({
 
       {/* Top gap - amber line from wall/obstacle to furniture */}
       {Math.round((y - topBound) / PIXELS_PER_CM) >= 5 && (() => {
-        // For thin items (horizontal walls), offset the label horizontally to avoid overlap with bottom measurement
-        const isThinItem = h < 50; // Less than 50px tall (about 12cm)
-        const topLabelX = isThinItem ? midX - labelOffset - 60 : midX - labelOffset - 10;
-        
         return (
           <>
             <InteractiveMeasurementLine
@@ -1626,7 +1627,7 @@ const MeasurementOverlay: React.FC<Props> = ({
             />
             <InteractiveDimensionLabel
               measurementId={`${item.id}-furniture-top`}
-              x={topLabelX} 
+              x={midX} 
               y={adjustLabelY((topBound + y) / 2, fontSize)} 
               text={formatMeasurement(Math.round((y - topBound) / PIXELS_PER_CM), unit)}
               color={COLORS.distance}
@@ -1638,10 +1639,6 @@ const MeasurementOverlay: React.FC<Props> = ({
 
       {/* Bottom gap - amber line from furniture to wall/obstacle */}
       {Math.round((bottomBound - (y + h)) / PIXELS_PER_CM) >= 5 && (() => {
-        // For thin items (horizontal walls), offset the label horizontally to avoid overlap with top measurement
-        const isThinItem = h < 50; // Less than 50px tall (about 12cm)
-        const bottomLabelX = isThinItem ? midX - labelOffset + 40 : midX - labelOffset - 10;
-        
         return (
           <>
             <InteractiveMeasurementLine
@@ -1652,7 +1649,7 @@ const MeasurementOverlay: React.FC<Props> = ({
             />
             <InteractiveDimensionLabel
               measurementId={`${item.id}-furniture-bottom`}
-              x={bottomLabelX} 
+              x={midX} 
               y={adjustLabelY((y + h + bottomBound) / 2, fontSize)} 
               text={formatMeasurement(Math.round((bottomBound - (y + h)) / PIXELS_PER_CM), unit)}
               color={COLORS.distance}

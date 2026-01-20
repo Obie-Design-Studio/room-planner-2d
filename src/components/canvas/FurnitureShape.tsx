@@ -1291,26 +1291,34 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
       
       {/* Draggable endpoints for walls */}
       {isSelected && isDraggable && isWall && (() => {
-        // Determine orientation by rotation, not by dimensions
-        const rotation = item.rotation || 0;
-        const isHorizontal = rotation === 0 || rotation === 180;
-        const centerX = (item.x + item.width / 2) * PIXELS_PER_CM;
-        const centerY = (item.y + item.height / 2) * PIXELS_PER_CM;
-        // Wall length is always stored in width, regardless of rotation
+        // Determine wall orientation by rotation property
+        // rotation 0 or 180 = horizontal wall (length runs left-right)
+        // rotation 90 or 270 = vertical wall (length runs top-bottom)
+        const wallRotation = item.rotation || 0;
+        const isHorizontal = wallRotation === 0 || wallRotation === 180;
+        
+        // Wall dimensions:
+        // - item.width = length (the long dimension)
+        // - item.height = thickness (the short dimension, ~2.5cm)
+        // 
+        // Visual bounding box after rotation:
+        // - Horizontal: visual width = item.width, visual height = item.height
+        // - Vertical: visual width = item.height, visual height = item.width
+        
         const wallLength = item.width;
         
         if (isHorizontal) {
           // Horizontal wall - endpoints at left and right
+          const centerY = (item.y + item.height / 2) * PIXELS_PER_CM;
           const leftX = item.x * PIXELS_PER_CM;
           const rightX = (item.x + item.width) * PIXELS_PER_CM;
-          const y = centerY;
           
           return (
             <>
               {/* Left endpoint */}
               <Circle
                 x={leftX}
-                y={y}
+                y={centerY}
                 radius={12}
                 fill="#4A90E2"
                 stroke="#FFFFFF"
@@ -1325,14 +1333,17 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
                   });
                 }}
                 onDragMove={(e) => {
+                  // Lock Y position to wall center (prevent vertical drift)
+                  e.target.y(centerY);
+                  
                   const newX = e.target.x();
                   const newXCm = newX / PIXELS_PER_CM;
                   
-                  // Clamp to room bounds
-                  const clampedXCm = Math.max(0, Math.min(newXCm, item.x + item.width - 10 / PIXELS_PER_CM));
+                  // Clamp to room bounds, minimum wall length 10cm
+                  const clampedXCm = Math.max(0, Math.min(newXCm, item.x + item.width - 10));
                   const newWidth = (item.x + item.width) - clampedXCm;
                   
-                  if (newWidth >= 10 / PIXELS_PER_CM) {
+                  if (newWidth >= 10) {
                     onChange(item.id, { x: clampedXCm, width: newWidth });
                     setDragMeasurement({
                       length: newWidth,
@@ -1360,7 +1371,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
               {/* Right endpoint */}
               <Circle
                 x={rightX}
-                y={y}
+                y={centerY}
                 radius={12}
                 fill="#4A90E2"
                 stroke="#FFFFFF"
@@ -1375,14 +1386,17 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
                   });
                 }}
                 onDragMove={(e) => {
+                  // Lock Y position to wall center (prevent vertical drift)
+                  e.target.y(centerY);
+                  
                   const newX = e.target.x();
                   const newXCm = newX / PIXELS_PER_CM;
                   
-                  // Clamp to room bounds
-                  const clampedXCm = Math.max(item.x + 10 / PIXELS_PER_CM, Math.min(newXCm, roomConfig.width));
+                  // Clamp to room bounds, minimum wall length 10cm
+                  const clampedXCm = Math.max(item.x + 10, Math.min(newXCm, roomConfig.width));
                   const newWidth = clampedXCm - item.x;
                   
-                  if (newWidth >= 10 / PIXELS_PER_CM) {
+                  if (newWidth >= 10) {
                     onChange(item.id, { width: newWidth });
                     setDragMeasurement({
                       length: newWidth,
@@ -1409,18 +1423,17 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
             </>
           );
         } else {
-          // Vertical wall - endpoints at top and bottom
-          // For vertical walls, item.width stores the length (visual top-to-bottom)
-          // item.x stores the position (which stays fixed for thickness)
-          const x = centerX;
+          // Vertical wall (rotation 90 or 270) - endpoints at top and bottom
+          // Visual: width = item.height (thickness), height = item.width (length)
+          const centerX = (item.x + item.height / 2) * PIXELS_PER_CM;
           const topY = item.y * PIXELS_PER_CM;
-          const bottomY = (item.y + item.width) * PIXELS_PER_CM; // Use item.width for length!
+          const bottomY = (item.y + item.width) * PIXELS_PER_CM;
           
           return (
             <>
               {/* Top endpoint */}
               <Circle
-                x={x}
+                x={centerX}
                 y={topY}
                 radius={12}
                 fill="#4A90E2"
@@ -1430,21 +1443,24 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
                 onDragStart={() => {
                   setDragMeasurement({
                     length: wallLength,
-                    x: item.x + item.height / 2, // Use height for visual x-center (thickness)
-                    y: item.y + item.width / 2, // Use width for visual y-center (length)
+                    x: item.x + item.height / 2,
+                    y: item.y + item.width / 2,
                     isHorizontal: false
                   });
                 }}
                 onDragMove={(e) => {
+                  // Lock X position to wall center (prevent horizontal drift)
+                  e.target.x(centerX);
+                  
                   const newY = e.target.y();
                   const newYCm = newY / PIXELS_PER_CM;
                   
-                  // Clamp to room bounds
-                  const clampedYCm = Math.max(0, Math.min(newYCm, item.y + item.width - 10 / PIXELS_PER_CM));
-                  const newWidth = (item.y + item.width) - clampedYCm; // Change width (length)!
+                  // Clamp to room bounds, minimum wall length 10cm
+                  const clampedYCm = Math.max(0, Math.min(newYCm, item.y + item.width - 10));
+                  const newWidth = (item.y + item.width) - clampedYCm;
                   
-                  if (newWidth >= 10 / PIXELS_PER_CM) {
-                    onChange(item.id, { y: clampedYCm, width: newWidth }); // Update width!
+                  if (newWidth >= 10) {
+                    onChange(item.id, { y: clampedYCm, width: newWidth });
                     setDragMeasurement({
                       length: newWidth,
                       x: item.x + item.height / 2,
@@ -1470,7 +1486,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
               
               {/* Bottom endpoint */}
               <Circle
-                x={x}
+                x={centerX}
                 y={bottomY}
                 radius={12}
                 fill="#4A90E2"
@@ -1486,15 +1502,18 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
                   });
                 }}
                 onDragMove={(e) => {
+                  // Lock X position to wall center (prevent horizontal drift)
+                  e.target.x(centerX);
+                  
                   const newY = e.target.y();
                   const newYCm = newY / PIXELS_PER_CM;
                   
-                  // Clamp to room bounds
-                  const clampedYCm = Math.max(item.y + 10 / PIXELS_PER_CM, Math.min(newYCm, roomConfig.height));
-                  const newWidth = clampedYCm - item.y; // Change width (length)!
+                  // Clamp to room bounds, minimum wall length 10cm
+                  const clampedYCm = Math.max(item.y + 10, Math.min(newYCm, roomConfig.height));
+                  const newWidth = clampedYCm - item.y;
                   
-                  if (newWidth >= 10 / PIXELS_PER_CM) {
-                    onChange(item.id, { width: newWidth }); // Update width!
+                  if (newWidth >= 10) {
+                    onChange(item.id, { width: newWidth });
                     setDragMeasurement({
                       length: newWidth,
                       x: item.x + item.height / 2,
