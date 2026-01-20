@@ -64,6 +64,36 @@ Rules:
 - Ask only when the missing info is truly required and cannot be inferred via tools
 - If something is ambiguous but safe to assume, proceed and document the assumption
 
+## Bug Fix Workflow: REFLECT → CODE → TEST → DELIVER
+
+When fixing bugs, ALWAYS follow this workflow:
+
+### 1. BEFORE Implementing (REFLECT)
+- Think deeply about the solution
+- Confirm the logic would work
+- Verify all edge cases
+- Be reflective - don't rush to code
+- Ask yourself: "Is this the right fix? What could go wrong?"
+
+### 2. AFTER Implementing (TEST)
+- For complex tasks: test it yourself FIRST
+- Use the fastest testing method possible:
+  - Browser testing (if available)
+  - Code trace (walk through logic)
+  - Console logs analysis
+- Only ask user to test after you've verified it works
+
+### 3. If Testing Seems Complex
+- STOP and ask user: "Should I test this?"
+- Don't waste time on overly complex testing
+- Get user approval before proceeding
+
+Why:
+✓ Saves user's time - no testing half-baked code
+✓ Higher quality - verified before delivery
+✓ More efficient - fast testing, less back-and-forth
+✓ Thoughtful - reflection prevents rushed mistakes
+
 ## 2. Step-by-Step Execution
 For each task, tell me:
 - Which tool (Cursor, Cursor Agent, Supabase, etc.)

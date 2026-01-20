@@ -129,17 +129,25 @@ export default function Home() {
           });
           setCeilingHeight(result.room.ceiling_height_cm);
           if (result.items) {
-            setItems(result.items.map((item: any) => ({
-              id: item.id || crypto.randomUUID(),
-              type: item.type,
-              x: item.x,
-              y: item.y,
-              width: item.width,
-              height: item.height,
-              rotation: item.rotation || 0,
-              color: item.color || '#666666',
-              name: item.label || item.type
-            })));
+            setItems(result.items.map((item: any) => {
+              // Auto-fix old doors/windows with rotation: 0 → 180 (outward-opening)
+              // This fixes legacy saved rooms where doors defaulted to inward
+              const isWallObject = item.type?.toLowerCase() === 'door' || item.type?.toLowerCase() === 'window';
+              const loadedRotation = item.rotation || 0;
+              const fixedRotation = (isWallObject && loadedRotation === 0) ? 180 : loadedRotation;
+              
+              return {
+                id: item.id || crypto.randomUUID(),
+                type: item.type,
+                x: item.x,
+                y: item.y,
+                width: item.width,
+                height: item.height,
+                rotation: fixedRotation,
+                color: item.color || '#666666',
+                name: item.label || item.type
+              };
+            }));
           }
           // Restore hidden measurements
           if (result.room.hidden_measurements) {
@@ -301,18 +309,25 @@ export default function Home() {
         roomType: roomTypeKey
       });
       setCeilingHeight(result.room.ceiling_height_cm);
-      if (result.items) { 
-        setItems(result.items.map((item: any) => ({ 
-          id: item.id || crypto.randomUUID(), 
-          type: item.type, 
-          x: item.x, 
-          y: item.y, 
-          width: item.width, 
-          height: item.height, 
-          rotation: item.rotation || 0, 
-          color: item.color || '#666666', 
-          name: item.label || item.type 
-        }))); 
+      if (result.items) {
+        setItems(result.items.map((item: any) => {
+          // Auto-fix old doors/windows with rotation: 0 → 180 (outward-opening)
+          const isWallObject = item.type?.toLowerCase() === 'door' || item.type?.toLowerCase() === 'window';
+          const loadedRotation = item.rotation || 0;
+          const fixedRotation = (isWallObject && loadedRotation === 0) ? 180 : loadedRotation;
+          
+          return {
+            id: item.id || crypto.randomUUID(),
+            type: item.type,
+            x: item.x,
+            y: item.y,
+            width: item.width,
+            height: item.height,
+            rotation: fixedRotation,
+            color: item.color || '#666666',
+            name: item.label || item.type
+          };
+        }));
       }
       // Restore hidden measurements
       if (result.room.hidden_measurements) {
