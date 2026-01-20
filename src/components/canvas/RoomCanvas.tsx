@@ -93,6 +93,7 @@ export default function RoomCanvas({
   
   // Toolbar tooltip state
   const [hoveredTool, setHoveredTool] = useState<string | null>(null);
+  const toolTooltipTimeout = useRef<NodeJS.Timeout | null>(null);
   
   // Reset drawing state and update cursor when drawing mode changes
   useEffect(() => {
@@ -1436,13 +1437,21 @@ export default function RoomCanvas({
             <button
               onClick={onToggleLabels}
               onMouseEnter={(e) => {
-                setHoveredTool('labels');
+                if (toolTooltipTimeout.current) {
+                  clearTimeout(toolTooltipTimeout.current);
+                }
+                toolTooltipTimeout.current = setTimeout(() => {
+                  setHoveredTool('labels');
+                }, 1000);
                 if (!showLabels) {
                   e.currentTarget.style.backgroundColor = '#F5F5F5';
                   e.currentTarget.style.borderColor = '#0A0A0A';
                 }
               }}
               onMouseLeave={(e) => {
+                if (toolTooltipTimeout.current) {
+                  clearTimeout(toolTooltipTimeout.current);
+                }
                 setHoveredTool(null);
                 if (!showLabels) {
                   e.currentTarget.style.backgroundColor = '#FFFFFF';
@@ -1505,13 +1514,21 @@ export default function RoomCanvas({
             <button
               onClick={onToggleMeasurements}
               onMouseEnter={(e) => {
-                setHoveredTool('measurements');
+                if (toolTooltipTimeout.current) {
+                  clearTimeout(toolTooltipTimeout.current);
+                }
+                toolTooltipTimeout.current = setTimeout(() => {
+                  setHoveredTool('measurements');
+                }, 1000);
                 if (!showAllMeasurements) {
                   e.currentTarget.style.backgroundColor = '#F5F5F5';
                   e.currentTarget.style.borderColor = '#0A0A0A';
                 }
               }}
               onMouseLeave={(e) => {
+                if (toolTooltipTimeout.current) {
+                  clearTimeout(toolTooltipTimeout.current);
+                }
                 setHoveredTool(null);
                 if (!showAllMeasurements) {
                   e.currentTarget.style.backgroundColor = '#FFFFFF';
@@ -1574,13 +1591,21 @@ export default function RoomCanvas({
             <button
               onClick={onToggleDrawingMode}
               onMouseEnter={(e) => {
-                setHoveredTool('drawing');
+                if (toolTooltipTimeout.current) {
+                  clearTimeout(toolTooltipTimeout.current);
+                }
+                toolTooltipTimeout.current = setTimeout(() => {
+                  setHoveredTool('drawing');
+                }, 1000);
                 if (!isDrawingMeasurement) {
                   e.currentTarget.style.backgroundColor = '#F5F5F5';
                   e.currentTarget.style.borderColor = '#0A0A0A';
                 }
               }}
               onMouseLeave={(e) => {
+                if (toolTooltipTimeout.current) {
+                  clearTimeout(toolTooltipTimeout.current);
+                }
                 setHoveredTool(null);
                 if (!isDrawingMeasurement) {
                   e.currentTarget.style.backgroundColor = '#FFFFFF';
@@ -1641,11 +1666,19 @@ export default function RoomCanvas({
           <button
             onClick={handleZoomIn}
             onMouseEnter={(e) => {
-              setHoveredTool('zoom-in');
+              if (toolTooltipTimeout.current) {
+                clearTimeout(toolTooltipTimeout.current);
+              }
+              toolTooltipTimeout.current = setTimeout(() => {
+                setHoveredTool('zoom-in');
+              }, 1000);
               e.currentTarget.style.backgroundColor = '#F5F5F5';
               e.currentTarget.style.borderColor = '#0A0A0A';
             }}
             onMouseLeave={(e) => {
+              if (toolTooltipTimeout.current) {
+                clearTimeout(toolTooltipTimeout.current);
+              }
               setHoveredTool(null);
               e.currentTarget.style.backgroundColor = '#FFFFFF';
               e.currentTarget.style.borderColor = '#E5E5E5';
@@ -1703,11 +1736,19 @@ export default function RoomCanvas({
           <button
             onClick={handleResetView}
             onMouseEnter={(e) => {
-              setHoveredTool('fit');
+              if (toolTooltipTimeout.current) {
+                clearTimeout(toolTooltipTimeout.current);
+              }
+              toolTooltipTimeout.current = setTimeout(() => {
+                setHoveredTool('fit');
+              }, 1000);
               e.currentTarget.style.backgroundColor = '#F5F5F5';
               e.currentTarget.style.borderColor = '#0A0A0A';
             }}
             onMouseLeave={(e) => {
+              if (toolTooltipTimeout.current) {
+                clearTimeout(toolTooltipTimeout.current);
+              }
               setHoveredTool(null);
               e.currentTarget.style.backgroundColor = '#FFFFFF';
               e.currentTarget.style.borderColor = '#E5E5E5';
@@ -1765,11 +1806,19 @@ export default function RoomCanvas({
           <button
             onClick={handleResetView}
             onMouseEnter={(e) => {
-              setHoveredTool('zoom-display');
+              if (toolTooltipTimeout.current) {
+                clearTimeout(toolTooltipTimeout.current);
+              }
+              toolTooltipTimeout.current = setTimeout(() => {
+                setHoveredTool('zoom-display');
+              }, 1000);
               e.currentTarget.style.backgroundColor = '#F5F5F5';
               e.currentTarget.style.borderColor = '#0A0A0A';
             }}
             onMouseLeave={(e) => {
+              if (toolTooltipTimeout.current) {
+                clearTimeout(toolTooltipTimeout.current);
+              }
               setHoveredTool(null);
               e.currentTarget.style.backgroundColor = '#FFFFFF';
               e.currentTarget.style.borderColor = '#E5E5E5';
@@ -1830,11 +1879,19 @@ export default function RoomCanvas({
           <button
             onClick={handleZoomOut}
             onMouseEnter={(e) => {
-              setHoveredTool('zoom-out');
+              if (toolTooltipTimeout.current) {
+                clearTimeout(toolTooltipTimeout.current);
+              }
+              toolTooltipTimeout.current = setTimeout(() => {
+                setHoveredTool('zoom-out');
+              }, 1000);
               e.currentTarget.style.backgroundColor = '#F5F5F5';
               e.currentTarget.style.borderColor = '#0A0A0A';
             }}
             onMouseLeave={(e) => {
+              if (toolTooltipTimeout.current) {
+                clearTimeout(toolTooltipTimeout.current);
+              }
               setHoveredTool(null);
               e.currentTarget.style.backgroundColor = '#FFFFFF';
               e.currentTarget.style.borderColor = '#E5E5E5';

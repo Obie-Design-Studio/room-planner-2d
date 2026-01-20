@@ -100,6 +100,7 @@ export default function Home() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
   const [hoveredDimension, setHoveredDimension] = useState<string | null>(null);
+  const dimensionTooltipTimeout = useRef<NodeJS.Timeout | null>(null);
 
   // Load saved room on mount
   useEffect(() => {
@@ -547,8 +548,20 @@ export default function Home() {
                     {roomName}
                   </div>
                   <div 
-                    onMouseEnter={() => setHoveredDimension('all')}
-                    onMouseLeave={() => setHoveredDimension(null)}
+                    onMouseEnter={() => {
+                      if (dimensionTooltipTimeout.current) {
+                        clearTimeout(dimensionTooltipTimeout.current);
+                      }
+                      dimensionTooltipTimeout.current = setTimeout(() => {
+                        setHoveredDimension('all');
+                      }, 1000); // 1 second delay
+                    }}
+                    onMouseLeave={() => {
+                      if (dimensionTooltipTimeout.current) {
+                        clearTimeout(dimensionTooltipTimeout.current);
+                      }
+                      setHoveredDimension(null);
+                    }}
                     style={{ 
                       fontSize: '13px', 
                       color: '#999999',
