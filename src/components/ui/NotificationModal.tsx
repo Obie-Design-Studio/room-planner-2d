@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { AlertCircle, CheckCircle, Info, X } from 'lucide-react';
 
 interface NotificationModalProps {
@@ -16,6 +16,16 @@ const NotificationModal: React.FC<NotificationModalProps> = ({
   type = 'info',
   title,
 }) => {
+  // Auto-dismiss success messages after 2 seconds
+  useEffect(() => {
+    if (isOpen && type === 'success') {
+      const timer = setTimeout(() => {
+        onClose();
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, type, onClose]);
+
   if (!isOpen) return null;
 
   const getIcon = () => {
@@ -73,9 +83,38 @@ const NotificationModal: React.FC<NotificationModalProps> = ({
           alignItems: 'center',
           gap: '20px',
           animation: 'slideIn 0.2s ease-out',
+          position: 'relative',
         }}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Close button (X) for manual dismissal */}
+        <button
+          onClick={onClose}
+          style={{
+            position: 'absolute',
+            top: '16px',
+            right: '16px',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: '4px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: '4px',
+            transition: 'background-color 0.15s',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = '#F3F4F6';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+          }}
+          aria-label="Close"
+        >
+          <X size={20} color="#666666" />
+        </button>
+
         {/* Icon */}
         <div>{getIcon()}</div>
 
@@ -106,32 +145,34 @@ const NotificationModal: React.FC<NotificationModalProps> = ({
           {message}
         </p>
 
-        {/* OK Button */}
-        <button
-          onClick={onClose}
-          style={{
-            width: '100%',
-            padding: '12px 24px',
-            backgroundColor: '#0A0A0A',
-            color: '#FFFFFF',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '15px',
-            fontWeight: 600,
-            cursor: 'pointer',
-            transition: 'all 150ms',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#333333';
-            e.currentTarget.style.transform = 'translateY(-1px)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#0A0A0A';
-            e.currentTarget.style.transform = 'translateY(0)';
-          }}
-        >
-          OK
-        </button>
+        {/* OK Button - only show for error/info messages, not success */}
+        {type !== 'success' && (
+          <button
+            onClick={onClose}
+            style={{
+              width: '100%',
+              padding: '12px 24px',
+              backgroundColor: '#0A0A0A',
+              color: '#FFFFFF',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '15px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 150ms',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#333333';
+              e.currentTarget.style.transform = 'translateY(-1px)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#0A0A0A';
+              e.currentTarget.style.transform = 'translateY(0)';
+            }}
+          >
+            OK
+          </button>
+        )}
 
         <style jsx>{`
           @keyframes slideIn {

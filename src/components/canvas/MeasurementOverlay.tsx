@@ -1477,6 +1477,66 @@ const MeasurementOverlay: React.FC<Props> = ({
     }
   }
 
+  // ===== INNER WALLS - Show length dimension =====
+  if (isWall) {
+    // Walls are rendered as rectangles with rotation
+    // Visual dimensions already account for rotation
+    // For walls: show the length (the longer dimension)
+    const wallLength = Math.max(actualWidth, actualHeight);
+    const wallThickness = Math.min(actualWidth, actualHeight);
+    
+    // Position label at center of wall
+    const labelX = x + w / 2;
+    const labelY = y + h / 2;
+    
+    // Show length measurement with a line along the wall
+    const measurements: React.ReactNode[] = [];
+    
+    if (isVerticalWall) {
+      // Vertical wall - show measurement vertically
+      measurements.push(
+        <InteractiveMeasurementLine
+          key={`${item.id}-wall-length-line`}
+          measurementId={`${item.id}-wall-length`}
+          points={[labelX + w/2 + 15, y, labelX + w/2 + 15, y + h]}
+          color={COLORS.dimension}
+          lineType="item"
+        />,
+        <WallDimensionLabel
+          key={`${item.id}-wall-length-label`}
+          measurementId={`${item.id}-wall-length`}
+          x={labelX + w/2 + 50}
+          y={labelY}
+          text={formatMeasurement(wallLength, unit)}
+          color={COLORS.dimension}
+          showBackground={true}
+        />
+      );
+    } else {
+      // Horizontal wall - show measurement horizontally
+      measurements.push(
+        <InteractiveMeasurementLine
+          key={`${item.id}-wall-length-line`}
+          measurementId={`${item.id}-wall-length`}
+          points={[x, labelY - h/2 - 15, x + w, labelY - h/2 - 15]}
+          color={COLORS.dimension}
+          lineType="item"
+        />,
+        <WallDimensionLabel
+          key={`${item.id}-wall-length-label`}
+          measurementId={`${item.id}-wall-length`}
+          x={labelX}
+          y={labelY - h/2 - 40}
+          text={formatMeasurement(wallLength, unit)}
+          color={COLORS.dimension}
+          showBackground={true}
+        />
+      );
+    }
+    
+    return <Group>{measurements}</Group>;
+  }
+
   // ===== STANDARD FURNITURE - Measure from center, with obstacle detection =====
   
   // Gap around center for rotation button (smart sized)
