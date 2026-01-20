@@ -88,6 +88,9 @@ export default function Home() {
   };
   const [ceilingHeight, setCeilingHeight] = useState(250);
   const [roomName, setRoomName] = useState('Untitled Room');
+  const [currentRoomId, setCurrentRoomId] = useState<string | null>(null); // Track if editing existing room
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false); // Track unsaved changes
+  const [isRoomDropdownOpen, setIsRoomDropdownOpen] = useState(false); // Room dropdown menu
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [isRoomSettingsModalOpen, setIsRoomSettingsModalOpen] = useState(false);
   const [isWindowsDoorsOpen, setIsWindowsDoorsOpen] = useState(true);
@@ -110,6 +113,8 @@ export default function Home() {
         const result = await loadRoom(savedRoomId);
         if (result.success && result.room) {
           setRoomName(result.room.name);
+          setCurrentRoomId(savedRoomId); // Track that we're editing this room
+          setHasUnsavedChanges(false); // Just loaded, no unsaved changes
           // Handle both old format ('Living Room') and new format ('living')
           const roomTypeKey = roomTypeLabelToKey(result.room.room_type) || result.room.room_type as RoomType;
           setRoomConfig({ 
@@ -181,11 +186,21 @@ export default function Home() {
     setRoomName(name);
     setRoomConfig(config);
     setCeilingHeight(ceiling);
+    setHasUnsavedChanges(true); // Mark as unsaved when settings change
   };
+
+  // Track unsaved changes when room data changes
+  useEffect(() => {
+    // Don't mark as unsaved on initial load
+    if (currentRoomId || items.length > 0 || manualMeasurements.length > 0) {
+      setHasUnsavedChanges(true);
+    }
+  }, [items, manualMeasurements, hiddenMeasurements, roomConfig, roomName, ceilingHeight]);
 
 
   const handleSaveRoom = async () => {
     const roomData = { 
+      id: currentRoomId || undefined, // Include ID if updating existing room
       name: roomName, 
       room_type: roomConfig.roomType || 'living', // Store the key format, not the label
       width_cm: roomConfig.width, 
@@ -205,9 +220,11 @@ export default function Home() {
     if (result.success) { 
       // Save the room ID to localStorage for loading on next visit
       if (result.room?.id) {
+        setCurrentRoomId(result.room.id); // Track current room
         localStorage.setItem('lastRoomId', result.room.id);
       }
-      alert('Room saved successfully!'); 
+      setHasUnsavedChanges(false); // Clear unsaved flag
+      alert(currentRoomId ? 'Room updated successfully!' : 'Room saved successfully!'); 
     } else { 
       // Extract error message from error object
       const err = result.error as { message?: string; details?: string } | undefined;
@@ -216,10 +233,78 @@ export default function Home() {
     }
   };
 
+  const handleSaveAsNew = async () => {
+    // Temporarily clear current room ID to force creation of new room
+    const originalRoomId = currentRoomId;
+    setCurrentRoomId(null);
+    
+    const roomData = { 
+      name: roomName + ' (Copy)', // Add "(Copy)" to name
+      room_type: roomConfig.roomType || 'living',
+      width_cm: roomConfig.width, 
+      length_cm: roomConfig.height, 
+      ceiling_height_cm: ceilingHeight, 
+      default_window_width_cm: 120, 
+      default_window_height_cm: 150, 
+      default_door_width_cm: 90, 
+      default_door_height_cm: 210, 
+      wall_color: '#FFFFFF', 
+      current_view: 'blueprint',
+      hidden_measurements: Array.from(hiddenMeasurements),
+      manual_measurements: manualMeasurements
+    };
+    const roomItems = items.map(item => ({ type: item.type, label: item.type, x: item.x, y: item.y, width: item.width, height: item.height, rotation: item.rotation, color: item.color }));
+    const result = await saveRoom(roomData, roomItems);
+    
+    if (result.success) { 
+      if (result.room?.id) {
+        setCurrentRoomId(result.room.id); // Track new room
+        setRoomName(roomName + ' (Copy)'); // Update displayed name
+        localStorage.setItem('lastRoomId', result.room.id);
+      }
+      setHasUnsavedChanges(false);
+      alert('New room created successfully!'); 
+    } else { 
+      // Restore original room ID if save failed
+      setCurrentRoomId(originalRoomId);
+      const err = result.error as { message?: string; details?: string } | undefined;
+      const errorMessage = err?.message || err?.details || (result.error ? JSON.stringify(result.error) : 'Unknown error');
+      alert('Failed to create new room: ' + errorMessage); 
+    }
+  };
+
+  const handleNewRoom = () => {
+    // Confirm if there are unsaved changes
+    if (hasUnsavedChanges) {
+      const confirmed = confirm('You have unsaved changes. Are you sure you want to create a new room?');
+      if (!confirmed) return;
+    }
+    
+    // Reset to defaults
+    setRoomName('Untitled Room');
+    setCurrentRoomId(null);
+    setRoomConfig({ width: 400, height: 300, roomType: 'living' });
+    setCeilingHeight(250);
+    setItems([]);
+    setHiddenMeasurements(new Set());
+    setManualMeasurements([]);
+    setSelectedId(null);
+    setHasUnsavedChanges(false);
+    localStorage.removeItem('lastRoomId'); // Clear last room
+  };
+
   const handleLoadRoom = async (roomId: string) => {
+    // Confirm if there are unsaved changes
+    if (hasUnsavedChanges) {
+      const confirmed = confirm('You have unsaved changes. Are you sure you want to load a different room?');
+      if (!confirmed) return;
+    }
+    
     const result = await loadRoom(roomId);
     if (result.success && result.room) {
       setRoomName(result.room.name);
+      setCurrentRoomId(roomId); // Track loaded room
+      setHasUnsavedChanges(false); // Just loaded, no unsaved changes
       // Handle both old format ('Living Room') and new format ('living')
       const roomTypeKey = roomTypeLabelToKey(result.room.room_type) || result.room.room_type as RoomType;
       setRoomConfig({ 
