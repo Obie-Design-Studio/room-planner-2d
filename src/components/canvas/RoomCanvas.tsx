@@ -1401,53 +1401,28 @@ export default function RoomCanvas({
           zIndex: 100,
         }}
       >
-        {/* Scale box - dynamic reference that adjusts with zoom */}
-        {(() => {
-          // Keep box at consistent 40px visual size, calculate what cm it represents
-          const targetBoxSize = 40; // px on screen
-          const actualScale = scale * userZoom;
-          const cmRepresented = targetBoxSize / (PIXELS_PER_CM * actualScale);
-          
-          // Round to nice numbers (1, 2, 5, 10, 20, 50, 100, etc.)
-          let roundedCm;
-          if (cmRepresented <= 1) roundedCm = 1;
-          else if (cmRepresented <= 2) roundedCm = 2;
-          else if (cmRepresented <= 5) roundedCm = 5;
-          else if (cmRepresented <= 10) roundedCm = 10;
-          else if (cmRepresented <= 20) roundedCm = 20;
-          else if (cmRepresented <= 50) roundedCm = 50;
-          else if (cmRepresented <= 100) roundedCm = 100;
-          else if (cmRepresented <= 200) roundedCm = 200;
-          else roundedCm = 500;
-          
-          const boxWidth = roundedCm * PIXELS_PER_CM * actualScale;
-          
-          return (
-            <>
-              <div
-                style={{
-                  width: `${boxWidth}px`,
-                  height: `${boxWidth}px`,
-                  backgroundColor: '#fafafa',
-                  border: '1px solid #d4d4d4',
-                  flexShrink: 0,
-                }}
-              />
-              {/* Label next to box */}
-              <div
-                style={{
-                  fontSize: '11px',
-                  fontFamily: 'Arial, sans-serif',
-                  fontWeight: '500',
-                  color: '#a3a3a3',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                = {formatMeasurement(roundedCm, measurementUnit)}
-              </div>
-            </>
-          );
-        })()}
+        {/* Scale box - 10cm reference matching actual grid size */}
+        <div
+          style={{
+            width: `${10 * PIXELS_PER_CM * scale}px`,
+            height: `${10 * PIXELS_PER_CM * scale}px`,
+            backgroundColor: '#fafafa',
+            border: '1px solid #d4d4d4',
+            flexShrink: 0,
+          }}
+        />
+        {/* Label next to box */}
+        <div
+          style={{
+            fontSize: '11px',
+            fontFamily: 'Arial, sans-serif',
+            fontWeight: '500',
+            color: '#a3a3a3',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          = {formatMeasurement(10, measurementUnit)}
+        </div>
       </div>
       
       {/* Measurement Toggle & Zoom Controls */}
