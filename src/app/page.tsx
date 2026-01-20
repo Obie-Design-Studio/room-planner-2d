@@ -136,6 +136,15 @@ export default function Home() {
               const loadedRotation = item.rotation || 0;
               const fixedRotation = (isWallObject && loadedRotation === 0) ? 180 : loadedRotation;
               
+              if (isWallObject) {
+                console.log('🔧 Auto-fix door/window:', {
+                  type: item.type,
+                  oldRotation: loadedRotation,
+                  newRotation: fixedRotation,
+                  wasFixed: fixedRotation !== loadedRotation
+                });
+              }
+              
               return {
                 id: item.id || crypto.randomUUID(),
                 type: item.type,
@@ -315,6 +324,15 @@ export default function Home() {
           const isWallObject = item.type?.toLowerCase() === 'door' || item.type?.toLowerCase() === 'window';
           const loadedRotation = item.rotation || 0;
           const fixedRotation = (isWallObject && loadedRotation === 0) ? 180 : loadedRotation;
+          
+          if (isWallObject) {
+            console.log('🔧 Auto-fix door/window:', {
+              type: item.type,
+              oldRotation: loadedRotation,
+              newRotation: fixedRotation,
+              wasFixed: fixedRotation !== loadedRotation
+            });
+          }
           
           return {
             id: item.id || crypto.randomUUID(),
