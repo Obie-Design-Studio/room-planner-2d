@@ -95,7 +95,7 @@ const MeasurementOverlay: React.FC<Props> = ({
       case 'edge': 
         return { dash: [4, 4], strokeWidth: 1.5, opacity: 0.6 };
       case 'spacing': 
-        return { dash: [2, 8], strokeWidth: 1, opacity: 0.4 };
+        return { dash: [4, 6], strokeWidth: 1.5, opacity: 0.7 }; // Increased visibility
     }
   };
   
@@ -710,8 +710,12 @@ const MeasurementOverlay: React.FC<Props> = ({
     // Progressive disclosure logic
     let opacity = lineStyle.opacity;
     
-    if (isInMeasurementsView && measurementMode !== 'all') {
-      // In hover or manual mode
+    // For spacing lines (furniture distance measurements), always show at full opacity when rendered
+    // This ensures measurement reference lines are always visible
+    if (lineType === 'spacing') {
+      opacity = lineStyle.opacity; // Always visible
+    } else if (isInMeasurementsView && measurementMode !== 'all') {
+      // In hover or manual mode (for other line types)
       if (measurementMode === 'hover') {
         // Show only if item is hovered or measurement is pinned
         if (isPinned) {
