@@ -944,33 +944,17 @@ export const TowelDryerSymbol: React.FC<FurnitureSymbolProps> = ({ widthCm, heig
 export const WallSymbol: React.FC<FurnitureSymbolProps> = ({ widthCm, heightCm }) => {
   const widthPx = widthCm * PIXELS_PER_CM;
   const heightPx = heightCm * PIXELS_PER_CM;
-  const sw = FURNITURE_THEME.strokeWidth.primary;
-  const r = innerRect(widthPx, heightPx, sw);
 
   return (
     <Group>
-      {/* Solid filled rectangle representing the wall thickness */}
+      {/* Solid filled rectangle matching outer wall style */}
       <Rect
-        x={r.x}
-        y={r.y}
-        width={r.width}
-        height={r.height}
-        fill={FURNITURE_THEME.fill.primary}
-        stroke={FURNITURE_THEME.stroke.primary}
-        strokeWidth={sw}
-      />
-      {/* Diagonal hatch pattern to indicate it's a wall */}
-      <Line
-        points={[r.x, r.y, r.x + r.width, r.y + r.height]}
-        stroke={FURNITURE_THEME.stroke.secondary}
-        strokeWidth={FURNITURE_THEME.strokeWidth.secondary}
-        dash={[4, 4]}
-      />
-      <Line
-        points={[r.x + r.width, r.y, r.x, r.y + r.height]}
-        stroke={FURNITURE_THEME.stroke.secondary}
-        strokeWidth={FURNITURE_THEME.strokeWidth.secondary}
-        dash={[4, 4]}
+        x={0}
+        y={0}
+        width={widthPx}
+        height={heightPx}
+        fill="#000000"
+        strokeEnabled={false}
       />
     </Group>
   );

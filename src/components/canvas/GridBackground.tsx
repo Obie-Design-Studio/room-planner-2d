@@ -1,6 +1,6 @@
 import React from 'react';
 import { Group, Line } from 'react-konva';
-import { PIXELS_PER_CM } from '@/lib/constants';
+import { PIXELS_PER_CM, WALL_THICKNESS_PX } from '@/lib/constants';
 
 interface GridBackgroundProps {
   width: number; // in cm
@@ -9,18 +9,21 @@ interface GridBackgroundProps {
 
 const GridBackground: React.FC<GridBackgroundProps> = ({ width, height }) => {
   const lines: React.ReactElement[] = [];
+  
+  // Offset to position grid at inner edge of walls (not center)
+  const offset = WALL_THICKNESS_PX / 2;
 
-  // Generate vertical lines
+  // Generate vertical lines - start from inner edge
   for (let x = 0; x <= width; x += 10) {
     const isMajor = x % 100 === 0;
     lines.push(
       <Line
         key={`v-${x}`}
         points={[
-          x * PIXELS_PER_CM,
-          0,
-          x * PIXELS_PER_CM,
-          height * PIXELS_PER_CM,
+          x * PIXELS_PER_CM + offset,
+          offset,
+          x * PIXELS_PER_CM + offset,
+          height * PIXELS_PER_CM + offset,
         ]}
         stroke={isMajor ? '#9ca3af' : '#e5e7eb'}
         strokeWidth={isMajor ? 2 : 1}
@@ -29,17 +32,17 @@ const GridBackground: React.FC<GridBackgroundProps> = ({ width, height }) => {
     );
   }
 
-  // Generate horizontal lines
+  // Generate horizontal lines - start from inner edge
   for (let y = 0; y <= height; y += 10) {
     const isMajor = y % 100 === 0;
     lines.push(
       <Line
         key={`h-${y}`}
         points={[
-          0,
-          y * PIXELS_PER_CM,
-          width * PIXELS_PER_CM,
-          y * PIXELS_PER_CM,
+          offset,
+          y * PIXELS_PER_CM + offset,
+          width * PIXELS_PER_CM + offset,
+          y * PIXELS_PER_CM + offset,
         ]}
         stroke={isMajor ? '#9ca3af' : '#e5e7eb'}
         strokeWidth={isMajor ? 2 : 1}

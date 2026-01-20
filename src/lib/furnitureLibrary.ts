@@ -42,7 +42,6 @@ export const FURNITURE_LIBRARY: FurnitureDefinition[] = [
   
   // General (can appear in any room)
   { type: 'Table', label: 'Table', width: 120, height: 80, color: '#d97706', category: 'general' },
-  { type: 'Wall', label: 'Wall', width: 200, height: 10, color: '#9ca3af', category: 'general' },
 ];
 
 export type RoomType = 'bedroom' | 'living' | 'kitchen' | 'office' | 'bathroom';

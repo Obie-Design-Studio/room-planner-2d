@@ -6,7 +6,7 @@ import { type Unit, formatMeasurement } from "@/lib/unitConversion";
 import FurnitureShape from "./FurnitureShape";
 import MeasurementOverlay from "./MeasurementOverlay";
 import GridBackground from "./GridBackground";
-import { Plus, Minus, Maximize2, Ruler } from "lucide-react";
+import { Plus, Minus, Maximize2, Ruler, Eye } from "lucide-react";
 
 interface RoomCanvasProps {
   roomConfig: RoomConfig;
@@ -18,7 +18,9 @@ interface RoomCanvasProps {
   onSelect: (id: string) => void;
   onEdit: (id: string) => void;
   showAllMeasurements: boolean;
+  showLabels: boolean;
   onToggleMeasurements?: () => void;
+  onToggleLabels?: () => void;
   measurementUnit?: Unit;
   viewportWidth: number;
   viewportHeight: number;
@@ -35,7 +37,9 @@ export default function RoomCanvas({
   onSelect,
   onEdit,
   showAllMeasurements,
+  showLabels,
   onToggleMeasurements,
+  onToggleLabels,
   measurementUnit = 'cm',
   viewportWidth,
   viewportHeight,
@@ -517,15 +521,241 @@ export default function RoomCanvas({
           y={stagePos.y + baseCenterOffsetY}
         >
           <Group x={0} y={0}>
+            {/* Room floor (white background) */}
             <Rect
-              x={-WALL_THICKNESS_PX / 2}
-              y={-WALL_THICKNESS_PX / 2}
-              width={roomConfig.width * PIXELS_PER_CM + WALL_THICKNESS_PX}
-              height={roomConfig.height * PIXELS_PER_CM + WALL_THICKNESS_PX}
+              x={0}
+              y={0}
+              width={roomConfig.width * PIXELS_PER_CM}
+              height={roomConfig.height * PIXELS_PER_CM}
               fill="white"
-              stroke="black"
-              strokeWidth={WALL_THICKNESS_PX}
             />
+            
+            {/* Walls with gaps for doors */}
+            {(() => {
+              // Find all doors and group by wall
+              const doors = items.filter(item => item.type?.toLowerCase() === 'door');
+              
+              const WALL_THICKNESS_CM = WALL_THICKNESS_PX / PIXELS_PER_CM;
+              
+              // Helper to get doors on a specific wall
+              const getDoorsOnWall = (wall: 'top' | 'bottom' | 'left' | 'right') => {
+                return doors.filter(door => {
+                  const isOnTop = Math.abs(door.y - (-WALL_THICKNESS_CM)) < 1;
+                  const isOnBottom = Math.abs(door.y - roomConfig.height) < 1;
+                  const isOnLeft = Math.abs(door.x - (-WALL_THICKNESS_CM)) < 1;
+                  const isOnRight = Math.abs(door.x - roomConfig.width) < 1;
+                  
+                  if (wall === 'top') return isOnTop;
+                  if (wall === 'bottom') return isOnBottom;
+                  if (wall === 'left') return isOnLeft;
+                  if (wall === 'right') return isOnRight;
+                  return false;
+                });
+              };
+              
+              // Render wall segments with gaps for doors
+              const renderWallSegments = () => {
+                const segments: React.ReactNode[] = [];
+                const roomWidthPx = roomConfig.width * PIXELS_PER_CM;
+                const roomHeightPx = roomConfig.height * PIXELS_PER_CM;
+                
+                // TOP WALL
+                const topDoors = getDoorsOnWall('top').sort((a, b) => a.x - b.x);
+                if (topDoors.length === 0) {
+                  // No doors - draw full wall
+                  segments.push(
+                    <Rect
+                      key="wall-top"
+                      x={-WALL_THICKNESS_PX / 2}
+                      y={-WALL_THICKNESS_PX / 2}
+                      width={roomWidthPx + WALL_THICKNESS_PX}
+                      height={WALL_THICKNESS_PX}
+                      fill="black"
+                    />
+                  );
+                } else {
+                  // Draw wall segments around doors
+                  let currentX = -WALL_THICKNESS_PX / 2;
+                  topDoors.forEach((door, i) => {
+                    const doorStartPx = door.x * PIXELS_PER_CM;
+                    const doorEndPx = (door.x + door.width) * PIXELS_PER_CM;
+                    
+                    // Segment before door
+                    if (doorStartPx > currentX + WALL_THICKNESS_PX / 2) {
+                      segments.push(
+                        <Rect
+                          key={`wall-top-${i}-before`}
+                          x={currentX}
+                          y={-WALL_THICKNESS_PX / 2}
+                          width={doorStartPx - currentX + WALL_THICKNESS_PX / 2}
+                          height={WALL_THICKNESS_PX}
+                          fill="black"
+                        />
+                      );
+                    }
+                    currentX = doorEndPx - WALL_THICKNESS_PX / 2;
+                  });
+                  // Final segment after last door
+                  if (currentX < roomWidthPx + WALL_THICKNESS_PX / 2) {
+                    segments.push(
+                      <Rect
+                        key="wall-top-end"
+                        x={currentX}
+                        y={-WALL_THICKNESS_PX / 2}
+                        width={roomWidthPx + WALL_THICKNESS_PX / 2 - currentX}
+                        height={WALL_THICKNESS_PX}
+                        fill="black"
+                      />
+                    );
+                  }
+                }
+                
+                // BOTTOM WALL
+                const bottomDoors = getDoorsOnWall('bottom').sort((a, b) => a.x - b.x);
+                if (bottomDoors.length === 0) {
+                  segments.push(
+                    <Rect
+                      key="wall-bottom"
+                      x={-WALL_THICKNESS_PX / 2}
+                      y={roomHeightPx - WALL_THICKNESS_PX / 2}
+                      width={roomWidthPx + WALL_THICKNESS_PX}
+                      height={WALL_THICKNESS_PX}
+                      fill="black"
+                    />
+                  );
+                } else {
+                  let currentX = -WALL_THICKNESS_PX / 2;
+                  bottomDoors.forEach((door, i) => {
+                    const doorStartPx = door.x * PIXELS_PER_CM;
+                    const doorEndPx = (door.x + door.width) * PIXELS_PER_CM;
+                    
+                    if (doorStartPx > currentX + WALL_THICKNESS_PX / 2) {
+                      segments.push(
+                        <Rect
+                          key={`wall-bottom-${i}-before`}
+                          x={currentX}
+                          y={roomHeightPx - WALL_THICKNESS_PX / 2}
+                          width={doorStartPx - currentX + WALL_THICKNESS_PX / 2}
+                          height={WALL_THICKNESS_PX}
+                          fill="black"
+                        />
+                      );
+                    }
+                    currentX = doorEndPx - WALL_THICKNESS_PX / 2;
+                  });
+                  if (currentX < roomWidthPx + WALL_THICKNESS_PX / 2) {
+                    segments.push(
+                      <Rect
+                        key="wall-bottom-end"
+                        x={currentX}
+                        y={roomHeightPx - WALL_THICKNESS_PX / 2}
+                        width={roomWidthPx + WALL_THICKNESS_PX / 2 - currentX}
+                        height={WALL_THICKNESS_PX}
+                        fill="black"
+                      />
+                    );
+                  }
+                }
+                
+                // LEFT WALL
+                const leftDoors = getDoorsOnWall('left').sort((a, b) => a.y - b.y);
+                if (leftDoors.length === 0) {
+                  segments.push(
+                    <Rect
+                      key="wall-left"
+                      x={-WALL_THICKNESS_PX / 2}
+                      y={-WALL_THICKNESS_PX / 2}
+                      width={WALL_THICKNESS_PX}
+                      height={roomHeightPx + WALL_THICKNESS_PX}
+                      fill="black"
+                    />
+                  );
+                } else {
+                  let currentY = -WALL_THICKNESS_PX / 2;
+                  leftDoors.forEach((door, i) => {
+                    const doorStartPx = door.y * PIXELS_PER_CM;
+                    const doorEndPx = (door.y + door.width) * PIXELS_PER_CM;
+                    
+                    if (doorStartPx > currentY + WALL_THICKNESS_PX / 2) {
+                      segments.push(
+                        <Rect
+                          key={`wall-left-${i}-before`}
+                          x={-WALL_THICKNESS_PX / 2}
+                          y={currentY}
+                          width={WALL_THICKNESS_PX}
+                          height={doorStartPx - currentY + WALL_THICKNESS_PX / 2}
+                          fill="black"
+                        />
+                      );
+                    }
+                    currentY = doorEndPx - WALL_THICKNESS_PX / 2;
+                  });
+                  if (currentY < roomHeightPx + WALL_THICKNESS_PX / 2) {
+                    segments.push(
+                      <Rect
+                        key="wall-left-end"
+                        x={-WALL_THICKNESS_PX / 2}
+                        y={currentY}
+                        width={WALL_THICKNESS_PX}
+                        height={roomHeightPx + WALL_THICKNESS_PX / 2 - currentY}
+                        fill="black"
+                      />
+                    );
+                  }
+                }
+                
+                // RIGHT WALL
+                const rightDoors = getDoorsOnWall('right').sort((a, b) => a.y - b.y);
+                if (rightDoors.length === 0) {
+                  segments.push(
+                    <Rect
+                      key="wall-right"
+                      x={roomWidthPx - WALL_THICKNESS_PX / 2}
+                      y={-WALL_THICKNESS_PX / 2}
+                      width={WALL_THICKNESS_PX}
+                      height={roomHeightPx + WALL_THICKNESS_PX}
+                      fill="black"
+                    />
+                  );
+                } else {
+                  let currentY = -WALL_THICKNESS_PX / 2;
+                  rightDoors.forEach((door, i) => {
+                    const doorStartPx = door.y * PIXELS_PER_CM;
+                    const doorEndPx = (door.y + door.width) * PIXELS_PER_CM;
+                    
+                    if (doorStartPx > currentY + WALL_THICKNESS_PX / 2) {
+                      segments.push(
+                        <Rect
+                          key={`wall-right-${i}-before`}
+                          x={roomWidthPx - WALL_THICKNESS_PX / 2}
+                          y={currentY}
+                          width={WALL_THICKNESS_PX}
+                          height={doorStartPx - currentY + WALL_THICKNESS_PX / 2}
+                          fill="black"
+                        />
+                      );
+                    }
+                    currentY = doorEndPx - WALL_THICKNESS_PX / 2;
+                  });
+                  if (currentY < roomHeightPx + WALL_THICKNESS_PX / 2) {
+                    segments.push(
+                      <Rect
+                        key="wall-right-end"
+                        x={roomWidthPx - WALL_THICKNESS_PX / 2}
+                        y={currentY}
+                        width={WALL_THICKNESS_PX}
+                        height={roomHeightPx + WALL_THICKNESS_PX / 2 - currentY}
+                        fill="black"
+                      />
+                    );
+                  }
+                }
+                
+                return segments;
+              };
+              
+              return renderWallSegments();
+            })()}
             <GridBackground width={roomConfig.width} height={roomConfig.height} />
             
             {/* Room Dimensions - Always visible on top and left walls */}
@@ -598,10 +828,12 @@ export default function RoomCanvas({
                 onSelect={onSelect}
                 onEdit={onEdit}
                 roomConfig={roomConfig}
+                allItems={items}
+                showLabels={showLabels}
               />
             ))}
             {items.map((item) => {
-              if (item.id === selectedId || showAllMeasurements) {
+              if (item.id === selectedId || showAllMeasurements || showLabels) {
                 // Filter out the current item so we don't measure distance to itself
                 const neighbors = items.filter((other) => other.id !== item.id);
                 
@@ -613,6 +845,7 @@ export default function RoomCanvas({
                     otherItems={neighbors}
                     zoom={userZoom}
                     unit={measurementUnit}
+                    showLabels={showLabels}
                   />
                 );
               }
@@ -671,6 +904,41 @@ export default function RoomCanvas({
           zIndex: 10,
         }}
       >
+        {/* Show Labels Toggle */}
+        {onToggleLabels && (
+          <button
+            onClick={onToggleLabels}
+            style={{
+              width: '40px',
+              height: '40px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: showLabels ? '#0A0A0A' : '#FFFFFF',
+              border: showLabels ? 'none' : '1px solid #E5E5E5',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+              transition: 'all 150ms',
+            }}
+            onMouseEnter={(e) => {
+              if (!showLabels) {
+                e.currentTarget.style.backgroundColor = '#F5F5F5';
+                e.currentTarget.style.borderColor = '#0A0A0A';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!showLabels) {
+                e.currentTarget.style.backgroundColor = '#FFFFFF';
+                e.currentTarget.style.borderColor = '#E5E5E5';
+              }
+            }}
+            title={showLabels ? 'Hide Labels' : 'Show Labels'}
+          >
+            <Eye size={20} color={showLabels ? '#FFFFFF' : '#0A0A0A'} />
+          </button>
+        )}
+        
         {/* Show All Measurements Toggle */}
         {onToggleMeasurements && (
           <button

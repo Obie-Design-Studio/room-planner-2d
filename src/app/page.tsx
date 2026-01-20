@@ -11,8 +11,9 @@ import FurnitureLibraryModal from "@/components/ui/FurnitureLibraryModal";
 import CustomFurnitureModal from "@/components/ui/CustomFurnitureModal";
 import ExportModal from "@/components/ui/ExportModal";
 import LoadRoomModal from "@/components/ui/LoadRoomModal";
-import { Armchair, Table, Bed, RectangleHorizontal, DoorOpen, Trash2, Settings, ChevronDown, ChevronUp, Plus, Grid3x3, Menu, X, Save, FolderOpen, Download } from "lucide-react";
-import { PIXELS_PER_CM, WALL_THICKNESS_PX } from "@/lib/constants";
+import { Armchair, Table, Bed, RectangleHorizontal, DoorOpen, Trash2, Settings, ChevronDown, ChevronUp, Plus, Grid3x3, Menu, X, Save, FolderOpen, Download, Eye } from "lucide-react";
+import { PIXELS_PER_CM, WALL_THICKNESS_PX, WALL_THICKNESS_CM } from "@/lib/constants";
+import { findFreePosition } from "@/lib/collisionDetection";
 import { getDefaultFurnitureForRoom, FURNITURE_LIBRARY, getFurnitureByType, type RoomType } from "@/lib/furnitureLibrary";
 import { saveRoom, loadRoom } from "@/lib/supabase";
 import { exportAsJSON, exportAsPNG, exportCompletePDF } from "@/lib/export";
@@ -25,6 +26,7 @@ const RoomCanvas = dynamic(
 export default function Home() {
   const stageRef = useRef<any>(null);
   
+  // Initialize with saved room data or defaults
   const [roomConfig, setRoomConfig] = useState<RoomConfig>({
     width: 400,
     height: 300,
@@ -33,7 +35,24 @@ export default function Home() {
   const [items, setItems] = useState<FurnitureItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showAllMeasurements, setShowAllMeasurements] = useState(false);
+  const [showLabels, setShowLabels] = useState(false);
   const [viewport, setViewport] = useState({ width: 800, height: 600 });
+  
+  // Handler to toggle measurements (mutually exclusive with labels)
+  const handleToggleMeasurements = () => {
+    setShowAllMeasurements(!showAllMeasurements);
+    if (!showAllMeasurements) {
+      setShowLabels(false); // Turn off labels when turning on measurements
+    }
+  };
+  
+  // Handler to toggle labels (mutually exclusive with measurements)
+  const handleToggleLabels = () => {
+    setShowLabels(!showLabels);
+    if (!showLabels) {
+      setShowAllMeasurements(false); // Turn off measurements when turning on labels
+    }
+  };
   const [ceilingHeight, setCeilingHeight] = useState(250);
   const [roomName, setRoomName] = useState('Untitled Room');
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
@@ -47,6 +66,35 @@ export default function Home() {
   const [sidebarWidth, setSidebarWidth] = useState(320);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
+
+  // Load saved room on mount
+  useEffect(() => {
+    const loadSavedRoom = async () => {
+      const savedRoomId = localStorage.getItem('lastRoomId');
+      if (savedRoomId) {
+        const result = await loadRoom(savedRoomId);
+        if (result.success && result.room) {
+          setRoomName(result.room.name);
+          setRoomConfig({ width: result.room.width_cm, height: result.room.length_cm });
+          setCeilingHeight(result.room.ceiling_height_cm);
+          if (result.items) {
+            setItems(result.items.map((item: any) => ({
+              id: item.id || crypto.randomUUID(),
+              type: item.type,
+              x: item.x,
+              y: item.y,
+              width: item.width,
+              height: item.height,
+              rotation: item.rotation || 0,
+              color: item.color || '#666666',
+              name: item.label || item.type
+            })));
+          }
+        }
+      }
+    };
+    loadSavedRoom();
+  }, []);
 
   useEffect(() => {
     const handleResize = () => {
@@ -91,7 +139,15 @@ export default function Home() {
     const roomData = { name: roomName, room_type: 'Living Room', width_cm: roomConfig.width, length_cm: roomConfig.height, ceiling_height_cm: ceilingHeight, default_window_width_cm: 120, default_window_height_cm: 150, default_door_width_cm: 90, default_door_height_cm: 210, wall_color: '#FFFFFF', current_view: 'blueprint' };
     const roomItems = items.map(item => ({ type: item.type, label: item.type, x: item.x, y: item.y, width: item.width, height: item.height, rotation: item.rotation, color: item.color }));
     const result = await saveRoom(roomData, roomItems);
-    if (result.success) { alert('Room saved successfully!'); } else { alert('Failed to save room: ' + result.error); }
+    if (result.success) { 
+      // Save the room ID to localStorage for loading on next visit
+      if (result.room?.id) {
+        localStorage.setItem('lastRoomId', result.room.id);
+      }
+      alert('Room saved successfully!'); 
+    } else { 
+      alert('Failed to save room: ' + result.error); 
+    }
   };
 
   const handleLoadRoom = async (roomId: string) => {
@@ -101,6 +157,8 @@ export default function Home() {
       setRoomConfig({ width: result.room.width_cm, height: result.room.length_cm });
       setCeilingHeight(result.room.ceiling_height_cm);
       if (result.items) { setItems(result.items.map((item: any) => ({ id: item.id || crypto.randomUUID(), type: item.type, x: item.x, y: item.y, width: item.width, height: item.height, rotation: item.rotation || 0, color: item.color || '#666666', name: item.label || item.type }))); }
+      // Save this room ID as the last loaded room
+      localStorage.setItem('lastRoomId', roomId);
       setIsLoadModalOpen(false);
     } else { alert('Failed to load room'); }
   };
@@ -128,40 +186,28 @@ export default function Home() {
   };
 
   const handleAddItem = (type: string = 'Chair', w: number = 50, h: number = 50, c: string = '#3b82f6', wall?: 'top' | 'left') => {
-    // Default start position (give walls breathing room)
-    let x = 20;
-    let y = 20;
-    
     const typeLower = type.toLowerCase();
     const isWallObject = typeLower === 'window' || typeLower === 'door';
 
-    if (wall === 'top') {
-      x = 50; // 50cm from left
-      y = -5; // Center in wall (10px wall = 5cm, so -5cm centers 10cm object)
-    } else if (wall === 'left') {
-      x = -5; // Center in wall (10px wall = 5cm, so -5cm centers 10cm object)
-      y = 50; // 50cm from top
+    // Clamp dimensions to room size for furniture
+    if (!isWallObject) {
+      w = Math.min(w, roomConfig.width);
+      h = Math.min(h, roomConfig.height);
     }
 
-    // Furniture must start inside the room bounds
-    if (!isWallObject) {
-      const clampedWidth = Math.min(w, roomConfig.width);
-      const clampedHeight = Math.min(h, roomConfig.height);
-      const maxX = roomConfig.width - clampedWidth;
-      const maxY = roomConfig.height - clampedHeight;
-
-      // IMPORTANT: calculations are based on the inner edge of the walls (0..room width/height).
-      x = Math.max(0, Math.min(x, maxX));
-      y = Math.max(0, Math.min(y, maxY));
-      w = clampedWidth;
-      h = clampedHeight;
+    // Find a free position that doesn't overlap with existing items
+    const freePos = findFreePosition(w, h, roomConfig.width, roomConfig.height, items, type, wall);
+    
+    if (!freePos) {
+      alert('No free space available to place this item. Please remove or move other items first.');
+      return;
     }
 
     const newItem: FurnitureItem = {
       id: crypto.randomUUID(),
       type: type,
-      x: x,
-      y: y,
+      x: freePos.x,
+      y: freePos.y,
       width: w,
       height: h,
       rotation: 0,
@@ -217,11 +263,16 @@ export default function Home() {
     }
   };
 
-  const handleAddWindowOrDoor = (type: 'Window' | 'Door', wall: 'top' | 'left') => {
+  const handleAddWindowOrDoor = (type: 'Window' | 'Door' | 'Wall', wall: 'top' | 'left') => {
     if (type === 'Window') {
-      handleAddItem('Window', 100, 10, '#e0f7fa', wall);
+      // Window: width (along wall) = 100cm, height (actual window height) = 120cm
+      handleAddItem('Window', 100, 120, '#e0f7fa', wall);
     } else if (type === 'Door') {
-      handleAddItem('Door', 90, 10, '#8d6e63', wall);
+      // Door: width (along wall) = 90cm, height (actual door height) = 210cm
+      handleAddItem('Door', 90, 210, '#8d6e63', wall);
+    } else if (type === 'Wall') {
+      // Wall: width (length) = 200cm, height (thickness) = same as outer walls (2.5cm)
+      handleAddItem('Wall', 200, WALL_THICKNESS_CM, '#000000');
     }
   };
 
@@ -240,7 +291,7 @@ export default function Home() {
   const editingItem = items.find((item) => item.id === editingItemId) || null;
   const furnitureItems = items.filter((item) => {
     const type = item.type.toLowerCase();
-    return type !== "window" && type !== "door";
+    return type !== "window" && type !== "door" && type !== "wall";
   });
 
   return (
@@ -421,7 +472,7 @@ export default function Home() {
               </div>
             </div>
 
-          {/* Windows & Doors Section */}
+          {/* Windows, Doors & Walls Section */}
           <div style={{ marginBottom: '24px' }}>
             <button
               onClick={() => setIsWindowsDoorsOpen(!isWindowsDoorsOpen)}
@@ -445,7 +496,7 @@ export default function Home() {
                 letterSpacing: '0.05em',
                 margin: 0
               }}>
-                Windows & Doors
+                Windows, Doors & Walls
               </h3>
               {isWindowsDoorsOpen ? (
                 <ChevronUp className="w-4 h-4" style={{ color: '#999999' }} />
@@ -514,11 +565,40 @@ export default function Home() {
                     <DoorOpen className="w-4 h-4" style={{ color: '#666666' }} />
                     <span>Add Door</span>
                   </button>
+                  <button
+                    onClick={() => handleAddWindowOrDoor('Wall', 'top')}
+                    style={{ 
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '12px 14px',
+                      width: '100%',
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      color: '#0A0A0A',
+                      backgroundColor: '#FFFFFF',
+                      border: '1px solid #E5E5E5',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      transition: 'all 150ms',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#F5F5F5';
+                      e.currentTarget.style.borderColor = '#0A0A0A';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#FFFFFF';
+                      e.currentTarget.style.borderColor = '#E5E5E5';
+                    }}
+                  >
+                    <RectangleHorizontal className="w-4 h-4" style={{ color: '#666666' }} />
+                    <span>Add Wall</span>
+                  </button>
                 </div>
-              {items.filter(item => item.type.toLowerCase() === 'window' || item.type.toLowerCase() === 'door').length > 0 && (
+              {items.filter(item => item.type.toLowerCase() === 'window' || item.type.toLowerCase() === 'door' || item.type.toLowerCase() === 'wall').length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '12px' }}>
                   {items
-                    .filter(item => item.type.toLowerCase() === 'window' || item.type.toLowerCase() === 'door')
+                    .filter(item => item.type.toLowerCase() === 'window' || item.type.toLowerCase() === 'door' || item.type.toLowerCase() === 'wall')
                     .map((item) => (
                       <div
                         key={item.id}
@@ -924,7 +1004,9 @@ export default function Home() {
             onSelect={setSelectedId}
             onEdit={handleOpenEditor}
             showAllMeasurements={showAllMeasurements}
-            onToggleMeasurements={() => setShowAllMeasurements(!showAllMeasurements)}
+            showLabels={showLabels}
+            onToggleMeasurements={handleToggleMeasurements}
+            onToggleLabels={handleToggleLabels}
             viewportWidth={viewport.width}
             viewportHeight={viewport.height}
             onStageRef={(stage) => { stageRef.current = stage; }}

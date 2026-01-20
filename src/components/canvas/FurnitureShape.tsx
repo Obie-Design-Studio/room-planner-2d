@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { Rect, Group, Text, Transformer, Arc, Circle, Path, Line } from 'react-konva';
 import { FurnitureItem, RoomConfig } from '@/types';
 import { PIXELS_PER_CM, WALL_THICKNESS_PX } from '@/lib/constants';
+import { wouldCollide, getItemBoundingBox } from '@/lib/collisionDetection';
 
 // Calculate wall thickness in cm
 const WALL_THICKNESS_CM = WALL_THICKNESS_PX / PIXELS_PER_CM; // 5cm
@@ -52,6 +53,8 @@ interface FurnitureShapeProps {
   zoom?: number;
   isDraggable?: boolean;
   onHover?: (itemId: string | null) => void;
+  allItems?: FurnitureItem[];
+  showLabels?: boolean;
 }
 
 const FurnitureShape: React.FC<FurnitureShapeProps> = ({
@@ -66,15 +69,18 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
   zoom = 1.0,
   isDraggable = true,
   onHover,
+  allItems = [],
+  showLabels = false,
 }) => {
   const shapeRef = useRef<any>(null);
   const trRef = useRef<any>(null);
   const [isRotateHovered, setIsRotateHovered] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
-  // Door/Window dimensions
+  // Door/Window/Wall dimensions
   const isDoor = item.type?.toLowerCase() === 'door';
   const isWindow = item.type?.toLowerCase() === 'window';
+  const isWall = item.type?.toLowerCase() === 'wall';
   const isWallObject = isDoor || isWindow;
   
   // For doors and windows:
@@ -197,6 +203,10 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
       let finalXCm = 0;
       let finalYCm = 0;
       let finalRotation = item.rotation;
+      
+      // Store previous position for collision detection
+      const prevXCm = item.x;
+      const prevYCm = item.y;
 
       if (isWallObject) {
         // --- STRICT WALL LOCKING ---
@@ -278,6 +288,23 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
         // Update visual position to clamped center position
         e.target.x(clampedTopLeftX + visualWidthPx / 2);
         e.target.y(clampedTopLeftY + visualHeightPx / 2);
+      }
+
+      // Check for collisions with other items
+      const testItem: FurnitureItem = {
+        ...item,
+        x: finalXCm,
+        y: finalYCm,
+        rotation: finalRotation,
+      };
+
+      if (wouldCollide(testItem, allItems, item.id)) {
+        // Collision detected - revert to previous position
+        const prevCenterX = (prevXCm * PIXELS_PER_CM) + (visualWidthPx / 2);
+        const prevCenterY = (prevYCm * PIXELS_PER_CM) + (visualHeightPx / 2);
+        e.target.x(prevCenterX);
+        e.target.y(prevCenterY);
+        return; // Don't call onChange
       }
 
       // Sync State
@@ -788,9 +815,9 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
             lineCap="round"
           />
           
-          {/* Door swing arc - shows path of swing */}
+          {/* Door swing arc - shows curved path of swing only (no straight lines from hinge) */}
           <Arc 
-            innerRadius={0}
+            innerRadius={doorOrWindowLengthPx - 2}
             outerRadius={doorOrWindowLengthPx} 
             angle={90} 
             stroke="#333333" 
@@ -801,32 +828,9 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
             y={arcY}
           />
           
-          {/* Measurement labels removed - now shown by MeasurementOverlay in blue */}
-          
           {/* Centered Rotate Button - only show when selected */}
           {isSelected && renderRotateButton()}
         </Group>
-        {isSelected && isDraggable && (
-          <Transformer
-            ref={trRef}
-            boundBoxFunc={(oldBox, newBox) => {
-              // Lock height to wall thickness, only allow width changes
-              if (Math.abs(newBox.width) < 5) return oldBox;
-              return {
-                ...newBox,
-                height: WALL_THICKNESS_CM * PIXELS_PER_CM,
-              };
-            }}
-            flipEnabled={false}
-            rotateEnabled={false}
-            enabledAnchors={['middle-left', 'middle-right']}
-            anchorSize={10}
-            anchorStroke="#0A0A0A"
-            anchorStrokeWidth={2}
-            anchorFill="#FFFFFF"
-            anchorCornerRadius={2}
-          />
-        )}
       </>
     );
   }
@@ -883,27 +887,6 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
           
           {/* Measurement labels removed - now shown by MeasurementOverlay in blue */}
         </Group>
-        {isSelected && isDraggable && (
-          <Transformer
-            ref={trRef}
-            boundBoxFunc={(oldBox, newBox) => {
-              // Lock thickness to wall thickness, only allow width changes
-              if (Math.abs(newBox.width) < 5) return oldBox;
-              return {
-                ...newBox,
-                height: WALL_THICKNESS_PX, // Lock height to wall thickness (in pixels)
-              };
-            }}
-            flipEnabled={false}
-            rotateEnabled={false} // Disable rotation for windows
-            enabledAnchors={['middle-left', 'middle-right']} // Only allow horizontal resizing
-            anchorSize={10}
-            anchorStroke="#0A0A0A"
-            anchorStrokeWidth={2}
-            anchorFill="#FFFFFF"
-            anchorCornerRadius={2}
-          />
-        )}
       </>
     );
   }
@@ -992,7 +975,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
         {renderSymbol()}
         
         {/* Hover Overlay - Only show when hovering AND not selected */}
-        {!isWallObject && isHovered && !isSelected && (() => {
+        {!isWallObject && !isWall && (isHovered || showLabels) && !isSelected && (() => {
           const labelText = getFurnitureName();
           // Smart font sizing based on furniture size and zoom
           const baseFontSize = Math.min(widthPx, heightPx) * 0.25;
@@ -1054,7 +1037,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
           </Group>
         )}
       </Group>
-      {isSelected && isDraggable && (
+      {isSelected && isDraggable && !isWall && (
         <Transformer
           ref={trRef}
           boundBoxFunc={(oldBox, newBox) => {

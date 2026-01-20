@@ -25,6 +25,7 @@ interface Props {
   measurementMode?: MeasurementMode;
   pinnedMeasurements?: Set<string>;
   hoveredItemId?: string | null;
+  showLabels?: boolean;
 }
 
 type MeasurementDirection = 'left' | 'right' | 'top' | 'bottom' | null;
@@ -47,6 +48,7 @@ const MeasurementOverlay: React.FC<Props> = ({
   measurementMode = 'all',
   pinnedMeasurements = new Set(),
   hoveredItemId = null,
+  showLabels = false,
 }) => {
   const [editingDirection, setEditingDirection] = useState<MeasurementDirection>(null);
   const [editValue, setEditValue] = useState('');
@@ -72,6 +74,7 @@ const MeasurementOverlay: React.FC<Props> = ({
   const roomH = room.height * PIXELS_PER_CM;
 
   const isWallObject = item.type.toLowerCase() === 'window' || item.type.toLowerCase() === 'door';
+  const isWall = item.type.toLowerCase() === 'wall';
   
   // Color-coded measurement types - Updated palette
   const COLORS = {
@@ -848,17 +851,26 @@ const MeasurementOverlay: React.FC<Props> = ({
     const onBottomWall = !onLeftWall && !onRightWall && !onTopWall && (item.y + item.height > room.height);
 
     if (onTopWall) {
-      // TOP WALL - Show left and right edge measurements outside the room
-      const leftDist = Math.round(x / PIXELS_PER_CM);
-      const rightDist = Math.round((roomW - (x + w)) / PIXELS_PER_CM);
-      const measureY = -outsideOffset; // All lines at same distance from wall
+      // TOP WALL - Show consecutive measurements between objects and walls
+      const measureY = -outsideOffset;
       
-      // Track label positions to avoid overlaps
+      // Get all wall objects on the top wall (including this one)
+      const topWallItems = [item, ...otherItems.filter(other => {
+        const otherIsWallObj = other.type.toLowerCase() === 'window' || other.type.toLowerCase() === 'door';
+        const otherOnTop = other.y < 0;
+        return otherIsWallObj && otherOnTop;
+      })].sort((a, b) => a.x - b.x); // Sort by x position
+      
+      // Find this item's index
+      const thisIndex = topWallItems.findIndex(obj => obj.id === item.id);
+      
+      // Calculate measurements for this item
+      const measurements: React.ReactNode[] = [];
       const existingLabels: Array<{ x: number; y: number; width: number; height: number }> = [];
-      const padding = 8; // Match DimensionLabel padding
-      const charWidth = fontSize * 1.1; // Match DimensionLabel charWidth
+      const padding = 8;
+      const charWidth = fontSize * 1.1;
       
-      // Calculate label positions with collision avoidance
+      // Show width of this item
       const itemWidthText = formatMeasurement(item.width, unit);
       const itemWidthPos = adjustLabelPosition(
         x + w / 2,
@@ -874,352 +886,484 @@ const MeasurementOverlay: React.FC<Props> = ({
         height: fontSize + padding * 2,
       });
       
-      const leftDistText = formatMeasurement(leftDist, unit);
-      const leftDistPos = leftDist > 0 ? adjustLabelPosition(
-        x / 2,
-        measureY - 15,
-        leftDistText,
-        existingLabels,
-        false
-      ) : { x: 0, y: 0 };
-      if (leftDist > 0) {
-        existingLabels.push({
-          x: leftDistPos.x - (leftDistText.length * charWidth + padding * 2) / 2,
-          y: leftDistPos.y - (fontSize + padding * 2) / 2,
-          width: leftDistText.length * charWidth + padding * 2,
-          height: fontSize + padding * 2,
-        });
+      measurements.push(
+        <InteractiveMeasurementLine
+          key={`${item.id}-top-width-line`}
+          measurementId={`${item.id}-top-width`}
+          points={[x, measureY, x + w, measureY]} 
+          color={COLORS.dimension}
+          lineType="item"
+        />,
+        <WallDimensionLabel
+          key={`${item.id}-top-width-label`}
+          x={itemWidthPos.x} 
+          y={itemWidthPos.y} 
+          text={itemWidthText}
+          color={COLORS.dimension}
+        />
+      );
+      
+      // Show distance to left (either wall or previous object)
+      if (thisIndex === 0) {
+        // First object - measure to left wall
+        const leftDist = Math.round(item.x);
+        if (leftDist > 0) {
+          const leftDistText = formatMeasurement(leftDist, unit);
+          const leftDistPos = adjustLabelPosition(
+            (x / 2),
+            measureY - 15,
+            leftDistText,
+            existingLabels,
+            false
+          );
+          existingLabels.push({
+            x: leftDistPos.x - (leftDistText.length * charWidth + padding * 2) / 2,
+            y: leftDistPos.y - (fontSize + padding * 2) / 2,
+            width: leftDistText.length * charWidth + padding * 2,
+            height: fontSize + padding * 2,
+          });
+          
+          measurements.push(
+            <InteractiveMeasurementLine
+              key={`${item.id}-top-left-line`}
+              measurementId={`${item.id}-top-left`}
+              points={[0, measureY, x, measureY]} 
+              color={COLORS.edge}
+              lineType="edge"
+            />,
+            <EditableDimensionLabel
+              key={`${item.id}-top-left-label`}
+              x={leftDistPos.x} 
+              y={leftDistPos.y} 
+              text={leftDistText}
+              color={COLORS.edge}
+              customFontSize={wallFontSize}
+              direction="left"
+              value={leftDist}
+            />
+          );
+        }
+      } else {
+        // Not first - measure to previous object
+        const prevItem = topWallItems[thisIndex - 1];
+        const prevEndX = (prevItem.x + prevItem.width) * PIXELS_PER_CM;
+        const gapDist = Math.round((item.x - (prevItem.x + prevItem.width)));
+        
+        if (gapDist > 0) {
+          const gapDistText = formatMeasurement(gapDist, unit);
+          const gapDistPos = adjustLabelPosition(
+            (prevEndX + x) / 2,
+            measureY - 15,
+            gapDistText,
+            existingLabels,
+            false
+          );
+          existingLabels.push({
+            x: gapDistPos.x - (gapDistText.length * charWidth + padding * 2) / 2,
+            y: gapDistPos.y - (fontSize + padding * 2) / 2,
+            width: gapDistText.length * charWidth + padding * 2,
+            height: fontSize + padding * 2,
+          });
+          
+          measurements.push(
+            <InteractiveMeasurementLine
+              key={`${item.id}-top-gap-line`}
+              measurementId={`${item.id}-top-gap`}
+              points={[prevEndX, measureY, x, measureY]} 
+              color={COLORS.edge}
+              lineType="edge"
+            />,
+            <InteractiveDimensionLabel
+              key={`${item.id}-top-gap-label`}
+              measurementId={`${item.id}-top-gap`}
+              x={gapDistPos.x} 
+              y={gapDistPos.y} 
+              text={gapDistText}
+              color={COLORS.edge}
+              customFontSize={wallFontSize}
+              isSecondary={false}
+            />
+          );
+        }
       }
       
-      const rightDistText = formatMeasurement(rightDist, unit);
-      const rightDistPos = rightDist > 0 ? adjustLabelPosition(
-        x + w + (roomW - (x + w)) / 2,
-        measureY - 15,
-        rightDistText,
-        existingLabels,
-        false
-      ) : { x: 0, y: 0 };
+      // Show distance to right (either wall or next object)
+      if (thisIndex === topWallItems.length - 1) {
+        // Last object - measure to right wall
+        const rightDist = Math.round((room.width - (item.x + item.width)));
+        if (rightDist > 0) {
+          const rightDistText = formatMeasurement(rightDist, unit);
+          const rightDistPos = adjustLabelPosition(
+            (x + w + roomW) / 2,
+            measureY - 15,
+            rightDistText,
+            existingLabels,
+            false
+          );
+          
+          measurements.push(
+            <InteractiveMeasurementLine
+              key={`${item.id}-top-right-line`}
+              measurementId={`${item.id}-top-right`}
+              points={[x + w, measureY, roomW, measureY]} 
+              color={COLORS.edge}
+              lineType="edge"
+            />,
+            <EditableDimensionLabel
+              key={`${item.id}-top-right-label`}
+              x={rightDistPos.x} 
+              y={rightDistPos.y} 
+              text={rightDistText}
+              color={COLORS.edge}
+              customFontSize={wallFontSize}
+              direction="right"
+              value={rightDist}
+            />
+          );
+        }
+      }
       
-      return (
-        <Group>
-          {/* Item width measurement - blue dashed line across the item */}
-          <InteractiveMeasurementLine
-            measurementId={`${item.id}-top-width`}
-            points={[x, measureY, x + w, measureY]} 
-            color={COLORS.dimension}
-            lineType="item"
-          />
-          <InteractiveDimensionLabel
-            measurementId={`${item.id}-top-width`}
-            x={itemWidthPos.x} 
-            y={itemWidthPos.y} 
-            text={itemWidthText}
-            color={COLORS.dimension}
-            customFontSize={wallFontSize}
-            isSecondary={false}
-          />
-          
-          {/* Left edge measurement - only show if > 0 */}
-          {leftDist > 0 && (
-            <>
-              <InteractiveMeasurementLine
-                measurementId={`${item.id}-top-left`}
-                points={[0, measureY, x, measureY]} 
-                color={COLORS.edge}
-                lineType="edge"
-              />
-              <EditableDimensionLabel
-                x={leftDistPos.x} 
-                y={leftDistPos.y} 
-                text={leftDistText}
-                color={COLORS.edge}
-                customFontSize={wallFontSize}
-                direction="left"
-                value={leftDist}
-              />
-            </>
-          )}
-          
-          {/* Right edge measurement - only show if > 0 */}
-          {rightDist > 0 && (
-            <>
-              <InteractiveMeasurementLine
-                measurementId={`${item.id}-top-right`}
-                points={[x + w, measureY, roomW, measureY]} 
-                color={COLORS.edge}
-                lineType="edge"
-              />
-              <EditableDimensionLabel
-                x={rightDistPos.x} 
-                y={rightDistPos.y} 
-                text={rightDistText}
-                color={COLORS.edge}
-                customFontSize={wallFontSize}
-                direction="right"
-                value={rightDist}
-              />
-            </>
-          )}
-        </Group>
-      );
+      return <Group>{measurements}</Group>;
     }
     
     if (onBottomWall) {
-      // BOTTOM WALL - Show left and right edge measurements outside the room
-      const leftDist = Math.round(x / PIXELS_PER_CM);
-      const rightDist = Math.round((roomW - (x + w)) / PIXELS_PER_CM);
-      const measureY = roomH + outsideOffset; // All lines at same distance from wall
+      // BOTTOM WALL - Show consecutive measurements between objects and walls
+      const measureY = roomH + outsideOffset;
       
-      return (
-        <Group>
-          {/* Item width measurement - blue dashed line across the item */}
-          <Line 
-            points={[x, measureY, x + w, measureY]} 
-            stroke={COLORS.dimension} 
-            dash={dash} 
-            strokeWidth={1.5} 
-          />
-          <WallDimensionLabel 
-            x={x + w / 2} 
-            y={measureY + 25} 
-            text={formatMeasurement(item.width, unit)}
-            color={COLORS.dimension}
-          />
-          
-          {/* Left edge measurement - only show if > 0 - EDITABLE */}
-          {leftDist > 0 && (
-            <>
-              <Line 
-                points={[0, measureY, x, measureY]} 
-                stroke={COLORS.edge} 
-                dash={dash} 
-                strokeWidth={1.5} 
-              />
-              <EditableDimensionLabel 
-                x={x / 2} 
-                y={measureY + 25} 
-                text={formatMeasurement(leftDist, unit)}
-                color={COLORS.edge}
-                customFontSize={wallFontSize}
-                direction="left"
-                value={leftDist}
-              />
-            </>
-          )}
-          
-          {/* Right edge measurement - only show if > 0 - EDITABLE */}
-          {rightDist > 0 && (
-            <>
-              <Line 
-                points={[x + w, measureY, roomW, measureY]} 
-                stroke={COLORS.edge} 
-                dash={dash} 
-                strokeWidth={1.5} 
-              />
-              <EditableDimensionLabel 
-                x={x + w + (roomW - (x + w)) / 2} 
-                y={measureY + 25} 
-                text={formatMeasurement(rightDist, unit)}
-                color={COLORS.edge}
-                customFontSize={wallFontSize}
-                direction="right"
-                value={rightDist}
-              />
-            </>
-          )}
-        </Group>
+      // Get all wall objects on the bottom wall (including this one)
+      const bottomWallItems = [item, ...otherItems.filter(other => {
+        const otherIsWallObj = other.type.toLowerCase() === 'window' || other.type.toLowerCase() === 'door';
+        const otherOnBottom = other.y + other.height > room.height;
+        return otherIsWallObj && otherOnBottom;
+      })].sort((a, b) => a.x - b.x);
+      
+      const thisIndex = bottomWallItems.findIndex(obj => obj.id === item.id);
+      const measurements: React.ReactNode[] = [];
+      
+      // Show width of this item
+      measurements.push(
+        <Line 
+          key={`${item.id}-bottom-width-line`}
+          points={[x, measureY, x + w, measureY]} 
+          stroke={COLORS.dimension} 
+          dash={dash} 
+          strokeWidth={1.5} 
+        />,
+        <WallDimensionLabel 
+          key={`${item.id}-bottom-width-label`}
+          x={x + w / 2} 
+          y={measureY + 25} 
+          text={formatMeasurement(item.width, unit)}
+          color={COLORS.dimension}
+        />
       );
+      
+      // Show distance to left
+      if (thisIndex === 0) {
+        const leftDist = Math.round(item.x);
+        if (leftDist > 0) {
+          measurements.push(
+            <Line 
+              key={`${item.id}-bottom-left-line`}
+              points={[0, measureY, x, measureY]} 
+              stroke={COLORS.edge} 
+              dash={dash} 
+              strokeWidth={1.5} 
+            />,
+            <EditableDimensionLabel 
+              key={`${item.id}-bottom-left-label`}
+              x={x / 2} 
+              y={measureY + 25} 
+              text={formatMeasurement(leftDist, unit)}
+              color={COLORS.edge}
+              customFontSize={wallFontSize}
+              direction="left"
+              value={leftDist}
+            />
+          );
+        }
+      } else {
+        const prevItem = bottomWallItems[thisIndex - 1];
+        const prevEndX = (prevItem.x + prevItem.width) * PIXELS_PER_CM;
+        const gapDist = Math.round((item.x - (prevItem.x + prevItem.width)));
+        
+        if (gapDist > 0) {
+          measurements.push(
+            <Line 
+              key={`${item.id}-bottom-gap-line`}
+              points={[prevEndX, measureY, x, measureY]} 
+              stroke={COLORS.edge} 
+              dash={dash} 
+              strokeWidth={1.5} 
+            />,
+            <WallDimensionLabel 
+              key={`${item.id}-bottom-gap-label`}
+              x={(prevEndX + x) / 2} 
+              y={measureY + 25} 
+              text={formatMeasurement(gapDist, unit)}
+              color={COLORS.edge}
+            />
+          );
+        }
+      }
+      
+      // Show distance to right
+      if (thisIndex === bottomWallItems.length - 1) {
+        const rightDist = Math.round((room.width - (item.x + item.width)));
+        if (rightDist > 0) {
+          measurements.push(
+            <Line 
+              key={`${item.id}-bottom-right-line`}
+              points={[x + w, measureY, roomW, measureY]} 
+              stroke={COLORS.edge} 
+              dash={dash} 
+              strokeWidth={1.5} 
+            />,
+            <EditableDimensionLabel 
+              key={`${item.id}-bottom-right-label`}
+              x={x + w + (roomW - (x + w)) / 2} 
+              y={measureY + 25} 
+              text={formatMeasurement(rightDist, unit)}
+              color={COLORS.edge}
+              customFontSize={wallFontSize}
+              direction="right"
+              value={rightDist}
+            />
+          );
+        }
+      }
+      
+      return <Group>{measurements}</Group>;
     }
     
     if (onLeftWall) {
-      // LEFT WALL - Show top and bottom edge measurements outside the room
-      // Treat item.y as the START of the window (consistent with horizontal walls)
+      // LEFT WALL - Show consecutive measurements between objects and walls
+      const measureX = -outsideOffset;
+      
+      // Get all wall objects on the left wall (including this one)
+      const leftWallItems = [item, ...otherItems.filter(other => {
+        const otherIsWallObj = other.type.toLowerCase() === 'window' || other.type.toLowerCase() === 'door';
+        const otherOnLeft = other.x < 0;
+        return otherIsWallObj && otherOnLeft;
+      })].sort((a, b) => a.y - b.y); // Sort by y position
+      
+      const thisIndex = leftWallItems.findIndex(obj => obj.id === item.id);
+      const measurements: React.ReactNode[] = [];
+      
+      // Visual positions
       const windowStartY = y;
       const windowEndY = y + item.width * PIXELS_PER_CM;
       const visualCenterY = y + (item.width * PIXELS_PER_CM) / 2;
       
-      const topDist = Math.round(item.y);
-      const bottomDist = Math.round(room.height - (item.y + item.width));
-      const measureX = -outsideOffset;
-      
-      // Track label positions to avoid overlaps (vertical wall)
-      const existingLabels: Array<{ x: number; y: number; width: number; height: number }> = [];
-      const padding = 8; // Match DimensionLabel padding
-      const charWidth = fontSize * 1.1; // Match DimensionLabel charWidth
-      
-      // Calculate label positions with collision avoidance
-      const itemWidthText = formatMeasurement(item.width, unit);
-      const itemWidthPos = adjustLabelPosition(
-        measureX - 60,
-        visualCenterY,
-        itemWidthText,
-        existingLabels,
-        true
+      // Show width of this item
+      measurements.push(
+        <Line 
+          key={`${item.id}-left-width-line`}
+          points={[measureX, windowStartY, measureX, windowEndY]} 
+          stroke={COLORS.dimension} 
+          dash={dash} 
+          strokeWidth={1.5} 
+        />,
+        <WallDimensionLabel 
+          key={`${item.id}-left-width-label`}
+          x={measureX - 60} 
+          y={visualCenterY} 
+          text={formatMeasurement(item.width, unit)}
+          color={COLORS.dimension}
+        />
       );
-      existingLabels.push({
-        x: itemWidthPos.x - (itemWidthText.length * charWidth + padding * 2) / 2,
-        y: itemWidthPos.y - (fontSize + padding * 2) / 2,
-        width: itemWidthText.length * charWidth + padding * 2,
-        height: fontSize + padding * 2,
-      });
       
-      const topDistText = formatMeasurement(topDist, unit);
-      const topDistPos = topDist > 0 ? adjustLabelPosition(
-        measureX - 60,
-        windowStartY / 2,
-        topDistText,
-        existingLabels,
-        true
-      ) : { x: 0, y: 0 };
-      if (topDist > 0) {
-        existingLabels.push({
-          x: topDistPos.x - (topDistText.length * charWidth + padding * 2) / 2,
-          y: topDistPos.y - (fontSize + padding * 2) / 2,
-          width: topDistText.length * charWidth + padding * 2,
-          height: fontSize + padding * 2,
-        });
+      // Show distance to top
+      if (thisIndex === 0) {
+        const topDist = Math.round(item.y);
+        if (topDist > 0) {
+          measurements.push(
+            <Line 
+              key={`${item.id}-left-top-line`}
+              points={[measureX, 0, measureX, windowStartY]} 
+              stroke={COLORS.edge} 
+              dash={dash} 
+              strokeWidth={1.5} 
+            />,
+            <EditableDimensionLabel 
+              key={`${item.id}-left-top-label`}
+              x={measureX - 60} 
+              y={windowStartY / 2} 
+              text={formatMeasurement(topDist, unit)}
+              color={COLORS.edge}
+              customFontSize={wallFontSize}
+              direction="top"
+              value={topDist}
+            />
+          );
+        }
+      } else {
+        const prevItem = leftWallItems[thisIndex - 1];
+        const prevEndY = (prevItem.y + prevItem.width) * PIXELS_PER_CM;
+        const gapDist = Math.round((item.y - (prevItem.y + prevItem.width)));
+        
+        if (gapDist > 0) {
+          measurements.push(
+            <Line 
+              key={`${item.id}-left-gap-line`}
+              points={[measureX, prevEndY, measureX, windowStartY]} 
+              stroke={COLORS.edge} 
+              dash={dash} 
+              strokeWidth={1.5} 
+            />,
+            <WallDimensionLabel 
+              key={`${item.id}-left-gap-label`}
+              x={measureX - 60} 
+              y={(prevEndY + windowStartY) / 2} 
+              text={formatMeasurement(gapDist, unit)}
+              color={COLORS.edge}
+            />
+          );
+        }
       }
       
-      const bottomDistText = formatMeasurement(bottomDist, unit);
-      const bottomDistPos = bottomDist > 0 ? adjustLabelPosition(
-        measureX - 60,
-        windowEndY + (roomH - windowEndY) / 2,
-        bottomDistText,
-        existingLabels,
-        true
-      ) : { x: 0, y: 0 };
+      // Show distance to bottom
+      if (thisIndex === leftWallItems.length - 1) {
+        const bottomDist = Math.round(room.height - (item.y + item.width));
+        if (bottomDist > 0) {
+          measurements.push(
+            <Line 
+              key={`${item.id}-left-bottom-line`}
+              points={[measureX, windowEndY, measureX, roomH]} 
+              stroke={COLORS.edge} 
+              dash={dash} 
+              strokeWidth={1.5} 
+            />,
+            <EditableDimensionLabel 
+              key={`${item.id}-left-bottom-label`}
+              x={measureX - 60} 
+              y={windowEndY + (roomH - windowEndY) / 2} 
+              text={formatMeasurement(bottomDist, unit)}
+              color={COLORS.edge}
+              customFontSize={wallFontSize}
+              direction="bottom"
+              value={bottomDist}
+            />
+          );
+        }
+      }
       
-      return (
-        <Group>
-          {/* Item width measurement - blue dashed line along the item */}
-          <Line 
-            points={[measureX, windowStartY, measureX, windowEndY]} 
-            stroke={COLORS.dimension} 
-            dash={dash} 
-            strokeWidth={1.5} 
-          />
-          <WallDimensionLabel 
-            x={itemWidthPos.x} 
-            y={itemWidthPos.y} 
-            text={itemWidthText}
-            color={COLORS.dimension}
-          />
-          
-          {/* Top edge measurement - only show if > 0 - EDITABLE */}
-          {topDist > 0 && (
-            <>
-              <Line 
-                points={[measureX, 0, measureX, windowStartY]} 
-                stroke={COLORS.edge} 
-                dash={dash} 
-                strokeWidth={1.5} 
-              />
-              <EditableDimensionLabel 
-                x={topDistPos.x} 
-                y={topDistPos.y} 
-                text={topDistText}
-                color={COLORS.edge}
-                customFontSize={wallFontSize}
-                direction="top"
-                value={topDist}
-              />
-            </>
-          )}
-          
-          {/* Bottom edge measurement - only show if > 0 - EDITABLE */}
-          {bottomDist > 0 && (
-            <>
-              <Line 
-                points={[measureX, windowEndY, measureX, roomH]} 
-                stroke={COLORS.edge} 
-                dash={dash} 
-                strokeWidth={1.5} 
-              />
-              <EditableDimensionLabel 
-                x={bottomDistPos.x} 
-                y={bottomDistPos.y} 
-                text={bottomDistText}
-                color={COLORS.edge}
-                customFontSize={wallFontSize}
-                direction="bottom"
-                value={bottomDist}
-              />
-            </>
-          )}
-        </Group>
-      );
+      return <Group>{measurements}</Group>;
     }
     
     if (onRightWall) {
-      // RIGHT WALL - Show top and bottom edge measurements outside the room
-      // Treat item.y as the START of the window (consistent with horizontal walls)
+      // RIGHT WALL - Show consecutive measurements between objects and walls
+      const measureX = roomW + outsideOffset;
+      
+      // Get all wall objects on the right wall (including this one)
+      const rightWallItems = [item, ...otherItems.filter(other => {
+        const otherIsWallObj = other.type.toLowerCase() === 'window' || other.type.toLowerCase() === 'door';
+        const otherOnRight = other.x + other.width > room.width;
+        return otherIsWallObj && otherOnRight;
+      })].sort((a, b) => a.y - b.y); // Sort by y position
+      
+      const thisIndex = rightWallItems.findIndex(obj => obj.id === item.id);
+      const measurements: React.ReactNode[] = [];
+      
+      // Visual positions
       const windowStartY = y;
       const windowEndY = y + item.width * PIXELS_PER_CM;
       const visualCenterY = y + (item.width * PIXELS_PER_CM) / 2;
       
-      const topDist = Math.round(item.y);
-      const bottomDist = Math.round(room.height - (item.y + item.width));
-      const measureX = roomW + outsideOffset;
-      
-      return (
-        <Group>
-          {/* Item width measurement - blue dashed line along the item */}
-          <Line 
-            points={[measureX, windowStartY, measureX, windowEndY]} 
-            stroke={COLORS.dimension} 
-            dash={dash} 
-            strokeWidth={1.5} 
-          />
-          <WallDimensionLabel 
-            x={measureX + 50} 
-            y={visualCenterY} 
-            text={formatMeasurement(item.width, unit)}
-            color={COLORS.dimension}
-          />
-          
-          {/* Top edge measurement - only show if > 0 - EDITABLE */}
-          {topDist > 0 && (
-            <>
-              <Line 
-                points={[measureX, 0, measureX, windowStartY]} 
-                stroke={COLORS.edge} 
-                dash={dash} 
-                strokeWidth={1.5} 
-              />
-              <EditableDimensionLabel 
-                x={measureX + 50} 
-                y={windowStartY / 2} 
-                text={formatMeasurement(topDist, unit)}
-                color={COLORS.edge}
-                customFontSize={wallFontSize}
-                direction="top"
-                value={topDist}
-              />
-            </>
-          )}
-          
-          {/* Bottom edge measurement - only show if > 0 - EDITABLE */}
-          {bottomDist > 0 && (
-            <>
-              <Line 
-                points={[measureX, windowEndY, measureX, roomH]} 
-                stroke={COLORS.edge} 
-                dash={dash} 
-                strokeWidth={1.5} 
-              />
-              <EditableDimensionLabel 
-                x={measureX + 50} 
-                y={windowEndY + (roomH - windowEndY) / 2} 
-                text={formatMeasurement(bottomDist, unit)}
-                color={COLORS.edge}
-                customFontSize={wallFontSize}
-                direction="bottom"
-                value={bottomDist}
-              />
-            </>
-          )}
-        </Group>
+      // Show width of this item
+      measurements.push(
+        <Line 
+          key={`${item.id}-right-width-line`}
+          points={[measureX, windowStartY, measureX, windowEndY]} 
+          stroke={COLORS.dimension} 
+          dash={dash} 
+          strokeWidth={1.5} 
+        />,
+        <WallDimensionLabel 
+          key={`${item.id}-right-width-label`}
+          x={measureX + 50} 
+          y={visualCenterY} 
+          text={formatMeasurement(item.width, unit)}
+          color={COLORS.dimension}
+        />
       );
+      
+      // Show distance to top
+      if (thisIndex === 0) {
+        const topDist = Math.round(item.y);
+        if (topDist > 0) {
+          measurements.push(
+            <Line 
+              key={`${item.id}-right-top-line`}
+              points={[measureX, 0, measureX, windowStartY]} 
+              stroke={COLORS.edge} 
+              dash={dash} 
+              strokeWidth={1.5} 
+            />,
+            <EditableDimensionLabel 
+              key={`${item.id}-right-top-label`}
+              x={measureX + 50} 
+              y={windowStartY / 2} 
+              text={formatMeasurement(topDist, unit)}
+              color={COLORS.edge}
+              customFontSize={wallFontSize}
+              direction="top"
+              value={topDist}
+            />
+          );
+        }
+      } else {
+        const prevItem = rightWallItems[thisIndex - 1];
+        const prevEndY = (prevItem.y + prevItem.width) * PIXELS_PER_CM;
+        const gapDist = Math.round((item.y - (prevItem.y + prevItem.width)));
+        
+        if (gapDist > 0) {
+          measurements.push(
+            <Line 
+              key={`${item.id}-right-gap-line`}
+              points={[measureX, prevEndY, measureX, windowStartY]} 
+              stroke={COLORS.edge} 
+              dash={dash} 
+              strokeWidth={1.5} 
+            />,
+            <WallDimensionLabel 
+              key={`${item.id}-right-gap-label`}
+              x={measureX + 50} 
+              y={(prevEndY + windowStartY) / 2} 
+              text={formatMeasurement(gapDist, unit)}
+              color={COLORS.edge}
+            />
+          );
+        }
+      }
+      
+      // Show distance to bottom
+      if (thisIndex === rightWallItems.length - 1) {
+        const bottomDist = Math.round(room.height - (item.y + item.width));
+        if (bottomDist > 0) {
+          measurements.push(
+            <Line 
+              key={`${item.id}-right-bottom-line`}
+              points={[measureX, windowEndY, measureX, roomH]} 
+              stroke={COLORS.edge} 
+              dash={dash} 
+              strokeWidth={1.5} 
+            />,
+            <EditableDimensionLabel 
+              key={`${item.id}-right-bottom-label`}
+              x={measureX + 50} 
+              y={windowEndY + (roomH - windowEndY) / 2} 
+              text={formatMeasurement(bottomDist, unit)}
+              color={COLORS.edge}
+              customFontSize={wallFontSize}
+              direction="bottom"
+              value={bottomDist}
+            />
+          );
+        }
+      }
+      
+      return <Group>{measurements}</Group>;
     }
   }
 
@@ -1237,116 +1381,116 @@ const MeasurementOverlay: React.FC<Props> = ({
   const horizontalLabel = isRotated90 ? actualHeight : actualWidth;
   const verticalLabel = isRotated90 ? actualWidth : actualHeight;
   
+  // Create dimension text for furniture (show on the item itself)
+  const dimensionText = `${horizontalLabel} × ${verticalLabel} cm`;
+  
+  // Calculate vertical offset to position label below the rotation button
+  const labelVerticalOffset = buttonRadius + 15; // Button radius + spacing
+  
+  // Check if there's enough space below, otherwise place above
+  const spaceBelow = (y + h) - midY;
+  const spaceAbove = midY - y;
+  const labelYOffset = spaceBelow > labelVerticalOffset + 15 ? labelVerticalOffset : -labelVerticalOffset;
+  
   return (
     <Group listening={true} name="measurement-overlay">
-      {/* Furniture dimensions - blue lines showing width and height, split to avoid rotation button */}
-      {/* Horizontal dimension lines - split at center */}
-      <InteractiveMeasurementLine
-        measurementId={`${item.id}-furniture-width-1`}
-        points={[x, midY, midX - buttonRadius, midY]}
-        color={COLORS.dimension}
-        lineType="item"
-      />
-      <InteractiveMeasurementLine
-        measurementId={`${item.id}-furniture-width-2`}
-        points={[midX + buttonRadius, midY, x + w, midY]}
-        color={COLORS.dimension}
-        lineType="item"
-      />
-      <InteractiveDimensionLabel
-        measurementId={`${item.id}-furniture-width`}
-        x={x + w / 4} 
-        y={midY - labelOffset} 
-        text={formatMeasurement(horizontalLabel, unit)}
-        color={COLORS.dimension}
-        isSecondary={false}
-      />
-      
-      {/* Vertical dimension lines - split at center */}
-      <InteractiveMeasurementLine
-        measurementId={`${item.id}-furniture-height-1`}
-        points={[midX, y, midX, midY - buttonRadius]}
-        color={COLORS.dimension}
-        lineType="item"
-      />
-      <InteractiveMeasurementLine
-        measurementId={`${item.id}-furniture-height-2`}
-        points={[midX, midY + buttonRadius, midX, y + h]}
-        color={COLORS.dimension}
-        lineType="item"
-      />
-      <InteractiveDimensionLabel
-        measurementId={`${item.id}-furniture-height`}
-        x={midX + labelOffset + 10} 
-        y={y + h / 4} 
-        text={formatMeasurement(verticalLabel, unit)}
-        color={COLORS.dimension}
-        isSecondary={false}
-      />
+      {/* Furniture dimensions - shown subtly on the furniture itself */}
+      {!isWall && (
+        <Group x={midX} y={midY + labelYOffset}>
+          {/* Dimension text without background */}
+          <Text
+            text={dimensionText}
+            x={-dimensionText.length * 3.5}
+            y={-8}
+            fontSize={16}
+            fontFamily="-apple-system, BlinkMacSystemFont, 'Inter', sans-serif"
+            fill="#ffffff"
+            align="center"
+            width={dimensionText.length * 7}
+            listening={false}
+          />
+        </Group>
+      )}
       
       {/* Left gap - amber line from wall/obstacle to furniture */}
-      <InteractiveMeasurementLine
-        measurementId={`${item.id}-furniture-left`}
-        points={[leftBound, midY, x, midY]}
-        color={COLORS.distance}
-        lineType="spacing"
-      />
-      <InteractiveDimensionLabel
-        measurementId={`${item.id}-furniture-left`}
-        x={adjustLabelX((leftBound + x) / 2, formatMeasurement(Math.round((x - leftBound) / PIXELS_PER_CM), unit).length * fontSize * 0.6)} 
-        y={midY + labelOffset + 5} 
-        text={formatMeasurement(Math.round((x - leftBound) / PIXELS_PER_CM), unit)}
-        color={COLORS.distance}
-        isSecondary={true}
-      />
+      {!showLabels && Math.round((x - leftBound) / PIXELS_PER_CM) >= 5 && (
+        <>
+          <InteractiveMeasurementLine
+            measurementId={`${item.id}-furniture-left`}
+            points={[leftBound, midY, x, midY]}
+            color={COLORS.distance}
+            lineType="spacing"
+          />
+          <InteractiveDimensionLabel
+            measurementId={`${item.id}-furniture-left`}
+            x={adjustLabelX((leftBound + x) / 2, formatMeasurement(Math.round((x - leftBound) / PIXELS_PER_CM), unit).length * fontSize * 0.6)} 
+            y={midY + labelOffset + 5} 
+            text={formatMeasurement(Math.round((x - leftBound) / PIXELS_PER_CM), unit)}
+            color={COLORS.distance}
+            isSecondary={true}
+          />
+        </>
+      )}
 
       {/* Right gap - amber line from furniture to wall/obstacle */}
-      <InteractiveMeasurementLine
-        measurementId={`${item.id}-furniture-right`}
-        points={[x + w, midY, rightBound, midY]}
-        color={COLORS.distance}
-        lineType="spacing"
-      />
-      <InteractiveDimensionLabel
-        measurementId={`${item.id}-furniture-right`}
-        x={adjustLabelX((x + w + rightBound) / 2, formatMeasurement(Math.round((rightBound - (x + w)) / PIXELS_PER_CM), unit).length * fontSize * 0.6)} 
-        y={midY + labelOffset + 5} 
-        text={formatMeasurement(Math.round((rightBound - (x + w)) / PIXELS_PER_CM), unit)}
-        color={COLORS.distance}
-        isSecondary={true}
-      />
+      {!showLabels && Math.round((rightBound - (x + w)) / PIXELS_PER_CM) >= 5 && (
+        <>
+          <InteractiveMeasurementLine
+            measurementId={`${item.id}-furniture-right`}
+            points={[x + w, midY, rightBound, midY]}
+            color={COLORS.distance}
+            lineType="spacing"
+          />
+          <InteractiveDimensionLabel
+            measurementId={`${item.id}-furniture-right`}
+            x={adjustLabelX((x + w + rightBound) / 2, formatMeasurement(Math.round((rightBound - (x + w)) / PIXELS_PER_CM), unit).length * fontSize * 0.6)} 
+            y={midY + labelOffset + 5} 
+            text={formatMeasurement(Math.round((rightBound - (x + w)) / PIXELS_PER_CM), unit)}
+            color={COLORS.distance}
+            isSecondary={true}
+          />
+        </>
+      )}
 
       {/* Top gap - amber line from wall/obstacle to furniture */}
-      <InteractiveMeasurementLine
-        measurementId={`${item.id}-furniture-top`}
-        points={[midX, topBound, midX, y]}
-        color={COLORS.distance}
-        lineType="spacing"
-      />
-      <InteractiveDimensionLabel
-        measurementId={`${item.id}-furniture-top`}
-        x={midX - labelOffset - 10} 
-        y={adjustLabelY((topBound + y) / 2, fontSize)} 
-        text={formatMeasurement(Math.round((y - topBound) / PIXELS_PER_CM), unit)}
-        color={COLORS.distance}
-        isSecondary={true}
-      />
+      {!showLabels && Math.round((y - topBound) / PIXELS_PER_CM) >= 5 && (
+        <>
+          <InteractiveMeasurementLine
+            measurementId={`${item.id}-furniture-top`}
+            points={[midX, topBound, midX, y]}
+            color={COLORS.distance}
+            lineType="spacing"
+          />
+          <InteractiveDimensionLabel
+            measurementId={`${item.id}-furniture-top`}
+            x={midX - labelOffset - 10} 
+            y={adjustLabelY((topBound + y) / 2, fontSize)} 
+            text={formatMeasurement(Math.round((y - topBound) / PIXELS_PER_CM), unit)}
+            color={COLORS.distance}
+            isSecondary={true}
+          />
+        </>
+      )}
 
       {/* Bottom gap - amber line from furniture to wall/obstacle */}
-      <InteractiveMeasurementLine
-        measurementId={`${item.id}-furniture-bottom`}
-        points={[midX, y + h, midX, bottomBound]}
-        color={COLORS.distance}
-        lineType="spacing"
-      />
-      <InteractiveDimensionLabel
-        measurementId={`${item.id}-furniture-bottom`}
-        x={midX - labelOffset - 10} 
-        y={adjustLabelY((y + h + bottomBound) / 2, fontSize)} 
-        text={formatMeasurement(Math.round((bottomBound - (y + h)) / PIXELS_PER_CM), unit)}
-        color={COLORS.distance}
-        isSecondary={true}
-      />
+      {!showLabels && Math.round((bottomBound - (y + h)) / PIXELS_PER_CM) >= 5 && (
+        <>
+          <InteractiveMeasurementLine
+            measurementId={`${item.id}-furniture-bottom`}
+            points={[midX, y + h, midX, bottomBound]}
+            color={COLORS.distance}
+            lineType="spacing"
+          />
+          <InteractiveDimensionLabel
+            measurementId={`${item.id}-furniture-bottom`}
+            x={midX - labelOffset - 10} 
+            y={adjustLabelY((y + h + bottomBound) / 2, fontSize)} 
+            text={formatMeasurement(Math.round((bottomBound - (y + h)) / PIXELS_PER_CM), unit)}
+            color={COLORS.distance}
+            isSecondary={true}
+          />
+        </>
+      )}
     </Group>
   );
 };
