@@ -85,15 +85,125 @@ export default function RoomCanvas({
   // Manual measurement drawing state
   const [drawingStart, setDrawingStart] = useState<{ x: number; y: number } | null>(null);
   const [drawingPreview, setDrawingPreview] = useState<{ x: number; y: number } | null>(null);
+  const [isSnapping, setIsSnapping] = useState(false);
   const [selectedManualMeasurement, setSelectedManualMeasurement] = useState<string | null>(null);
   
-  // Reset drawing state when drawing mode is toggled off
+  // Reset drawing state and update cursor when drawing mode changes
   useEffect(() => {
+    const stage = stageRef.current;
     if (!isDrawingMeasurement) {
       setDrawingStart(null);
       setDrawingPreview(null);
+      if (stage) {
+        stage.container().style.cursor = 'default';
+      }
+    } else {
+      // Immediately change cursor when entering drawing mode
+      if (stage) {
+        stage.container().style.cursor = 'crosshair';
+      }
     }
   }, [isDrawingMeasurement]);
+
+  // Snap threshold for manual measurement tool (in cm)
+  const MEASUREMENT_SNAP_THRESHOLD_CM = 10; // 10cm snap distance
+  
+  // Helper function to find nearest snap point for measurement tool
+  const findSnapPoint = (cmX: number, cmY: number): { x: number; y: number; snapped: boolean } => {
+    const snapPoints: { x: number; y: number; dist: number }[] = [];
+    
+    // Room corners and edges (in cm)
+    const roomCorners = [
+      { x: 0, y: 0 },
+      { x: roomConfig.width, y: 0 },
+      { x: 0, y: roomConfig.height },
+      { x: roomConfig.width, y: roomConfig.height },
+    ];
+    
+    // Add room corners
+    roomCorners.forEach(corner => {
+      const dist = Math.sqrt((cmX - corner.x) ** 2 + (cmY - corner.y) ** 2);
+      if (dist <= MEASUREMENT_SNAP_THRESHOLD_CM) {
+        snapPoints.push({ ...corner, dist });
+      }
+    });
+    
+    // Snap to room edges (walls) - snap to nearest point on edge
+    // Top wall (y = 0)
+    if (cmX >= 0 && cmX <= roomConfig.width && Math.abs(cmY) <= MEASUREMENT_SNAP_THRESHOLD_CM) {
+      snapPoints.push({ x: cmX, y: 0, dist: Math.abs(cmY) });
+    }
+    // Bottom wall (y = roomHeight)
+    if (cmX >= 0 && cmX <= roomConfig.width && Math.abs(cmY - roomConfig.height) <= MEASUREMENT_SNAP_THRESHOLD_CM) {
+      snapPoints.push({ x: cmX, y: roomConfig.height, dist: Math.abs(cmY - roomConfig.height) });
+    }
+    // Left wall (x = 0)
+    if (cmY >= 0 && cmY <= roomConfig.height && Math.abs(cmX) <= MEASUREMENT_SNAP_THRESHOLD_CM) {
+      snapPoints.push({ x: 0, y: cmY, dist: Math.abs(cmX) });
+    }
+    // Right wall (x = roomWidth)
+    if (cmY >= 0 && cmY <= roomConfig.height && Math.abs(cmX - roomConfig.width) <= MEASUREMENT_SNAP_THRESHOLD_CM) {
+      snapPoints.push({ x: roomConfig.width, y: cmY, dist: Math.abs(cmX - roomConfig.width) });
+    }
+    
+    // Add snap points for all items (furniture, doors, windows, walls)
+    items.forEach(item => {
+      // Get item bounds in cm
+      const itemLeft = item.x;
+      const itemRight = item.x + item.width;
+      const itemTop = item.y;
+      const itemBottom = item.y + item.height;
+      
+      // Item corners
+      const itemCorners = [
+        { x: itemLeft, y: itemTop },
+        { x: itemRight, y: itemTop },
+        { x: itemLeft, y: itemBottom },
+        { x: itemRight, y: itemBottom },
+      ];
+      
+      itemCorners.forEach(corner => {
+        const dist = Math.sqrt((cmX - corner.x) ** 2 + (cmY - corner.y) ** 2);
+        if (dist <= MEASUREMENT_SNAP_THRESHOLD_CM) {
+          snapPoints.push({ ...corner, dist });
+        }
+      });
+      
+      // Item center
+      const centerX = item.x + item.width / 2;
+      const centerY = item.y + item.height / 2;
+      const centerDist = Math.sqrt((cmX - centerX) ** 2 + (cmY - centerY) ** 2);
+      if (centerDist <= MEASUREMENT_SNAP_THRESHOLD_CM) {
+        snapPoints.push({ x: centerX, y: centerY, dist: centerDist });
+      }
+      
+      // Item edges (snap to nearest point on edge)
+      // Top edge
+      if (cmX >= itemLeft && cmX <= itemRight && Math.abs(cmY - itemTop) <= MEASUREMENT_SNAP_THRESHOLD_CM) {
+        snapPoints.push({ x: cmX, y: itemTop, dist: Math.abs(cmY - itemTop) });
+      }
+      // Bottom edge
+      if (cmX >= itemLeft && cmX <= itemRight && Math.abs(cmY - itemBottom) <= MEASUREMENT_SNAP_THRESHOLD_CM) {
+        snapPoints.push({ x: cmX, y: itemBottom, dist: Math.abs(cmY - itemBottom) });
+      }
+      // Left edge
+      if (cmY >= itemTop && cmY <= itemBottom && Math.abs(cmX - itemLeft) <= MEASUREMENT_SNAP_THRESHOLD_CM) {
+        snapPoints.push({ x: itemLeft, y: cmY, dist: Math.abs(cmX - itemLeft) });
+      }
+      // Right edge
+      if (cmY >= itemTop && cmY <= itemBottom && Math.abs(cmX - itemRight) <= MEASUREMENT_SNAP_THRESHOLD_CM) {
+        snapPoints.push({ x: itemRight, y: cmY, dist: Math.abs(cmX - itemRight) });
+      }
+    });
+    
+    // Find closest snap point
+    if (snapPoints.length > 0) {
+      snapPoints.sort((a, b) => a.dist - b.dist);
+      return { x: snapPoints[0].x, y: snapPoints[0].y, snapped: true };
+    }
+    
+    return { x: cmX, y: cmY, snapped: false };
+  };
 
   // Calculate optimal scale and position
   const roomPxWidth = roomConfig.width * PIXELS_PER_CM;
@@ -387,8 +497,13 @@ export default function RoomCanvas({
       const canvasY = (pos.y - stagePos.y - baseCenterOffsetY) / scale;
       
       // Convert to cm (relative to room origin)
-      const cmX = canvasX / PIXELS_PER_CM;
-      const cmY = canvasY / PIXELS_PER_CM;
+      const rawCmX = canvasX / PIXELS_PER_CM;
+      const rawCmY = canvasY / PIXELS_PER_CM;
+      
+      // Apply snap
+      const snapped = findSnapPoint(rawCmX, rawCmY);
+      const cmX = snapped.x;
+      const cmY = snapped.y;
       
       if (!drawingStart) {
         // First click: set start point
@@ -437,15 +552,19 @@ export default function RoomCanvas({
       stage.container().style.cursor = 'crosshair';
     }
     
-    // Update preview line while drawing
+    // Update preview line while drawing (with snap)
     if (isDrawingMeasurement && drawingStart) {
       const pos = stage.getPointerPosition();
       if (pos) {
         const canvasX = (pos.x - stagePos.x - baseCenterOffsetX) / scale;
         const canvasY = (pos.y - stagePos.y - baseCenterOffsetY) / scale;
-        const cmX = canvasX / PIXELS_PER_CM;
-        const cmY = canvasY / PIXELS_PER_CM;
-        setDrawingPreview({ x: cmX, y: cmY });
+        const rawCmX = canvasX / PIXELS_PER_CM;
+        const rawCmY = canvasY / PIXELS_PER_CM;
+        
+        // Apply snap
+        const snapped = findSnapPoint(rawCmX, rawCmY);
+        setDrawingPreview({ x: snapped.x, y: snapped.y });
+        setIsSnapping(snapped.snapped);
       }
     }
 
@@ -1097,7 +1216,7 @@ export default function RoomCanvas({
                     drawingPreview.x * PIXELS_PER_CM,
                     drawingPreview.y * PIXELS_PER_CM,
                   ]}
-                  stroke="#8b5cf6"
+                  stroke={isSnapping ? '#22c55e' : '#8b5cf6'}
                   strokeWidth={2}
                   dash={[8, 4]}
                   opacity={0.7}
@@ -1111,6 +1230,28 @@ export default function RoomCanvas({
                   fill="#8b5cf6"
                 />
                 
+                {/* Preview end point (shows snap state) */}
+                <Circle
+                  x={drawingPreview.x * PIXELS_PER_CM}
+                  y={drawingPreview.y * PIXELS_PER_CM}
+                  radius={isSnapping ? 10 : 6}
+                  fill={isSnapping ? '#22c55e' : '#8b5cf6'}
+                  opacity={isSnapping ? 1 : 0.5}
+                />
+                
+                {/* Snap indicator ring */}
+                {isSnapping && (
+                  <Circle
+                    x={drawingPreview.x * PIXELS_PER_CM}
+                    y={drawingPreview.y * PIXELS_PER_CM}
+                    radius={16}
+                    stroke="#22c55e"
+                    strokeWidth={2}
+                    fill="transparent"
+                    opacity={0.5}
+                  />
+                )}
+                
                 {/* Preview distance label */}
                 {(() => {
                   const dx = drawingPreview.x - drawingStart.x;
@@ -1122,6 +1263,8 @@ export default function RoomCanvas({
                   
                   if (distanceCm < 1) return null; // Don't show label for very short distances
                   
+                  const labelColor = isSnapping ? '#22c55e' : '#8b5cf6';
+                  
                   return (
                     <>
                       <Rect
@@ -1130,7 +1273,7 @@ export default function RoomCanvas({
                         width={80}
                         height={24}
                         fill="white"
-                        stroke="#8b5cf6"
+                        stroke={labelColor}
                         strokeWidth={1}
                         cornerRadius={4}
                         opacity={0.9}
@@ -1140,7 +1283,7 @@ export default function RoomCanvas({
                         y={midY - 8}
                         width={80}
                         text={distanceText}
-                        fill="#8b5cf6"
+                        fill={labelColor}
                         fontSize={14}
                         fontStyle="bold"
                         align="center"
