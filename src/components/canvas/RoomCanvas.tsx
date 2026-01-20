@@ -242,11 +242,18 @@ export default function RoomCanvas({
   const contentWidth = maxX - minX;
   const contentHeight = maxY - minY;
   
-  // Dynamic padding that scales with zoom level
-  // At 100% zoom (userZoom=1.0): 100px padding - room uses maximum space
-  // At 500% zoom (userZoom=5.0): 500px padding - ensures edge visibility
-  // This keeps content away from edges at all zoom levels while maximizing space
-  const basePadding = 100;
+  // Adaptive padding that scales with viewport and zoom
+  // Smaller viewports get smaller padding (maximize space)
+  // Larger viewports get larger padding (nicer appearance)
+  const PADDING_RATIO = 0.04; // 4% of smaller viewport dimension
+  const MIN_PADDING = 20; // Minimum for small screens
+  const MAX_PADDING = 60; // Maximum for large screens
+  
+  const smallerViewportDim = Math.min(viewportWidth, viewportHeight);
+  const calculatedBasePadding = smallerViewportDim * PADDING_RATIO;
+  const basePadding = Math.max(MIN_PADDING, Math.min(MAX_PADDING, calculatedBasePadding));
+  
+  // Scale padding with zoom for consistency
   const padding = basePadding * userZoom;
   
   // Base scale to fit content
