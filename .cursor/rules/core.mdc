@@ -94,6 +94,46 @@ Why:
 ✓ More efficient - fast testing, less back-and-forth
 ✓ Thoughtful - reflection prevents rushed mistakes
 
+## Confirmation Before Implementation (CRITICAL)
+
+ALWAYS confirm understanding before implementing ANY task, fix, or feature:
+
+### Workflow (MANDATORY):
+1. **User asks** question or gives task
+2. **I interpret** - explain my understanding clearly
+3. **I ask** - "Did I understand correctly?" or similar
+4. **User confirms** - wait for "yes", "correct", "y", etc.
+5. **ONLY THEN** - start implementing
+
+### Never Skip This Step:
+- ❌ Don't implement immediately
+- ❌ Don't assume you understood
+- ❌ Don't start coding without confirmation
+- ✅ Always restate the task in your own words
+- ✅ Always wait for explicit confirmation
+- ✅ Then proceed with implementation
+
+### Why This Matters:
+- Prevents misunderstandings (wrong element, wrong file, wrong logic)
+- Saves time (no back-and-forth fixes)
+- Builds trust (user knows we're aligned)
+- Higher quality (we're solving the right problem)
+
+### Example:
+```
+User: "Fix the alignment issue"
+
+Agent: "Let me confirm I understand:
+- You want the header title aligned with sidebar sections
+- Not the sidebar card itself
+- Header padding should match sidebar (20px)
+Did I understand correctly?"
+
+User: "yes"
+
+Agent: [NOW implements the fix]
+```
+
 ## 2. Step-by-Step Execution
 For each task, tell me:
 - Which tool (Cursor, Cursor Agent, Supabase, etc.)
