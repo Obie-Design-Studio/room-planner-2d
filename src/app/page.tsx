@@ -11,6 +11,7 @@ import FurnitureLibraryModal from "@/components/ui/FurnitureLibraryModal";
 import CustomFurnitureModal from "@/components/ui/CustomFurnitureModal";
 import ExportModal from "@/components/ui/ExportModal";
 import LoadRoomModal from "@/components/ui/LoadRoomModal";
+import NotificationModal from "@/components/ui/NotificationModal";
 import { Armchair, Table, Bed, RectangleHorizontal, DoorOpen, Trash2, Settings, ChevronDown, ChevronUp, Plus, Grid3x3, Menu, X, Save, FolderOpen, Download, Eye } from "lucide-react";
 import { PIXELS_PER_CM, WALL_THICKNESS_PX, WALL_THICKNESS_CM } from "@/lib/constants";
 import { findFreePosition } from "@/lib/collisionDetection";
@@ -102,6 +103,7 @@ export default function Home() {
   const [sidebarWidth, setSidebarWidth] = useState(320);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
+  const [notification, setNotification] = useState<{ message: string; type: 'error' | 'success' | 'info'; title?: string } | null>(null);
   const [hoveredDimension, setHoveredDimension] = useState<string | null>(null);
   const dimensionTooltipTimeout = useRef<NodeJS.Timeout | null>(null);
 
@@ -239,12 +241,18 @@ export default function Home() {
         localStorage.setItem('lastRoomId', result.room.id);
       }
       setHasUnsavedChanges(false); // Clear unsaved flag
-      alert(currentRoomId ? 'Room updated successfully!' : 'Room saved successfully!'); 
+      setNotification({ 
+        message: currentRoomId ? 'Room updated successfully!' : 'Room saved successfully!',
+        type: 'success'
+      }); 
     } else { 
       // Extract error message from error object
       const err = result.error as { message?: string; details?: string } | undefined;
       const errorMessage = err?.message || err?.details || (result.error ? JSON.stringify(result.error) : 'Unknown error');
-      alert('Failed to save room: ' + errorMessage); 
+      setNotification({ 
+        message: 'Failed to save room: ' + errorMessage,
+        type: 'error'
+      }); 
     }
   };
 
@@ -278,13 +286,19 @@ export default function Home() {
         localStorage.setItem('lastRoomId', result.room.id);
       }
       setHasUnsavedChanges(false);
-      alert('New room created successfully!'); 
+      setNotification({ 
+        message: 'New room created successfully!',
+        type: 'success'
+      }); 
     } else { 
       // Restore original room ID if save failed
       setCurrentRoomId(originalRoomId);
       const err = result.error as { message?: string; details?: string } | undefined;
       const errorMessage = err?.message || err?.details || (result.error ? JSON.stringify(result.error) : 'Unknown error');
-      alert('Failed to create new room: ' + errorMessage); 
+      setNotification({ 
+        message: 'Failed to create new room: ' + errorMessage,
+        type: 'error'
+      }); 
     }
   };
 
@@ -357,7 +371,10 @@ export default function Home() {
       localStorage.setItem('lastRoomId', roomId);
       setIsLoadModalOpen(false);
     } else { 
-      alert('Failed to load room'); 
+      setNotification({ 
+        message: 'Failed to load room. Please try again.',
+        type: 'error'
+      });
     }
   };
 
@@ -386,7 +403,10 @@ export default function Home() {
           }
         );
       } else {
-        alert('Canvas not ready. Please try again.');
+        setNotification({ 
+          message: 'Canvas not ready. Please try again.',
+          type: 'error'
+        });
       }
     }
   };
@@ -412,7 +432,11 @@ export default function Home() {
     const freePos = findFreePosition(w, h, roomConfig.width, roomConfig.height, items, type, wall);
     
     if (!freePos) {
-      alert('No free space available to place this item. Please remove or move other items first.');
+      setNotification({ 
+        message: 'No free space available to place this item. Please remove or move other items first.',
+        type: 'error',
+        title: 'Cannot Place Item'
+      });
       return;
     }
 
@@ -1419,6 +1443,14 @@ export default function Home() {
         isOpen={isLoadModalOpen}
         onClose={() => setIsLoadModalOpen(false)}
         onLoad={handleLoadRoom}
+      />
+
+      <NotificationModal
+        isOpen={notification !== null}
+        onClose={() => setNotification(null)}
+        message={notification?.message || ''}
+        type={notification?.type || 'info'}
+        title={notification?.title}
       />
     </div>
   );

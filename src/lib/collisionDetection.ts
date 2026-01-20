@@ -105,13 +105,26 @@ export function findFreePosition(
 ): { x: number; y: number } | null {
   const isWallObject = itemType.toLowerCase() === 'window' || itemType.toLowerCase() === 'door';
 
-  // For wall objects, use the provided wall parameter
-  if (isWallObject && wall) {
-    if (wall === 'top') {
-      return findFreePositionOnWall(itemWidth, roomWidth, existingItems, 'top');
-    } else if (wall === 'left') {
-      return findFreePositionOnWall(itemWidth, roomHeight, existingItems, 'left');
+  // For wall objects, try the specified wall first, then try all other walls if no space
+  if (isWallObject) {
+    // Try specified wall first (if provided)
+    if (wall) {
+      const pos = findFreePositionOnWall(itemWidth, roomWidth, roomHeight, existingItems, wall);
+      if (pos) return pos;
     }
+    
+    // If specified wall was full or no wall specified, try all walls in order
+    const wallsToTry: ('top' | 'bottom' | 'left' | 'right')[] = wall 
+      ? ['top', 'bottom', 'left', 'right'].filter(w => w !== wall) as ('top' | 'bottom' | 'left' | 'right')[]
+      : ['top', 'bottom', 'left', 'right'];
+    
+    for (const tryWall of wallsToTry) {
+      const pos = findFreePositionOnWall(itemWidth, roomWidth, roomHeight, existingItems, tryWall);
+      if (pos) return pos;
+    }
+    
+    // No space found on any wall
+    return null;
   }
 
   // For regular furniture and walls, try grid positions
@@ -163,43 +176,76 @@ export function findFreePosition(
  */
 function findFreePositionOnWall(
   itemLength: number,
-  wallLength: number,
+  roomWidth: number,
+  roomHeight: number,
   existingItems: FurnitureItem[],
-  wall: 'top' | 'left'
+  wall: 'top' | 'left' | 'bottom' | 'right'
 ): { x: number; y: number } | null {
   const gridSize = 10; // cm
   const padding = 5; // cm from corners
 
   if (wall === 'top') {
     // Try positions along top wall
-    for (let x = padding; x <= wallLength - itemLength - padding; x += gridSize) {
+    for (let x = padding; x <= roomWidth - itemLength - padding; x += gridSize) {
       const testItem = {
         x,
         y: -WALL_THICKNESS_CM,
         width: itemLength,
         height: WALL_THICKNESS_CM,
         rotation: 0,
-        type: 'door', // Use door as proxy for wall object
+        type: 'door',
       } as FurnitureItem;
 
       if (!wouldCollide(testItem, existingItems)) {
         return { x, y: -WALL_THICKNESS_CM };
       }
     }
+  } else if (wall === 'bottom') {
+    // Try positions along bottom wall
+    for (let x = padding; x <= roomWidth - itemLength - padding; x += gridSize) {
+      const testItem = {
+        x,
+        y: roomHeight,
+        width: itemLength,
+        height: WALL_THICKNESS_CM,
+        rotation: 0,
+        type: 'door',
+      } as FurnitureItem;
+
+      if (!wouldCollide(testItem, existingItems)) {
+        return { x, y: roomHeight };
+      }
+    }
   } else if (wall === 'left') {
     // Try positions along left wall
-    for (let y = padding; y <= wallLength - itemLength - padding; y += gridSize) {
+    for (let y = padding; y <= roomHeight - itemLength - padding; y += gridSize) {
       const testItem = {
         x: -WALL_THICKNESS_CM,
         y,
         width: WALL_THICKNESS_CM,
         height: itemLength,
         rotation: 0,
-        type: 'door', // Use door as proxy for wall object
+        type: 'door',
       } as FurnitureItem;
 
       if (!wouldCollide(testItem, existingItems)) {
         return { x: -WALL_THICKNESS_CM, y };
+      }
+    }
+  } else if (wall === 'right') {
+    // Try positions along right wall
+    for (let y = padding; y <= roomHeight - itemLength - padding; y += gridSize) {
+      const testItem = {
+        x: roomWidth,
+        y,
+        width: WALL_THICKNESS_CM,
+        height: itemLength,
+        rotation: 0,
+        type: 'door',
+      } as FurnitureItem;
+
+      if (!wouldCollide(testItem, existingItems)) {
+        return { x: roomWidth, y };
       }
     }
   }
