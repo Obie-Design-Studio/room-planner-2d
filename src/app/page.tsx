@@ -256,52 +256,6 @@ export default function Home() {
     }
   };
 
-  const handleSaveAsNew = async () => {
-    // Temporarily clear current room ID to force creation of new room
-    const originalRoomId = currentRoomId;
-    setCurrentRoomId(null);
-    
-    const roomData = { 
-      name: roomName + ' (Copy)', // Add "(Copy)" to name
-      room_type: roomConfig.roomType || 'living',
-      width_cm: roomConfig.width, 
-      length_cm: roomConfig.height, 
-      ceiling_height_cm: ceilingHeight, 
-      default_window_width_cm: 120, 
-      default_window_height_cm: 150, 
-      default_door_width_cm: 90, 
-      default_door_height_cm: 210, 
-      wall_color: '#FFFFFF', 
-      current_view: 'blueprint',
-      hidden_measurements: Array.from(hiddenMeasurements),
-      manual_measurements: manualMeasurements
-    };
-    const roomItems = items.map(item => ({ type: item.type, label: item.type, x: item.x, y: item.y, width: item.width, height: item.height, rotation: item.rotation, color: item.color }));
-    const result = await saveRoom(roomData, roomItems);
-    
-    if (result.success) { 
-      if (result.room?.id) {
-        setCurrentRoomId(result.room.id); // Track new room
-        setRoomName(roomName + ' (Copy)'); // Update displayed name
-        localStorage.setItem('lastRoomId', result.room.id);
-      }
-      setHasUnsavedChanges(false);
-      setNotification({ 
-        message: 'New room created successfully!',
-        type: 'success'
-      }); 
-    } else { 
-      // Restore original room ID if save failed
-      setCurrentRoomId(originalRoomId);
-      const err = result.error as { message?: string; details?: string } | undefined;
-      const errorMessage = err?.message || err?.details || (result.error ? JSON.stringify(result.error) : 'Unknown error');
-      setNotification({ 
-        message: 'Failed to create new room: ' + errorMessage,
-        type: 'error'
-      }); 
-    }
-  };
-
   const handleNewRoom = () => {
     // Confirm if there are unsaved changes
     if (hasUnsavedChanges) {
@@ -677,7 +631,6 @@ export default function Home() {
               
               {/* Action Buttons */}
               <button onClick={handleSaveRoom} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 12px', backgroundColor: 'transparent', border: '1px solid #E5E5E5', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 500, color: '#0A0A0A' }}><Save size={16} /> Save</button>
-              <button onClick={handleSaveAsNew} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 12px', backgroundColor: 'transparent', border: '1px solid #E5E5E5', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 500, color: '#0A0A0A' }}>Save As New</button>
               <button onClick={() => setIsExportModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 12px', backgroundColor: '#0A0A0A', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 500, color: '#FFFFFF' }}><Download size={16} /> Export</button>
             </>
           )}
@@ -1350,7 +1303,6 @@ export default function Home() {
               
               {/* Save Actions */}
               <button onClick={() => { handleSaveRoom(); setIsSidebarOpen(false); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', backgroundColor: '#FFFFFF', border: '1px solid #E5E5E5', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 500, color: '#0A0A0A' }}><Save size={18} /> Save</button>
-              <button onClick={() => { handleSaveAsNew(); setIsSidebarOpen(false); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', backgroundColor: '#FFFFFF', border: '1px solid #E5E5E5', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 500, color: '#0A0A0A' }}>Save As New</button>
               
               {/* Export */}
               <button onClick={() => { setIsExportModalOpen(true); setIsSidebarOpen(false); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', backgroundColor: '#0A0A0A', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 500, color: '#FFFFFF' }}><Download size={18} /> Export</button>
