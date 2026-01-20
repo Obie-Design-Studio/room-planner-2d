@@ -222,9 +222,9 @@ export default function RoomCanvas({
   const roomPxHeight = roomConfig.height * PIXELS_PER_CM;
   
   // Smart bounds calculation: only add buffer where doors/windows actually are
-  // This allows better zoom when doors are only on some walls (e.g., 120% when doors on left only)
+  // This allows better zoom when doors are only on some walls (e.g., 165% when doors on 2 walls)
   
-  const dimensionLabelSpace = 160; // Space for wall dimension labels (always on all sides)
+  const dimensionLabelSpace = 100; // Space for wall dimension labels (reduced from 160px)
   
   // Detect which walls have doors/windows and their sizes
   let maxDoorOnTop = 0;
@@ -238,8 +238,24 @@ export default function RoomCanvas({
       const itemY = item.y;  // Keep in CM for easier comparison
       const itemX = item.x;  // Keep in CM
       
-      // Use larger dimension for arc (doors can be rotated)
-      const arcLength = Math.max(item.width, item.height) * PIXELS_PER_CM;
+      // Check door swing direction (from ItemEditModal.tsx logic)
+      // rotation >= 180 = swings OUT (outward from room) - needs buffer
+      // rotation < 180 = swings IN (inward to room) - NO buffer needed!
+      const swingsOutward = item.rotation >= 180;
+      const isDoor = itemType === 'door';
+      
+      // Windows always need buffer (they extend outside)
+      // Doors only need buffer if they swing outward
+      const needsBuffer = !isDoor || swingsOutward;
+      
+      if (!needsBuffer) {
+        console.log('⚪ Door swings INWARD - no buffer needed:', item.type, `rotation=${item.rotation}°`);
+        return; // Skip this door - no buffer needed
+      }
+      
+      // CRITICAL FIX: Door/window arcs use WIDTH (smaller dimension), not height!
+      // Example: 80×210cm door → arc is 80cm radius, not 210cm
+      const arcLength = Math.min(item.width, item.height) * PIXELS_PER_CM;
       
       // More lenient detection thresholds (within 20cm of wall edge)
       const threshold = 20; // cm
@@ -247,22 +263,22 @@ export default function RoomCanvas({
       // Top wall: y is near 0
       if (itemY < threshold) {
         maxDoorOnTop = Math.max(maxDoorOnTop, arcLength);
-        console.log('🔵 Door/Window on TOP wall:', item.type, arcLength, 'px');
+        console.log('🔵 Door/Window on TOP wall:', item.type, arcLength, 'px', swingsOutward ? '(OUT)' : '(IN)');
       }
       // Bottom wall: y is near room height
       else if (itemY > roomConfig.height - threshold) {
         maxDoorOnBottom = Math.max(maxDoorOnBottom, arcLength);
-        console.log('🔵 Door/Window on BOTTOM wall:', item.type, arcLength, 'px');
+        console.log('🔵 Door/Window on BOTTOM wall:', item.type, arcLength, 'px', swingsOutward ? '(OUT)' : '(IN)');
       }
       // Left wall: x is near 0
       if (itemX < threshold) {
         maxDoorOnLeft = Math.max(maxDoorOnLeft, arcLength);
-        console.log('🔵 Door/Window on LEFT wall:', item.type, arcLength, 'px');
+        console.log('🔵 Door/Window on LEFT wall:', item.type, arcLength, 'px', swingsOutward ? '(OUT)' : '(IN)');
       }
       // Right wall: x is near room width
       else if (itemX > roomConfig.width - threshold) {
         maxDoorOnRight = Math.max(maxDoorOnRight, arcLength);
-        console.log('🔵 Door/Window on RIGHT wall:', item.type, arcLength, 'px');
+        console.log('🔵 Door/Window on RIGHT wall:', item.type, arcLength, 'px', swingsOutward ? '(OUT)' : '(IN)');
       }
     }
   });
