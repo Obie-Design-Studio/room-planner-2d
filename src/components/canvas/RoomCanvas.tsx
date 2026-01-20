@@ -244,7 +244,7 @@ export default function RoomCanvas({
   
   // Dynamic padding that scales with zoom level
   // At 100% zoom (userZoom=1.0): 100px padding - room uses maximum space
-  // At 300% zoom (userZoom=3.0): 300px padding - ensures edge visibility
+  // At 500% zoom (userZoom=5.0): 500px padding - ensures edge visibility
   // This keeps content away from edges at all zoom levels while maximizing space
   const basePadding = 100;
   const padding = basePadding * userZoom;
@@ -303,7 +303,7 @@ export default function RoomCanvas({
       
       const oldZoom = userZoom;
       const newZoom = direction > 0 ? userZoom * scaleBy : userZoom / scaleBy;
-      const clampedZoom = Math.max(0.1, Math.min(3.0, newZoom));
+      const clampedZoom = Math.max(0.1, Math.min(5.0, newZoom)); // Increased max zoom to 500%
       
       if (clampedZoom === oldZoom) return; // Already at limit
       
@@ -389,11 +389,11 @@ export default function RoomCanvas({
     }
   };
 
-  // Zoom controls (10% - 300%)
+  // Zoom controls (10% - 500%)
   // Button zoom is center-locked for predictable, consistent behavior
   const handleZoomIn = () => {
     const oldZoom = userZoom;
-    const newZoom = Math.min(3.0, oldZoom * 1.15);
+    const newZoom = Math.min(5.0, oldZoom * 1.15); // Increased max zoom to 500%
     if (newZoom === oldZoom) return; // Already at limit
     
     const oldScale = baseScale * oldZoom;
