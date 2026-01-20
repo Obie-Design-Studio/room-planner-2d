@@ -290,8 +290,8 @@ export default function RoomCanvas({
     right: maxDoorOnRight
   });
   
+  // CONTENT BOUNDS (for scale calculation - includes door arcs)
   // Add buffer only on sides that have doors/windows
-  // This allows tighter fit and better zoom when doors are only on some walls!
   let minX = -WALL_THICKNESS_PX / 2 - dimensionLabelSpace - maxDoorOnLeft;
   let minY = -WALL_THICKNESS_PX / 2 - dimensionLabelSpace - maxDoorOnTop;
   let maxX = roomPxWidth + WALL_THICKNESS_PX / 2 + maxDoorOnRight;
@@ -299,6 +299,16 @@ export default function RoomCanvas({
   
   const contentWidth = maxX - minX;
   const contentHeight = maxY - minY;
+  
+  // ROOM BOUNDS (for centering - excludes door arcs, only room + labels)
+  // Center the ROOM itself, not the door arcs!
+  const roomMinX = -WALL_THICKNESS_PX / 2 - dimensionLabelSpace;
+  const roomMinY = -WALL_THICKNESS_PX / 2 - dimensionLabelSpace;
+  const roomMaxX = roomPxWidth + WALL_THICKNESS_PX / 2;
+  const roomMaxY = roomPxHeight + WALL_THICKNESS_PX / 2;
+  
+  const roomCenterWidth = roomMaxX - roomMinX;
+  const roomCenterHeight = roomMaxY - roomMinY;
   
   // Adaptive padding based on viewport size only (NOT scaled with zoom)
   // This allows "Fit to View" to calculate optimal zoom levels above 100%
@@ -330,10 +340,11 @@ export default function RoomCanvas({
     effectiveZoom: `${(scale * 100).toFixed(0)}%`
   });
   
-  // Calculate where the content should be positioned to center it
-  // These offsets account for: viewport center, content size, and content origin (minX, minY)
-  const baseCenterOffsetX = viewportWidth / 2 - (contentWidth / 2 + minX) * scale;
-  const baseCenterOffsetY = viewportHeight / 2 - (contentHeight / 2 + minY) * scale;
+  // Calculate where the ROOM should be positioned to center it
+  // Use room bounds (not content bounds) so the room is centered, not the door arcs
+  // Door arcs extend into padding symmetrically
+  const baseCenterOffsetX = viewportWidth / 2 - (roomCenterWidth / 2 + roomMinX) * scale;
+  const baseCenterOffsetY = viewportHeight / 2 - (roomCenterHeight / 2 + roomMinY) * scale;
 
   // Elastic boundary helper - allows ±100px over-pan with resistance
   const ELASTIC_MARGIN = 100;
