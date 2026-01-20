@@ -399,6 +399,10 @@ export default function Home() {
       return;
     }
 
+    // Doors and windows should default to outward-opening (rotation >= 180)
+    // Regular furniture defaults to 0
+    const defaultRotation = isWallObject ? 180 : 0;
+    
     const newItem: FurnitureItem = {
       id: crypto.randomUUID(),
       type: type,
@@ -406,7 +410,7 @@ export default function Home() {
       y: freePos.y,
       width: w,
       height: h,
-      rotation: 0,
+      rotation: defaultRotation,
       color: c,
     };
     setItems((prev) => [...prev, newItem]);
