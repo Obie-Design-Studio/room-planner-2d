@@ -111,7 +111,11 @@ const MeasurementOverlay: React.FC<Props> = ({
   
   // Zoom-aware offsets for better spacing at different zoom levels
   const outsideOffset = Math.max(20, Math.min(40, 30 / zoom)); // Distance outside room for wall object measurements
-  const labelOffset = Math.max(10, Math.min(20, 15 / zoom)); // Offset for labels from measurement lines
+  
+  // Minimum distance from furniture edge: ensure at least 8cm (or 8px * zoom) of padding
+  const MIN_EDGE_PADDING_CM = 8;
+  const minPaddingPx = MIN_EDGE_PADDING_CM * PIXELS_PER_CM;
+  const labelOffset = Math.max(minPaddingPx, Math.min(30, 20 / zoom)); // Offset for labels from measurement lines
 
   // Calculate furniture center and nearest obstacles (needed for startEditing)
   const midX = x + w / 2;
@@ -1384,30 +1388,64 @@ const MeasurementOverlay: React.FC<Props> = ({
   // Create dimension text for furniture (show on the item itself)
   const dimensionText = `${horizontalLabel} × ${verticalLabel} cm`;
   
-  // Calculate vertical offset to position label below the rotation button
-  const labelVerticalOffset = buttonRadius + 15; // Button radius + spacing
+  // Auto-size dimension text to fit within furniture with padding
+  const DIMENSION_PADDING_RATIO = 0.15; // 15% padding on each side
+  const MIN_DIMENSION_FONT = 10;
+  const MAX_DIMENSION_FONT = 20;
   
-  // Check if there's enough space below, otherwise place above
-  const spaceBelow = (y + h) - midY;
-  const spaceAbove = midY - y;
-  const labelYOffset = spaceBelow > labelVerticalOffset + 15 ? labelVerticalOffset : -labelVerticalOffset;
+  // Available width for dimension text after padding
+  const availableDimensionWidth = w * (1 - 2 * DIMENSION_PADDING_RATIO);
+  
+  // Calculate font size that fits within available space
+  // Approximate text width as fontSize * text.length * 0.6 (average char width ratio)
+  const maxDimensionFontFromWidth = availableDimensionWidth / (dimensionText.length * 0.6);
+  
+  // Apply zoom scaling and clamp
+  let dimensionFontSize = Math.max(MIN_DIMENSION_FONT, Math.min(MAX_DIMENSION_FONT, maxDimensionFontFromWidth * Math.sqrt(zoom)));
+  
+  // When labels are shown, position dimension text as a second row below the label
+  // When labels are hidden, position relative to rotation button as before
+  let labelYOffset = 0;
+  
+  if (showLabels) {
+    // Estimate label font size (same calculation as in FurnitureShape.tsx)
+    const MIN_PADDING_PX = 16;
+    const availableWidth = w - (2 * MIN_PADDING_PX);
+    const availableHeight = h - (2 * MIN_PADDING_PX);
+    let labelFontSize = Math.min(availableWidth, availableHeight) * 0.3;
+    labelFontSize = labelFontSize * Math.sqrt(zoom);
+    labelFontSize = Math.max(16, Math.min(48, labelFontSize));
+    
+    // Position dimension text below label with spacing
+    const TEXT_SPACING = 8; // Space between label and dimension
+    labelYOffset = labelFontSize / 2 + TEXT_SPACING + dimensionFontSize / 2;
+  } else {
+    // Calculate vertical offset to position label below the rotation button
+    const labelVerticalOffset = buttonRadius + dimensionFontSize + 10; // Button radius + font size + spacing
+    
+    // Check if there's enough space below, otherwise place above
+    const spaceBelow = (y + h) - midY;
+    const spaceAbove = midY - y;
+    labelYOffset = spaceBelow > labelVerticalOffset + 15 ? labelVerticalOffset : -labelVerticalOffset;
+  }
   
   return (
     <Group listening={true} name="measurement-overlay">
       {/* Furniture dimensions - shown subtly on the furniture itself */}
       {!isWall && (
-        <Group x={midX} y={midY + labelYOffset}>
-          {/* Dimension text without background */}
+        <Group x={midX} y={midY + labelYOffset} rotation={rotation}>
+          {/* Dimension text without background - auto-sized to fit */}
           <Text
             text={dimensionText}
-            x={-dimensionText.length * 3.5}
-            y={-8}
-            fontSize={16}
+            x={-w / 2}
+            y={-dimensionFontSize / 2}
+            fontSize={dimensionFontSize}
             fontFamily="-apple-system, BlinkMacSystemFont, 'Inter', sans-serif"
             fill="#ffffff"
             align="center"
-            width={dimensionText.length * 7}
+            width={w}
             listening={false}
+            ellipsis={true}
           />
         </Group>
       )}

@@ -22,6 +22,7 @@ export interface Room {
   default_door_height_cm: number;
   wall_color: string;
   current_view: string;
+  hidden_measurements?: string[]; // Array of measurement IDs that are hidden
 }
 
 export interface RoomItem {

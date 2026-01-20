@@ -37,6 +37,20 @@ export default function Home() {
   const [showAllMeasurements, setShowAllMeasurements] = useState(false);
   const [showLabels, setShowLabels] = useState(false);
   const [viewport, setViewport] = useState({ width: 800, height: 600 });
+  const [hiddenMeasurements, setHiddenMeasurements] = useState<Set<string>>(new Set());
+  
+  // Handler to toggle individual measurement visibility
+  const handleToggleMeasurement = (measurementId: string) => {
+    setHiddenMeasurements(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(measurementId)) {
+        newSet.delete(measurementId);
+      } else {
+        newSet.add(measurementId);
+      }
+      return newSet;
+    });
+  };
   
   // Handler to toggle measurements (mutually exclusive with labels)
   const handleToggleMeasurements = () => {
@@ -90,6 +104,10 @@ export default function Home() {
               name: item.label || item.type
             })));
           }
+          // Restore hidden measurements
+          if (result.room.hidden_measurements) {
+            setHiddenMeasurements(new Set(result.room.hidden_measurements));
+          }
         }
       }
     };
@@ -136,7 +154,20 @@ export default function Home() {
 
 
   const handleSaveRoom = async () => {
-    const roomData = { name: roomName, room_type: 'Living Room', width_cm: roomConfig.width, length_cm: roomConfig.height, ceiling_height_cm: ceilingHeight, default_window_width_cm: 120, default_window_height_cm: 150, default_door_width_cm: 90, default_door_height_cm: 210, wall_color: '#FFFFFF', current_view: 'blueprint' };
+    const roomData = { 
+      name: roomName, 
+      room_type: 'Living Room', 
+      width_cm: roomConfig.width, 
+      length_cm: roomConfig.height, 
+      ceiling_height_cm: ceilingHeight, 
+      default_window_width_cm: 120, 
+      default_window_height_cm: 150, 
+      default_door_width_cm: 90, 
+      default_door_height_cm: 210, 
+      wall_color: '#FFFFFF', 
+      current_view: 'blueprint',
+      hidden_measurements: Array.from(hiddenMeasurements)
+    };
     const roomItems = items.map(item => ({ type: item.type, label: item.type, x: item.x, y: item.y, width: item.width, height: item.height, rotation: item.rotation, color: item.color }));
     const result = await saveRoom(roomData, roomItems);
     if (result.success) { 
@@ -156,11 +187,31 @@ export default function Home() {
       setRoomName(result.room.name);
       setRoomConfig({ width: result.room.width_cm, height: result.room.length_cm });
       setCeilingHeight(result.room.ceiling_height_cm);
-      if (result.items) { setItems(result.items.map((item: any) => ({ id: item.id || crypto.randomUUID(), type: item.type, x: item.x, y: item.y, width: item.width, height: item.height, rotation: item.rotation || 0, color: item.color || '#666666', name: item.label || item.type }))); }
+      if (result.items) { 
+        setItems(result.items.map((item: any) => ({ 
+          id: item.id || crypto.randomUUID(), 
+          type: item.type, 
+          x: item.x, 
+          y: item.y, 
+          width: item.width, 
+          height: item.height, 
+          rotation: item.rotation || 0, 
+          color: item.color || '#666666', 
+          name: item.label || item.type 
+        }))); 
+      }
+      // Restore hidden measurements
+      if (result.room.hidden_measurements) {
+        setHiddenMeasurements(new Set(result.room.hidden_measurements));
+      } else {
+        setHiddenMeasurements(new Set());
+      }
       // Save this room ID as the last loaded room
       localStorage.setItem('lastRoomId', roomId);
       setIsLoadModalOpen(false);
-    } else { alert('Failed to load room'); }
+    } else { 
+      alert('Failed to load room'); 
+    }
   };
 
   const handleExport = async (format: 'pdf' | 'png' | 'json') => {
@@ -1010,6 +1061,8 @@ export default function Home() {
             viewportWidth={viewport.width}
             viewportHeight={viewport.height}
             onStageRef={(stage) => { stageRef.current = stage; }}
+            hiddenMeasurements={hiddenMeasurements}
+            onToggleMeasurement={handleToggleMeasurement}
           />
         </div>
       </div>

@@ -25,6 +25,8 @@ interface RoomCanvasProps {
   viewportWidth: number;
   viewportHeight: number;
   onStageRef?: (stage: any) => void;
+  hiddenMeasurements?: Set<string>;
+  onToggleMeasurement?: (measurementId: string) => void;
 }
 
 export default function RoomCanvas({
@@ -44,6 +46,8 @@ export default function RoomCanvas({
   viewportWidth,
   viewportHeight,
   onStageRef,
+  hiddenMeasurements = new Set(),
+  onToggleMeasurement,
 }: RoomCanvasProps) {
   const stageRef = useRef<any>(null);
 
@@ -503,6 +507,15 @@ export default function RoomCanvas({
     }
   }, [items, onEdit]);
 
+  // Handle click on empty space to deselect
+  const handleStageClick = (e: any) => {
+    // Check if clicked on empty area (Stage or Layer itself, not on a shape)
+    const clickedOnEmpty = e.target === e.target.getStage() || e.target === e.target.getLayer();
+    if (clickedOnEmpty) {
+      onSelect(''); // Deselect
+    }
+  };
+
   return (
     <div style={{ position: 'relative', width: viewportWidth, height: viewportHeight }}>
       <Stage 
@@ -514,6 +527,7 @@ export default function RoomCanvas({
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onClick={handleStageClick}
       >
         <Layer 
           scale={{ x: scale, y: scale }}
@@ -846,6 +860,8 @@ export default function RoomCanvas({
                     zoom={userZoom}
                     unit={measurementUnit}
                     showLabels={showLabels}
+                    hiddenMeasurements={hiddenMeasurements}
+                    onToggleMeasurement={onToggleMeasurement}
                   />
                 );
               }
@@ -862,30 +878,30 @@ export default function RoomCanvas({
           bottom: '20px',
           left: '20px',
           display: 'flex',
-          flexDirection: 'column',
+          alignItems: 'center',
           gap: '8px',
           pointerEvents: 'none',
           zIndex: 100,
         }}
       >
-        {/* Scale box - 10cm reference */}
+        {/* Scale box - 10cm reference matching actual grid size */}
         <div
           style={{
-            width: '32px',
-            height: '32px',
+            width: `${10 * PIXELS_PER_CM * scale * userZoom}px`,
+            height: `${10 * PIXELS_PER_CM * scale * userZoom}px`,
             backgroundColor: '#fafafa',
             border: '1px solid #d4d4d4',
+            flexShrink: 0,
           }}
         />
-        {/* Label below box */}
+        {/* Label next to box */}
         <div
           style={{
             fontSize: '11px',
             fontFamily: 'Arial, sans-serif',
             fontWeight: '500',
             color: '#a3a3a3',
-            textAlign: 'center',
-            marginTop: '-2px',
+            whiteSpace: 'nowrap',
           }}
         >
           = {formatMeasurement(10, measurementUnit)}

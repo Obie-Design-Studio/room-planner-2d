@@ -278,9 +278,102 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
         const topLeftX = currentCenterX - visualWidthPx / 2;
         const topLeftY = currentCenterY - visualHeightPx / 2;
         
-        // Clamp position to keep furniture inside room
-        const clampedTopLeftX = Math.max(0, Math.min(topLeftX, roomWidthPx - visualWidthPx));
-        const clampedTopLeftY = Math.max(0, Math.min(topLeftY, roomHeightPx - visualHeightPx));
+        // Furniture must stay inside the inner room (grid area), not overlap walls
+        // Inner room starts at WALL_THICKNESS_PX/2 and ends at roomSize - WALL_THICKNESS_PX/2
+        const innerRoomMinX = WALL_THICKNESS_PX / 2;
+        const innerRoomMinY = WALL_THICKNESS_PX / 2;
+        const innerRoomMaxX = roomWidthPx - WALL_THICKNESS_PX / 2;
+        const innerRoomMaxY = roomHeightPx - WALL_THICKNESS_PX / 2;
+        
+        // Clamp position to keep furniture fully inside inner room (grid area)
+        let clampedTopLeftX = Math.max(innerRoomMinX, Math.min(topLeftX, innerRoomMaxX - visualWidthPx));
+        let clampedTopLeftY = Math.max(innerRoomMinY, Math.min(topLeftY, innerRoomMaxY - visualHeightPx));
+        
+        // SNAP TO WALLS AND INNER WALLS: If within 5cm (snap threshold), snap to it
+        const SNAP_THRESHOLD_CM = 5;
+        const SNAP_THRESHOLD_PX = SNAP_THRESHOLD_CM * PIXELS_PER_CM;
+        
+        // Calculate distances to outer walls (from furniture edges to inner wall edges)
+        const distToLeftWall = clampedTopLeftX - innerRoomMinX;
+        const distToTopWall = clampedTopLeftY - innerRoomMinY;
+        const distToRightWall = innerRoomMaxX - (clampedTopLeftX + visualWidthPx);
+        const distToBottomWall = innerRoomMaxY - (clampedTopLeftY + visualHeightPx);
+        
+        // Snap to outer walls
+        if (distToLeftWall > 0 && distToLeftWall <= SNAP_THRESHOLD_PX) {
+          clampedTopLeftX = innerRoomMinX;
+        }
+        if (distToTopWall > 0 && distToTopWall <= SNAP_THRESHOLD_PX) {
+          clampedTopLeftY = innerRoomMinY;
+        }
+        if (distToRightWall > 0 && distToRightWall <= SNAP_THRESHOLD_PX) {
+          clampedTopLeftX = innerRoomMaxX - visualWidthPx;
+        }
+        if (distToBottomWall > 0 && distToBottomWall <= SNAP_THRESHOLD_PX) {
+          clampedTopLeftY = innerRoomMaxY - visualHeightPx;
+        }
+        
+        // Snap to INNER WALLS (type === 'wall')
+        const innerWalls = allItems.filter(i => i.type?.toLowerCase() === 'wall' && i.id !== item.id);
+        
+        for (const wall of innerWalls) {
+          // Calculate wall boundaries in pixels
+          const wallX = wall.x * PIXELS_PER_CM;
+          const wallY = wall.y * PIXELS_PER_CM;
+          const wallWidth = wall.width * PIXELS_PER_CM;
+          const wallHeight = wall.height * PIXELS_PER_CM;
+          
+          // Detect if wall is horizontal or vertical based on dimensions
+          const isHorizontalWall = wallWidth > wallHeight;
+          
+          if (isHorizontalWall) {
+            // Horizontal inner wall - snap furniture top or bottom edge to it
+            const wallTopEdge = wallY;
+            const wallBottomEdge = wallY + wallHeight;
+            
+            // Check if furniture is horizontally aligned with wall (overlaps in X direction)
+            const furnitureRight = clampedTopLeftX + visualWidthPx;
+            const wallRight = wallX + wallWidth;
+            const xOverlaps = !(furnitureRight < wallX || clampedTopLeftX > wallRight);
+            
+            if (xOverlaps) {
+              // Distance from furniture bottom to wall top
+              const distToWallTop = Math.abs((clampedTopLeftY + visualHeightPx) - wallTopEdge);
+              if (distToWallTop <= SNAP_THRESHOLD_PX) {
+                clampedTopLeftY = wallTopEdge - visualHeightPx;
+              }
+              
+              // Distance from furniture top to wall bottom
+              const distToWallBottom = Math.abs(clampedTopLeftY - wallBottomEdge);
+              if (distToWallBottom <= SNAP_THRESHOLD_PX) {
+                clampedTopLeftY = wallBottomEdge;
+              }
+            }
+          } else {
+            // Vertical inner wall - snap furniture left or right edge to it
+            const wallLeftEdge = wallX;
+            const wallRightEdge = wallX + wallWidth;
+            
+            // Check if furniture is vertically aligned with wall (overlaps in Y direction)
+            const furnitureBottom = clampedTopLeftY + visualHeightPx;
+            const wallBottom = wallY + wallHeight;
+            const yOverlaps = !(furnitureBottom < wallY || clampedTopLeftY > wallBottom);
+            
+            if (yOverlaps) {
+              // Distance from furniture right to wall left
+              const distToWallLeft = Math.abs((clampedTopLeftX + visualWidthPx) - wallLeftEdge);
+              if (distToWallLeft <= SNAP_THRESHOLD_PX) {
+                clampedTopLeftX = wallLeftEdge - visualWidthPx;
+              }
+              
+              // Distance from furniture left to wall right
+              const distToWallRight = Math.abs(clampedTopLeftX - wallRightEdge);
+              if (distToWallRight <= SNAP_THRESHOLD_PX) {
+                clampedTopLeftX = wallRightEdge;
+              }
+            }
+          }
+        }
         
         finalXCm = Math.round(clampedTopLeftX / PIXELS_PER_CM);
         finalYCm = Math.round(clampedTopLeftY / PIXELS_PER_CM);
@@ -333,6 +426,20 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
       const node = shapeRef.current;
       const scaleX = node.scaleX();
       const scaleY = node.scaleY();
+      
+      // Calculate the old dimensions before resetting scale
+      const oldWidthPx = widthPx;
+      const oldHeightPx = heightPx;
+      
+      // Get the current center position BEFORE any changes
+      const currentCenterX = node.x();
+      const currentCenterY = node.y();
+      
+      // Calculate the OLD top-left position (before resize)
+      const oldTopLeftX = currentCenterX - (oldWidthPx / 2);
+      const oldTopLeftY = currentCenterY - (oldHeightPx / 2);
+      
+      // Reset scale
       node.scaleX(1);
       node.scaleY(1);
       
@@ -357,12 +464,21 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
         if (newRotation < 0) newRotation += 360;
       }
       
-      const newCenterX = node.x();
-      const newCenterY = node.y();
       const newWidthPx = newWidthCm * PIXELS_PER_CM;
       const newHeightPx = newHeightCm * PIXELS_PER_CM;
-      const newTopLeftX = newCenterX - (newWidthPx / 2);
-      const newTopLeftY = newCenterY - (newHeightPx / 2);
+      
+      // KEEP TOP-LEFT CORNER FIXED: Use the old top-left position
+      // This prevents the furniture from jumping during resize
+      const newTopLeftX = oldTopLeftX;
+      const newTopLeftY = oldTopLeftY;
+      
+      // Calculate the new center position based on fixed top-left
+      const newCenterX = newTopLeftX + (newWidthPx / 2);
+      const newCenterY = newTopLeftY + (newHeightPx / 2);
+      
+      // Update the node position to the new center
+      node.x(newCenterX);
+      node.y(newCenterY);
       
       if (!isWallObject) {
         // Check if new position/rotation would be outside room
@@ -977,9 +1093,37 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
         {/* Hover Overlay - Only show when hovering AND not selected */}
         {!isWallObject && !isWall && (isHovered || showLabels) && !isSelected && (() => {
           const labelText = getFurnitureName();
-          // Smart font sizing based on furniture size and zoom
-          const baseFontSize = Math.min(widthPx, heightPx) * 0.25;
-          const fontSize = Math.max(20, Math.min(56, baseFontSize * Math.sqrt(zoom)));
+          
+          // Smart font sizing with proper padding - accounts for shape orientation
+          const MIN_PADDING_PX = 16; // Minimum padding on each side
+          const MIN_FONT_SIZE = 16;
+          const MAX_FONT_SIZE = 48;
+          
+          // Use ACTUAL dimensions (widthPx x heightPx are already the visual dimensions after rotation)
+          const availableWidth = widthPx - (2 * MIN_PADDING_PX);
+          const availableHeight = heightPx - (2 * MIN_PADDING_PX);
+          
+          // Start with base font size: use 30% of the SMALLER dimension
+          let fontSize = Math.min(availableWidth, availableHeight) * 0.3;
+          
+          // Check if text fits horizontally (approximate width: fontSize * length * 0.55)
+          const estimatedTextWidth = fontSize * labelText.length * 0.55;
+          
+          // If text is too wide, scale down to fit
+          if (estimatedTextWidth > availableWidth) {
+            fontSize = availableWidth / (labelText.length * 0.55);
+          }
+          
+          // Don't let font get taller than available height
+          if (fontSize > availableHeight * 0.8) {
+            fontSize = availableHeight * 0.8;
+          }
+          
+          // Apply zoom factor for consistency (sqrt gives gentler scaling)
+          fontSize = fontSize * Math.sqrt(zoom);
+          
+          // Clamp to min/max
+          fontSize = Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, fontSize));
           
           return (
             <>
@@ -1004,28 +1148,21 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
                 fill="transparent"
                 listening={false}
               />
-              {/* Label container with counter-rotation */}
-              <Group
-                x={widthPx / 2}
-                y={heightPx / 2}
-                rotation={-rotation}
-              >
-                {/* Large centered label - always horizontal */}
-                <Text
-                  text={labelText}
-                  x={0}
-                  y={0}
-                  offsetX={Math.max(widthPx, heightPx) / 2}
-                  offsetY={fontSize / 2}
-                  fontSize={fontSize}
-                  fontFamily="-apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Display', sans-serif"
-                  fontStyle="700"
-                  fill="#FFFFFF"
-                  align="center"
-                  width={Math.max(widthPx, heightPx)}
-                  listening={false}
-                />
-              </Group>
+              {/* Label - properly centered with padding */}
+              <Text
+                text={labelText}
+                x={MIN_PADDING_PX}
+                y={(heightPx - fontSize) / 2}
+                fontSize={fontSize}
+                fontFamily="-apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Display', sans-serif"
+                fontStyle="700"
+                fill="#FFFFFF"
+                align="center"
+                verticalAlign="middle"
+                width={availableWidth}
+                listening={false}
+                ellipsis={true}
+              />
             </>
           );
         })()}
