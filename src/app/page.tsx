@@ -27,6 +27,9 @@ const RoomCanvas = dynamic(
 export default function Home() {
   const stageRef = useRef<any>(null);
   
+  // Loading state to prevent flickering
+  const [isInitializing, setIsInitializing] = useState(true);
+  
   // Initialize with saved room data or defaults
   const [roomConfig, setRoomConfig] = useState<RoomConfig>({
     width: 400,
@@ -148,6 +151,8 @@ export default function Home() {
           }
         }
       }
+      // Mark initialization complete (whether room was loaded or not)
+      setIsInitializing(false);
     };
     loadSavedRoom();
   }, []);
@@ -1325,30 +1330,78 @@ export default function Home() {
           }}
 
         >
-          <RoomCanvas
-            roomConfig={roomConfig}
-            items={items}
-            onItemChange={handleItemChange}
-            onItemDelete={handleDeleteItemById}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-            onEdit={handleOpenEditor}
-            showAllMeasurements={showAllMeasurements}
-            showLabels={showLabels}
-            onToggleMeasurements={handleToggleMeasurements}
-            onToggleLabels={handleToggleLabels}
-            viewportWidth={viewport.width}
-            viewportHeight={viewport.height}
-            onStageRef={(stage) => { stageRef.current = stage; }}
-            hiddenMeasurements={hiddenMeasurements}
-            onToggleMeasurement={handleToggleMeasurement}
-            hiddenMeasurementsForExport={hiddenMeasurementsForExport}
-            manualMeasurements={manualMeasurements}
-            isDrawingMeasurement={isDrawingMeasurement}
-            onToggleDrawingMode={handleToggleDrawingMode}
-            onAddManualMeasurement={handleAddManualMeasurement}
-            onDeleteManualMeasurement={handleDeleteManualMeasurement}
-          />
+          {/* Show nothing while initializing (prevents flicker) */}
+          {isInitializing ? null : 
+            /* Show empty state when no items */
+            items.length === 0 ? (
+              <div style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '16px'
+              }}>
+                <button
+                  onClick={() => setIsRoomSettingsModalOpen(true)}
+                  style={{
+                    width: '200px',
+                    height: '200px',
+                    borderRadius: '50%',
+                    backgroundColor: '#FFFFFF',
+                    border: '3px solid #0A0A0A',
+                    cursor: 'pointer',
+                    fontSize: '20px',
+                    fontWeight: 600,
+                    color: '#0A0A0A',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                    transition: 'all 200ms ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'scale(1.05)';
+                    e.currentTarget.style.boxShadow = '0 12px 32px rgba(0,0,0,0.16)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                    e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.12)';
+                  }}
+                >
+                  Start Plan
+                </button>
+              </div>
+            ) : (
+              /* Show normal canvas when items exist */
+              <RoomCanvas
+                roomConfig={roomConfig}
+                items={items}
+                onItemChange={handleItemChange}
+                onItemDelete={handleDeleteItemById}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                onEdit={handleOpenEditor}
+                showAllMeasurements={showAllMeasurements}
+                showLabels={showLabels}
+                onToggleMeasurements={handleToggleMeasurements}
+                onToggleLabels={handleToggleLabels}
+                viewportWidth={viewport.width}
+                viewportHeight={viewport.height}
+                onStageRef={(stage) => { stageRef.current = stage; }}
+                hiddenMeasurements={hiddenMeasurements}
+                onToggleMeasurement={handleToggleMeasurement}
+                hiddenMeasurementsForExport={hiddenMeasurementsForExport}
+                manualMeasurements={manualMeasurements}
+                isDrawingMeasurement={isDrawingMeasurement}
+                onToggleDrawingMode={handleToggleDrawingMode}
+                onAddManualMeasurement={handleAddManualMeasurement}
+                onDeleteManualMeasurement={handleDeleteManualMeasurement}
+              />
+            )
+          }
         </div>
       </div>
 
