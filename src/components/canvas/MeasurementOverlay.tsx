@@ -1551,27 +1551,8 @@ const MeasurementOverlay: React.FC<Props> = ({
   
   return (
     <Group listening={true} name="measurement-overlay">
-      {/* Furniture dimensions - shown subtly on the furniture itself */}
-      {!isWall && (
-        <Group x={midX} y={midY} rotation={rotation}>
-          {/* Counter-rotate text for readability, apply offset within rotated frame */}
-          <Group x={0} y={0} rotation={dimensionTextRotation}>
-            {/* Dimension text without background - auto-sized to fit */}
-            <Text
-              text={dimensionText}
-              x={-w / 2}
-              y={labelYOffset - (dimensionFontSize / 2)}
-              fontSize={dimensionFontSize}
-              fontFamily="-apple-system, BlinkMacSystemFont, 'Inter', sans-serif"
-              fill="#ffffff"
-              align="center"
-              width={w}
-              listening={false}
-              ellipsis={true}
-            />
-          </Group>
-        </Group>
-      )}
+      {/* NOTE: Furniture dimensions are now rendered as part of the label in FurnitureShape.tsx */}
+      {/* This keeps label + dimensions together as one unit, always visible on hover */}
       
       {/* Left gap - amber line from wall/obstacle to furniture */}
       {Math.round((x - leftBound) / PIXELS_PER_CM) >= 5 && (() => {

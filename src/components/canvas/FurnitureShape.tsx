@@ -1146,43 +1146,69 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
           const textAvailableWidth = useHorizontalLayout ? availableWidth : availableHeight;
           const textAvailableHeight = useHorizontalLayout ? availableHeight : availableWidth;
           
-          // Try multi-line text first (split on spaces)
+          // Calculate dimensions text
+          const isRotated90 = currentRotation === 90 || currentRotation === 270;
+          const actualWidth = item.width;
+          const actualHeight = item.height;
+          const horizontalDim = isRotated90 ? actualHeight : actualWidth;
+          const verticalDim = isRotated90 ? actualWidth : actualHeight;
+          const dimensionText = `${horizontalDim} × ${verticalDim} cm`;
+          
+          // Try multi-line label text first (split on spaces)
           const words = labelText.split(' ');
           const canSplitIntoLines = words.length > 1;
           
-          // Start with a reasonable font size
-          let fontSize = Math.min(textAvailableWidth, textAvailableHeight) * 0.3;
-          fontSize = fontSize * Math.sqrt(zoom);
+          // Reserve space for dimensions (smaller font, below label)
+          const DIMENSION_RATIO = 0.6; // Dimension font is 60% of label font
+          const TEXT_SPACING = 10; // Space between label and dimensions
           
-          // Check if single-line text fits
-          const singleLineWidth = fontSize * labelText.length * 0.55;
+          // Start with a reasonable font size for label
+          let labelFontSize = Math.min(textAvailableWidth, textAvailableHeight) * 0.3;
+          labelFontSize = labelFontSize * Math.sqrt(zoom);
+          
+          // Calculate dimension font size
+          let dimensionFontSize = labelFontSize * DIMENSION_RATIO;
+          dimensionFontSize = Math.max(10, Math.min(18, dimensionFontSize)); // Clamp dimensions
+          
+          // Check if single-line label fits (accounting for dimension space)
+          const totalHeightNeeded = labelFontSize + TEXT_SPACING + dimensionFontSize;
+          const singleLineWidth = labelFontSize * labelText.length * 0.55;
           let useMultiLine = false;
           
           if (canSplitIntoLines && singleLineWidth > textAvailableWidth) {
-            // Try multi-line
-            // Estimate: if we split into 2 lines, each line is roughly half the width
-            const estimatedLineWidth = fontSize * (labelText.length / 2) * 0.6;
-            const estimatedHeight = fontSize * 2 * LINE_HEIGHT;
+            // Try multi-line label
+            const estimatedLineWidth = labelFontSize * (labelText.length / 2) * 0.6;
+            const multiLineHeight = labelFontSize * 2 * LINE_HEIGHT;
+            const totalHeightWithMultiLine = multiLineHeight + TEXT_SPACING + dimensionFontSize;
             
-            if (estimatedLineWidth <= textAvailableWidth && estimatedHeight <= textAvailableHeight) {
+            if (estimatedLineWidth <= textAvailableWidth && totalHeightWithMultiLine <= textAvailableHeight) {
               useMultiLine = true;
             } else {
               // Multi-line won't help, scale down font instead
-              fontSize = textAvailableWidth / (labelText.length * 0.55);
+              labelFontSize = textAvailableWidth / (labelText.length * 0.55);
+              dimensionFontSize = labelFontSize * DIMENSION_RATIO;
+              dimensionFontSize = Math.max(10, Math.min(18, dimensionFontSize));
             }
           } else if (singleLineWidth > textAvailableWidth) {
             // Scale down to fit
-            fontSize = textAvailableWidth / (labelText.length * 0.55);
+            labelFontSize = textAvailableWidth / (labelText.length * 0.55);
+            dimensionFontSize = labelFontSize * DIMENSION_RATIO;
+            dimensionFontSize = Math.max(10, Math.min(18, dimensionFontSize));
           }
           
-          // Don't let font get taller than available height
-          const maxHeightBasedFont = useMultiLine 
-            ? textAvailableHeight / (2 * LINE_HEIGHT) 
-            : textAvailableHeight * 0.7;
-          fontSize = Math.min(fontSize, maxHeightBasedFont);
+          // Ensure total height (label + spacing + dimensions) fits
+          const labelHeight = useMultiLine ? labelFontSize * 2 * LINE_HEIGHT : labelFontSize;
+          const totalHeight = labelHeight + TEXT_SPACING + dimensionFontSize;
+          if (totalHeight > textAvailableHeight) {
+            // Scale down proportionally
+            const scale = textAvailableHeight / totalHeight;
+            labelFontSize = labelFontSize * scale;
+            dimensionFontSize = dimensionFontSize * scale;
+          }
           
-          // Clamp to min/max
-          fontSize = Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, fontSize));
+          // Clamp label font to min/max
+          labelFontSize = Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, labelFontSize));
+          dimensionFontSize = Math.max(10, Math.min(18, dimensionFontSize));
           
           // For multi-line, join words with newline
           const displayText = useMultiLine ? words.join('\n') : labelText;
@@ -1210,13 +1236,14 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
                 fill="transparent"
                 listening={false}
               />
-              {/* Label - properly centered with padding and readable orientation */}
+              {/* Label + Dimensions - combined as one unit, always visible together */}
               <Group x={widthPx / 2} y={heightPx / 2} rotation={textRotation}>
+                {/* Label Text */}
                 <Text
                   text={displayText}
                   x={-textAvailableWidth / 2}
-                  y={useMultiLine ? -fontSize * LINE_HEIGHT : -fontSize / 2}
-                  fontSize={fontSize}
+                  y={useMultiLine ? -labelFontSize * LINE_HEIGHT - TEXT_SPACING / 2 - dimensionFontSize / 2 : -labelFontSize / 2 - TEXT_SPACING / 2 - dimensionFontSize / 2}
+                  fontSize={labelFontSize}
                   fontFamily="-apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Display', sans-serif"
                   fontStyle="700"
                   fill="#FFFFFF"
@@ -1226,6 +1253,20 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
                   lineHeight={LINE_HEIGHT}
                   listening={false}
                   wrap="none"
+                />
+                {/* Dimension Text - always shown with label */}
+                <Text
+                  text={dimensionText}
+                  x={-textAvailableWidth / 2}
+                  y={(useMultiLine ? labelFontSize * LINE_HEIGHT : labelFontSize / 2) + TEXT_SPACING / 2 - dimensionFontSize / 2}
+                  fontSize={dimensionFontSize}
+                  fontFamily="-apple-system, BlinkMacSystemFont, 'Inter', sans-serif"
+                  fontStyle="400"
+                  fill="#CCCCCC"
+                  align="center"
+                  verticalAlign="middle"
+                  width={textAvailableWidth}
+                  listening={false}
                 />
               </Group>
             </>
