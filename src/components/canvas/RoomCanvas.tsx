@@ -758,8 +758,13 @@ export default function RoomCanvas({
 
   // Handle click on empty space to deselect
   const handleStageClick = (e: any) => {
-    // Check if clicked on empty area (Stage or Layer itself, not on a shape)
-    const clickedOnEmpty = e.target === e.target.getStage() || e.target === e.target.getLayer();
+    // Check if clicked on empty area (Stage, Layer, floor, or grid)
+    const clickedOnEmpty = 
+      e.target === e.target.getStage() || 
+      e.target === e.target.getLayer() ||
+      e.target.attrs?.name === 'floor' ||
+      e.target.attrs?.name === 'grid';
+    
     if (clickedOnEmpty) {
       onSelect(''); // Deselect
     }
@@ -786,6 +791,7 @@ export default function RoomCanvas({
           <Group x={0} y={0}>
             {/* Room floor (white background) */}
             <Rect
+              name="floor"
               x={0}
               y={0}
               width={roomConfig.width * PIXELS_PER_CM}

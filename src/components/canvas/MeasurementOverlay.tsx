@@ -1522,12 +1522,12 @@ const MeasurementOverlay: React.FC<Props> = ({
     <Group listening={true} name="measurement-overlay">
       {/* Furniture dimensions - shown subtly on the furniture itself */}
       {!isWall && (
-        <Group x={midX} y={midY + labelYOffset} rotation={rotation}>
+        <Group x={midX} y={midY} rotation={rotation}>
           {/* Dimension text without background - auto-sized to fit */}
           <Text
             text={dimensionText}
             x={-w / 2}
-            y={-dimensionFontSize / 2}
+            y={labelYOffset - (dimensionFontSize / 2)}
             fontSize={dimensionFontSize}
             fontFamily="-apple-system, BlinkMacSystemFont, 'Inter', sans-serif"
             fill="#ffffff"

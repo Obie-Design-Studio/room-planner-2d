@@ -53,7 +53,7 @@ const GridBackground: React.FC<GridBackgroundProps> = ({ width, height }) => {
     );
   }
 
-  return <Group>{lines}</Group>;
+  return <Group name="grid">{lines}</Group>;
 };
 
 export default GridBackground;
