@@ -488,7 +488,9 @@ export default function RoomCanvas({
     const clickedOnEmpty = e.target === stage || e.target === e.target.getLayer();
     
     // Handle manual measurement drawing mode
-    if (isDrawingMeasurement && clickedOnEmpty && !isSpacePressed) {
+    // In drawing mode, capture ALL clicks (except when panning with space)
+    // This allows drawing inside the room on any element (grid, floor, etc.)
+    if (isDrawingMeasurement && !isSpacePressed) {
       const pos = stage.getPointerPosition();
       if (!pos) return;
       
@@ -499,6 +501,13 @@ export default function RoomCanvas({
       // Convert to cm (relative to room origin)
       const rawCmX = canvasX / PIXELS_PER_CM;
       const rawCmY = canvasY / PIXELS_PER_CM;
+      
+      // Only allow drawing inside the room bounds (with some margin)
+      const margin = 50; // 50cm margin outside room
+      if (rawCmX < -margin || rawCmX > roomConfig.width + margin ||
+          rawCmY < -margin || rawCmY > roomConfig.height + margin) {
+        return; // Don't draw outside the room area
+      }
       
       // Apply snap
       const snapped = findSnapPoint(rawCmX, rawCmY);
@@ -525,6 +534,8 @@ export default function RoomCanvas({
         setDrawingStart(null);
         setDrawingPreview(null);
       }
+      
+      e.cancelBubble = true; // Prevent other handlers
       return; // Don't start panning
     }
     
@@ -552,8 +563,9 @@ export default function RoomCanvas({
       stage.container().style.cursor = 'crosshair';
     }
     
-    // Update preview line while drawing (with snap)
-    if (isDrawingMeasurement && drawingStart) {
+    // Update preview while drawing (with snap)
+    // Show preview point even BEFORE first click (so user knows where they'll place start)
+    if (isDrawingMeasurement) {
       const pos = stage.getPointerPosition();
       if (pos) {
         const canvasX = (pos.x - stagePos.x - baseCenterOffsetX) / scale;
@@ -1205,7 +1217,42 @@ export default function RoomCanvas({
               );
             })}
             
-            {/* Drawing preview line */}
+            {/* Drawing preview - show cursor point even before first click */}
+            {isDrawingMeasurement && !drawingStart && drawingPreview && (
+              <Group>
+                {/* Preview cursor point (before first click) */}
+                <Circle
+                  x={drawingPreview.x * PIXELS_PER_CM}
+                  y={drawingPreview.y * PIXELS_PER_CM}
+                  radius={isSnapping ? 10 : 6}
+                  fill={isSnapping ? '#22c55e' : '#8b5cf6'}
+                  opacity={0.7}
+                />
+                {isSnapping && (
+                  <Circle
+                    x={drawingPreview.x * PIXELS_PER_CM}
+                    y={drawingPreview.y * PIXELS_PER_CM}
+                    radius={16}
+                    stroke="#22c55e"
+                    strokeWidth={2}
+                    fill="transparent"
+                    opacity={0.5}
+                  />
+                )}
+                {/* "Click to start" hint */}
+                <Text
+                  x={drawingPreview.x * PIXELS_PER_CM + 20}
+                  y={drawingPreview.y * PIXELS_PER_CM - 10}
+                  text="Click to start"
+                  fill={isSnapping ? '#22c55e' : '#8b5cf6'}
+                  fontSize={12}
+                  fontStyle="bold"
+                  opacity={0.8}
+                />
+              </Group>
+            )}
+            
+            {/* Drawing preview line (after first click) */}
             {isDrawingMeasurement && drawingStart && drawingPreview && (
               <Group>
                 {/* Preview line */}
