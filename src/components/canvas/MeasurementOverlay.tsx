@@ -1536,7 +1536,7 @@ const MeasurementOverlay: React.FC<Props> = ({
       )}
       
       {/* Left gap - amber line from wall/obstacle to furniture */}
-      {!showLabels && Math.round((x - leftBound) / PIXELS_PER_CM) >= 5 && (() => {
+      {Math.round((x - leftBound) / PIXELS_PER_CM) >= 5 && (() => {
         // For thin items (walls), offset the label vertically to avoid overlap with right measurement
         const isThinItem = w < 50; // Less than 50px wide (about 12cm)
         const leftLabelY = isThinItem ? midY - 30 : midY + labelOffset + 5;
@@ -1562,7 +1562,7 @@ const MeasurementOverlay: React.FC<Props> = ({
       })()}
 
       {/* Right gap - amber line from furniture to wall/obstacle */}
-      {!showLabels && Math.round((rightBound - (x + w)) / PIXELS_PER_CM) >= 5 && (() => {
+      {Math.round((rightBound - (x + w)) / PIXELS_PER_CM) >= 5 && (() => {
         // For thin items (walls), offset the label vertically to avoid overlap with left measurement
         const isThinItem = w < 50; // Less than 50px wide (about 12cm)
         const rightLabelY = isThinItem ? midY + 30 : midY + labelOffset + 5;
@@ -1588,7 +1588,7 @@ const MeasurementOverlay: React.FC<Props> = ({
       })()}
 
       {/* Top gap - amber line from wall/obstacle to furniture */}
-      {!showLabels && Math.round((y - topBound) / PIXELS_PER_CM) >= 5 && (() => {
+      {Math.round((y - topBound) / PIXELS_PER_CM) >= 5 && (() => {
         // For thin items (horizontal walls), offset the label horizontally to avoid overlap with bottom measurement
         const isThinItem = h < 50; // Less than 50px tall (about 12cm)
         const topLabelX = isThinItem ? midX - labelOffset - 60 : midX - labelOffset - 10;
@@ -1614,7 +1614,7 @@ const MeasurementOverlay: React.FC<Props> = ({
       })()}
 
       {/* Bottom gap - amber line from furniture to wall/obstacle */}
-      {!showLabels && Math.round((bottomBound - (y + h)) / PIXELS_PER_CM) >= 5 && (() => {
+      {Math.round((bottomBound - (y + h)) / PIXELS_PER_CM) >= 5 && (() => {
         // For thin items (horizontal walls), offset the label horizontally to avoid overlap with top measurement
         const isThinItem = h < 50; // Less than 50px tall (about 12cm)
         const bottomLabelX = isThinItem ? midX - labelOffset + 40 : midX - labelOffset - 10;
