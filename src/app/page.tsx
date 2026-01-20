@@ -718,7 +718,7 @@ export default function Home() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                padding: '16px',
+                padding: '16px 16px 16px 0', // No left padding to align with section headers
                 backgroundColor: '#FFFFFF',
                 borderRadius: '12px',
                 border: '1px solid #EFEFEF',
