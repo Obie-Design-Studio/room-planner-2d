@@ -989,8 +989,8 @@ export default function Home() {
                           <span style={{ fontWeight: 500, textTransform: 'capitalize' }}>{item.type}</span>
                           <span style={{ fontSize: '12px', color: '#999999' }}>
                             {item.type.toLowerCase() === 'wall' 
-                              ? `${item.width} × ${item.height} × ${WALL_THICKNESS_CM} cm` 
-                              : `${item.width} × ${item.height} cm`}
+                              ? `${Math.round(item.width)} × ${Math.round(item.height)} × ${Math.round(WALL_THICKNESS_CM)} cm` 
+                              : `${Math.round(item.width)} × ${Math.round(item.height)} cm`}
                           </span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -1258,7 +1258,7 @@ export default function Home() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
                           <span style={{ fontWeight: 500 }}>{item.type}</span>
                           <span style={{ fontSize: '12px', color: '#999999' }}>
-                            {item.width} × {item.height} cm
+                            {Math.round(item.width)} × {Math.round(item.height)} cm
                           </span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>

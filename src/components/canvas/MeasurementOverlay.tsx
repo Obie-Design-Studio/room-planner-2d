@@ -132,6 +132,10 @@ const MeasurementOverlay: React.FC<Props> = ({
   const isBetween = (val: number, min: number, max: number) => val >= min && val <= max;
 
   otherItems.forEach((other) => {
+    // Skip doors/windows as they're on room edges and shouldn't block furniture measurements
+    const otherIsWallObject = other.type.toLowerCase() === 'window' || other.type.toLowerCase() === 'door';
+    if (otherIsWallObject) return;
+    
     const oX = other.x * PIXELS_PER_CM;
     const oY = other.y * PIXELS_PER_CM;
     

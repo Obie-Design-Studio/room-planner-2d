@@ -17,7 +17,6 @@ const GridBackground: React.FC<GridBackgroundProps> = ({ width, height }) => {
   // Generate vertical lines: 0, 10, 20, ..., 290cm (31 lines for 290cm = 30 boxes wait no)
   // For 290cm: lines at 0, 10, 20, ..., 280, 290 = 30 lines = 29 boxes ✓
   for (let x = 0; x <= width; x += 10) {
-    const isMajor = x % 100 === 0;
     lines.push(
       <Line
         key={`v-${x}`}
@@ -27,8 +26,8 @@ const GridBackground: React.FC<GridBackgroundProps> = ({ width, height }) => {
           x * PIXELS_PER_CM,
           height * PIXELS_PER_CM,
         ]}
-        stroke={isMajor ? '#9ca3af' : '#e5e7eb'}
-        strokeWidth={isMajor ? 2 : 1}
+        stroke='#e5e7eb'
+        strokeWidth={1}
         listening={false}
       />
     );
@@ -37,7 +36,6 @@ const GridBackground: React.FC<GridBackgroundProps> = ({ width, height }) => {
   // Generate horizontal lines: 0, 10, 20, ..., 250cm
   // For 250cm: lines at 0, 10, 20, ..., 240, 250 = 26 lines = 25 boxes ✓
   for (let y = 0; y <= height; y += 10) {
-    const isMajor = y % 100 === 0;
     lines.push(
       <Line
         key={`h-${y}`}
@@ -47,8 +45,8 @@ const GridBackground: React.FC<GridBackgroundProps> = ({ width, height }) => {
           width * PIXELS_PER_CM,
           y * PIXELS_PER_CM,
         ]}
-        stroke={isMajor ? '#9ca3af' : '#e5e7eb'}
-        strokeWidth={isMajor ? 2 : 1}
+        stroke='#e5e7eb'
+        strokeWidth={1}
         listening={false}
       />
     );
