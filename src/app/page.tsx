@@ -547,9 +547,15 @@ export default function Home() {
                   </div>
                   <div style={{ 
                     fontSize: '13px', 
-                    color: '#999999'
+                    color: '#999999',
+                    cursor: 'help'
                   }}>
-                    {roomConfig.width} × {roomConfig.height} cm • {ceilingHeight}cm ceiling
+                    <span title="Width">{roomConfig.width}</span>
+                    {' × '}
+                    <span title="Length">{roomConfig.height}</span>
+                    {' × '}
+                    <span title="Height (floor to ceiling)">{ceilingHeight}</span>
+                    {' cm'}
                   </div>
                 </div>
                 <button
