@@ -14,7 +14,7 @@ import LoadRoomModal from "@/components/ui/LoadRoomModal";
 import { Armchair, Table, Bed, RectangleHorizontal, DoorOpen, Trash2, Settings, ChevronDown, ChevronUp, Plus, Grid3x3, Menu, X, Save, FolderOpen, Download, Eye } from "lucide-react";
 import { PIXELS_PER_CM, WALL_THICKNESS_PX, WALL_THICKNESS_CM } from "@/lib/constants";
 import { findFreePosition } from "@/lib/collisionDetection";
-import { getDefaultFurnitureForRoom, FURNITURE_LIBRARY, getFurnitureByType, type RoomType } from "@/lib/furnitureLibrary";
+import { getDefaultFurnitureForRoom, FURNITURE_LIBRARY, getFurnitureByType, type RoomType, roomTypeLabelToKey } from "@/lib/furnitureLibrary";
 import { saveRoom, loadRoom } from "@/lib/supabase";
 import { exportAsJSON, exportAsPNG, exportCompletePDF } from "@/lib/export";
 
@@ -108,10 +108,12 @@ export default function Home() {
         const result = await loadRoom(savedRoomId);
         if (result.success && result.room) {
           setRoomName(result.room.name);
+          // Handle both old format ('Living Room') and new format ('living')
+          const roomTypeKey = roomTypeLabelToKey(result.room.room_type) || result.room.room_type as RoomType;
           setRoomConfig({ 
             width: result.room.width_cm, 
             height: result.room.length_cm,
-            roomType: result.room.room_type as any // Restore room type
+            roomType: roomTypeKey
           });
           setCeilingHeight(result.room.ceiling_height_cm);
           if (result.items) {
@@ -183,7 +185,7 @@ export default function Home() {
   const handleSaveRoom = async () => {
     const roomData = { 
       name: roomName, 
-      room_type: roomConfig.roomType || 'Living Room', // Use actual room type or default
+      room_type: roomConfig.roomType || 'living', // Store the key format, not the label
       width_cm: roomConfig.width, 
       length_cm: roomConfig.height, 
       ceiling_height_cm: ceilingHeight, 
@@ -216,10 +218,12 @@ export default function Home() {
     const result = await loadRoom(roomId);
     if (result.success && result.room) {
       setRoomName(result.room.name);
+      // Handle both old format ('Living Room') and new format ('living')
+      const roomTypeKey = roomTypeLabelToKey(result.room.room_type) || result.room.room_type as RoomType;
       setRoomConfig({ 
         width: result.room.width_cm, 
         height: result.room.length_cm,
-        roomType: result.room.room_type as any // Restore room type
+        roomType: roomTypeKey
       });
       setCeilingHeight(result.room.ceiling_height_cm);
       if (result.items) { 

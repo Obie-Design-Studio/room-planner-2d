@@ -66,8 +66,18 @@ export function getFurnitureByType(type: string): FurnitureDefinition | undefine
   return FURNITURE_LIBRARY.find(f => f.type === type);
 }
 
+// Convert room type label (e.g., "Living Room") to key (e.g., "living")
+export function roomTypeLabelToKey(label: string): RoomType | undefined {
+  const entry = Object.entries(ROOM_TYPE_LABELS).find(([_, value]) => value === label);
+  return entry ? (entry[0] as RoomType) : undefined;
+}
+
 export function getDefaultFurnitureForRoom(roomType: RoomType): FurnitureDefinition[] {
   const defaults = ROOM_TYPE_DEFAULTS[roomType];
+  // Return empty array if roomType doesn't match
+  if (!defaults) {
+    return [];
+  }
   return defaults
     .map(type => getFurnitureByType(type))
     .filter((f): f is FurnitureDefinition => f !== undefined);
