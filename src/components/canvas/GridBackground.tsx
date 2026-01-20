@@ -10,21 +10,21 @@ interface GridBackgroundProps {
 const GridBackground: React.FC<GridBackgroundProps> = ({ width, height }) => {
   const lines: React.ReactElement[] = [];
   
-  // Offset to position grid at inner edge of walls (not center)
-  const offset = WALL_THICKNESS_PX / 2;
+  // Grid aligns EXACTLY with inner room boundaries (0,0) to (width*px, height*px)
+  // No offset needed - walls sit AROUND the grid, not overlapping it
 
-  // Generate vertical lines - stay inside walls
-  // Lines run from inner edge of top wall to inner edge of bottom wall
+  // Generate vertical lines - aligned to room dimensions
+  // For 290cm room: lines at 0, 10, 20, ..., 280, 290cm = 30 lines, 29 boxes ✓
   for (let x = 0; x <= width; x += 10) {
     const isMajor = x % 100 === 0;
     lines.push(
       <Line
         key={`v-${x}`}
         points={[
-          x * PIXELS_PER_CM + offset,
-          offset,
-          x * PIXELS_PER_CM + offset,
-          height * PIXELS_PER_CM - offset,
+          x * PIXELS_PER_CM,
+          0,
+          x * PIXELS_PER_CM,
+          height * PIXELS_PER_CM,
         ]}
         stroke={isMajor ? '#9ca3af' : '#e5e7eb'}
         strokeWidth={isMajor ? 2 : 1}
@@ -33,18 +33,18 @@ const GridBackground: React.FC<GridBackgroundProps> = ({ width, height }) => {
     );
   }
 
-  // Generate horizontal lines - stay inside walls
-  // Lines run from inner edge of left wall to inner edge of right wall
+  // Generate horizontal lines - aligned to room dimensions
+  // For 250cm room: lines at 0, 10, 20, ..., 240, 250cm = 26 lines, 25 boxes ✓
   for (let y = 0; y <= height; y += 10) {
     const isMajor = y % 100 === 0;
     lines.push(
       <Line
         key={`h-${y}`}
         points={[
-          offset,
-          y * PIXELS_PER_CM + offset,
-          width * PIXELS_PER_CM - offset,
-          y * PIXELS_PER_CM + offset,
+          0,
+          y * PIXELS_PER_CM,
+          width * PIXELS_PER_CM,
+          y * PIXELS_PER_CM,
         ]}
         stroke={isMajor ? '#9ca3af' : '#e5e7eb'}
         strokeWidth={isMajor ? 2 : 1}
