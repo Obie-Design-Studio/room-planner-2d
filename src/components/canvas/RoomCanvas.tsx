@@ -316,9 +316,10 @@ export default function RoomCanvas({
   });
   
   // CONTENT BOUNDS (for scale calculation - includes door arcs)
-  // Add buffer only on sides that have doors/windows
-  let minX = -WALL_THICKNESS_PX / 2 - dimensionLabelSpace - maxDoorOnLeft;
-  let minY = -WALL_THICKNESS_PX / 2 - dimensionLabelSpace - maxDoorOnTop;
+  // Door arcs visually overlap dimension label space (not additive)
+  // Use MAX of dimension space or door arc, not sum
+  let minX = -WALL_THICKNESS_PX / 2 - Math.max(dimensionLabelSpace, maxDoorOnLeft);
+  let minY = -WALL_THICKNESS_PX / 2 - Math.max(dimensionLabelSpace, maxDoorOnTop);
   let maxX = roomPxWidth + WALL_THICKNESS_PX / 2 + maxDoorOnRight;
   let maxY = roomPxHeight + WALL_THICKNESS_PX / 2 + maxDoorOnBottom;
   

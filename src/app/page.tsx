@@ -535,7 +535,7 @@ export default function Home() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: isMobile ? '0 16px' : '0 32px',
+        padding: isMobile ? '0 16px' : '0 20px', // Match sidebar padding for alignment
         backgroundColor: '#FFFFFF',
         borderBottom: '1px solid #EFEFEF'
       }}>
@@ -718,7 +718,7 @@ export default function Home() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                padding: '16px 16px 16px 0', // No left padding to align with section headers
+                padding: '16px',
                 backgroundColor: '#FFFFFF',
                 borderRadius: '12px',
                 border: '1px solid #EFEFEF',
