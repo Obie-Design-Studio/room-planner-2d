@@ -224,7 +224,12 @@ export default function RoomCanvas({
   // Smart bounds calculation: only add buffer where doors/windows actually are
   // This allows better zoom when doors are only on some walls (e.g., 165% when doors on 2 walls)
   
-  const dimensionLabelSpace = 100; // Space for wall dimension labels (reduced from 160px)
+  // Space for wall dimension labels
+  // Calculation: line(100) + gap(15-20) + text(64 max font + some width for left label)
+  // Top: -100 - 15 - 64 = -179px
+  // Left: -100 - 20 - ~200px (text width) = -320px  
+  // Use conservative value to ensure dimension labels are never cut off
+  const dimensionLabelSpace = 180; // Ensures dimension labels fit (was 100px, too small!)
   
   // Detect which walls have doors/windows and their sizes
   let maxDoorOnTop = 0;
