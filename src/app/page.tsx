@@ -609,7 +609,7 @@ export default function Home() {
                   }}
                 >
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    📁 {roomName}
+                    📁 Rooms
                   </span>
                   <ChevronDown size={14} />
                 </button>
