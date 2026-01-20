@@ -74,6 +74,7 @@ export default function RoomCanvas({
   // Zoom state: 1.0 = 100%, range 0.1 to 3.0
   const [userZoom, setUserZoom] = useState(1.0);
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
+  const [viewMode, setViewMode] = useState<'fit-to-view' | '100-assumed'>('100-assumed'); // Track view mode
   
   // Pan state
   const [isPanning, setIsPanning] = useState(false);
@@ -221,23 +222,26 @@ export default function RoomCanvas({
   const roomPxWidth = roomConfig.width * PIXELS_PER_CM;
   const roomPxHeight = roomConfig.height * PIXELS_PER_CM;
   
-  // Smart bounds calculation: only add buffer where doors/windows actually are
-  // This allows better zoom when doors are only on some walls (e.g., 165% when doors on 2 walls)
+  // TWO MODES for bounds calculation:
+  // 1. "100% View" (viewMode='100-assumed'): Assumes doors on ALL walls for stable canvas
+  // 2. "Fit to View" (viewMode='fit-to-view'): Uses ACTUAL content only to maximize zoom
   
-  // Space for wall dimension labels
-  // Calculation: line(100) + gap(15-20) + text(64 max font + some width for left label)
-  // Top: -100 - 15 - 64 = -179px
-  // Left: -100 - 20 - ~200px (text width) = -320px  
-  // Use conservative value to ensure dimension labels are never cut off
-  const dimensionLabelSpace = 180; // Ensures dimension labels fit (was 100px, too small!)
+  // Space for wall dimension labels (always on top and left)
+  const dimensionLabelSpace = 180;
   
-  // Detect which walls have doors/windows and their sizes
+  // Typical door arc size (for assumed bounds)
+  const TYPICAL_DOOR_ARC = 90 * PIXELS_PER_CM; // 90cm = 360px typical door arc
+  
+  // Detect which walls have doors/windows and their sizes (for fit-to-view mode)
   let maxDoorOnTop = 0;
   let maxDoorOnBottom = 0;
   let maxDoorOnLeft = 0;
   let maxDoorOnRight = 0;
   
-  items.forEach((item) => {
+  // Only detect actual doors if in fit-to-view mode
+  // In 100% mode, we'll assume doors on all walls
+  if (viewMode === 'fit-to-view') {
+    items.forEach((item) => {
     const itemType = item.type?.toLowerCase();
     if (itemType === 'door' || itemType === 'window') {
       const itemY = item.y;  // Keep in CM for easier comparison
@@ -292,9 +296,19 @@ export default function RoomCanvas({
         console.log('🔵 Door/Window on RIGHT wall:', item.type, arcLength, 'px', swingsOutward ? '(OUT)' : '(IN)');
       }
     }
-  });
+    });
+  } else {
+    // 100% ASSUMED MODE: Assume doors on all 4 walls for stable canvas
+    // This prevents room from jumping when you add doors
+    maxDoorOnTop = TYPICAL_DOOR_ARC;
+    maxDoorOnBottom = TYPICAL_DOOR_ARC;
+    maxDoorOnLeft = TYPICAL_DOOR_ARC;
+    maxDoorOnRight = TYPICAL_DOOR_ARC;
+    console.log('📐 100% Mode: Assuming doors on all walls (360px each)');
+  }
   
   console.log('📏 Content bounds buffers:', {
+    mode: viewMode,
     top: maxDoorOnTop,
     bottom: maxDoorOnBottom,
     left: maxDoorOnLeft,
@@ -347,10 +361,16 @@ export default function RoomCanvas({
     effectiveZoom: `${(scale * 100).toFixed(0)}%`
   });
   
-  // Center the OUTER PERIMETER (bounding box of all visible content)
-  // This ensures equal padding around all visible elements
-  // Simple, robust, and handles any future additions automatically
-  const baseCenterOffsetX = viewportWidth / 2 - (contentWidth / 2 + minX) * scale;
+  // POSITIONING:
+  // - Horizontal: LEFT-ALIGNED with padding from sidebar (not centered)
+  // - Vertical: CENTERED for balance
+  
+  const LEFT_PADDING = 40; // Space from sidebar border for readability
+  
+  // Horizontal: Left-align content (minX positioned at LEFT_PADDING)
+  const baseCenterOffsetX = LEFT_PADDING - minX * scale;
+  
+  // Vertical: Center content (equal space top/bottom)
   const baseCenterOffsetY = viewportHeight / 2 - (contentHeight / 2 + minY) * scale;
 
   // Elastic boundary helper - allows ±100px over-pan with resistance
@@ -541,9 +561,20 @@ export default function RoomCanvas({
     setStagePos(newPos);
   };
 
-  const handleResetView = () => {
+  // Two separate view modes:
+  
+  // 1. FIT TO VIEW: Optimize zoom based on ACTUAL content
+  const handleFitToView = () => {
+    setViewMode('fit-to-view');
     setUserZoom(1.0);
-    setStagePos({ x: 0, y: 0 }); // Reset pan to center
+    setStagePos({ x: 0, y: 0 });
+  };
+  
+  // 2. RESET TO 100%: Stable view assuming doors on all walls
+  const handleReset100 = () => {
+    setViewMode('100-assumed');
+    setUserZoom(1.0);
+    setStagePos({ x: 0, y: 0 });
   };
 
   // Keyboard shortcuts for zoom and view control
@@ -554,10 +585,15 @@ export default function RoomCanvas({
       const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
       if (isInputField) return;
 
-      // F or 0 key = Fit to View (reset zoom and pan)
-      if (e.key === 'f' || e.key === 'F' || e.key === '0') {
+      // F key = Fit to View (optimize zoom based on actual content)
+      if (e.key === 'f' || e.key === 'F') {
         e.preventDefault();
-        handleResetView();
+        handleFitToView();
+      }
+      // 0 key = Reset to 100% (assume doors on all walls)
+      else if (e.key === '0') {
+        e.preventDefault();
+        handleReset100();
       }
       // + or = key = Zoom In
       else if (e.key === '+' || e.key === '=') {
@@ -569,10 +605,10 @@ export default function RoomCanvas({
         e.preventDefault();
         handleZoomOut();
       }
-      // Cmd/Ctrl + 0 = Reset to 100%
+      // Cmd/Ctrl + 0 = Reset to 100% (assumes doors on all walls)
       else if ((e.metaKey || e.ctrlKey) && e.key === '0') {
         e.preventDefault();
-        handleResetView();
+        handleReset100();
       }
     };
 
@@ -1830,7 +1866,7 @@ export default function RoomCanvas({
         
         <div style={{ position: 'relative' }}>
           <button
-            onClick={handleResetView}
+            onClick={handleFitToView}
             onMouseEnter={(e) => {
               if (toolTooltipTimeout.current) {
                 clearTimeout(toolTooltipTimeout.current);
@@ -1900,7 +1936,7 @@ export default function RoomCanvas({
         
         <div style={{ position: 'relative' }}>
           <button
-            onClick={handleResetView}
+            onClick={handleReset100}
             onMouseEnter={(e) => {
               if (toolTooltipTimeout.current) {
                 clearTimeout(toolTooltipTimeout.current);
