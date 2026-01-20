@@ -1127,13 +1127,13 @@ export default function RoomCanvas({
               
               return (
                 <Group key={measurement.id}>
-                  {/* Main line */}
+                  {/* Main line - BIGGER */}
                   <Line
                     points={[startPx.x, startPx.y, endPx.x, endPx.y]}
                     stroke={lineColor}
-                    strokeWidth={isSelected ? 3 : 2}
-                    dash={[8, 4]}
-                    hitStrokeWidth={20}
+                    strokeWidth={isSelected ? 4 : 3}
+                    dash={[12, 6]}
+                    hitStrokeWidth={25}
                     onClick={() => setSelectedManualMeasurement(measurement.id)}
                     onMouseEnter={(e) => {
                       const stage = e.target.getStage();
@@ -1145,42 +1145,42 @@ export default function RoomCanvas({
                     }}
                   />
                   
-                  {/* Start point */}
+                  {/* Start point - BIGGER */}
                   <Circle
                     x={startPx.x}
                     y={startPx.y}
-                    radius={6}
+                    radius={10}
                     fill={lineColor}
                   />
                   
-                  {/* End point */}
+                  {/* End point - BIGGER */}
                   <Circle
                     x={endPx.x}
                     y={endPx.y}
-                    radius={6}
+                    radius={10}
                     fill={lineColor}
                   />
                   
-                  {/* Distance label background */}
+                  {/* Distance label background - BIGGER */}
                   <Rect
-                    x={midX - 40}
-                    y={midY - 12}
-                    width={80}
-                    height={24}
+                    x={midX - 55}
+                    y={midY - 16}
+                    width={110}
+                    height={32}
                     fill="white"
                     stroke={lineColor}
-                    strokeWidth={1}
-                    cornerRadius={4}
+                    strokeWidth={2}
+                    cornerRadius={6}
                   />
                   
-                  {/* Distance label text */}
+                  {/* Distance label text - BIGGER */}
                   <Text
-                    x={midX - 40}
-                    y={midY - 8}
-                    width={80}
+                    x={midX - 55}
+                    y={midY - 10}
+                    width={110}
                     text={distanceText}
                     fill={lineColor}
-                    fontSize={14}
+                    fontSize={20}
                     fontStyle="bold"
                     align="center"
                   />
@@ -1228,11 +1228,11 @@ export default function RoomCanvas({
             {/* Drawing preview - show cursor point even before first click */}
             {isDrawingMeasurement && !drawingStart && drawingPreview && (
               <Group>
-                {/* Preview cursor point (before first click) */}
+                {/* Preview cursor point (before first click) - BIGGER */}
                 <Circle
                   x={drawingPreview.x * PIXELS_PER_CM}
                   y={drawingPreview.y * PIXELS_PER_CM}
-                  radius={isSnapping ? 10 : 6}
+                  radius={isSnapping ? 14 : 10}
                   fill={isSnapping ? '#22c55e' : '#8b5cf6'}
                   opacity={0.7}
                 />
@@ -1240,30 +1240,30 @@ export default function RoomCanvas({
                   <Circle
                     x={drawingPreview.x * PIXELS_PER_CM}
                     y={drawingPreview.y * PIXELS_PER_CM}
-                    radius={16}
+                    radius={22}
                     stroke="#22c55e"
-                    strokeWidth={2}
+                    strokeWidth={3}
                     fill="transparent"
                     opacity={0.5}
                   />
                 )}
-                {/* "Click to start" hint */}
+                {/* "Click to start" hint - BIGGER */}
                 <Text
-                  x={drawingPreview.x * PIXELS_PER_CM + 20}
-                  y={drawingPreview.y * PIXELS_PER_CM - 10}
+                  x={drawingPreview.x * PIXELS_PER_CM + 25}
+                  y={drawingPreview.y * PIXELS_PER_CM - 12}
                   text="Click to start"
                   fill={isSnapping ? '#22c55e' : '#8b5cf6'}
-                  fontSize={12}
+                  fontSize={16}
                   fontStyle="bold"
                   opacity={0.8}
                 />
               </Group>
             )}
             
-            {/* Drawing preview line (after first click) */}
+            {/* Drawing preview line (after first click) - BIGGER */}
             {isDrawingMeasurement && drawingStart && drawingPreview && (
               <Group>
-                {/* Preview line */}
+                {/* Preview line - BIGGER */}
                 <Line
                   points={[
                     drawingStart.x * PIXELS_PER_CM,
@@ -1272,42 +1272,42 @@ export default function RoomCanvas({
                     drawingPreview.y * PIXELS_PER_CM,
                   ]}
                   stroke={isSnapping ? '#22c55e' : '#8b5cf6'}
-                  strokeWidth={2}
-                  dash={[8, 4]}
+                  strokeWidth={3}
+                  dash={[12, 6]}
                   opacity={0.7}
                 />
                 
-                {/* Start point */}
+                {/* Start point - BIGGER */}
                 <Circle
                   x={drawingStart.x * PIXELS_PER_CM}
                   y={drawingStart.y * PIXELS_PER_CM}
-                  radius={6}
+                  radius={10}
                   fill="#8b5cf6"
                 />
                 
-                {/* Preview end point (shows snap state) */}
+                {/* Preview end point (shows snap state) - BIGGER */}
                 <Circle
                   x={drawingPreview.x * PIXELS_PER_CM}
                   y={drawingPreview.y * PIXELS_PER_CM}
-                  radius={isSnapping ? 10 : 6}
+                  radius={isSnapping ? 14 : 10}
                   fill={isSnapping ? '#22c55e' : '#8b5cf6'}
                   opacity={isSnapping ? 1 : 0.5}
                 />
                 
-                {/* Snap indicator ring */}
+                {/* Snap indicator ring - BIGGER */}
                 {isSnapping && (
                   <Circle
                     x={drawingPreview.x * PIXELS_PER_CM}
                     y={drawingPreview.y * PIXELS_PER_CM}
-                    radius={16}
+                    radius={22}
                     stroke="#22c55e"
-                    strokeWidth={2}
+                    strokeWidth={3}
                     fill="transparent"
                     opacity={0.5}
                   />
                 )}
                 
-                {/* Preview distance label */}
+                {/* Preview distance label - BIGGER */}
                 {(() => {
                   const dx = drawingPreview.x - drawingStart.x;
                   const dy = drawingPreview.y - drawingStart.y;
@@ -1323,23 +1323,23 @@ export default function RoomCanvas({
                   return (
                     <>
                       <Rect
-                        x={midX - 40}
-                        y={midY - 12}
-                        width={80}
-                        height={24}
+                        x={midX - 55}
+                        y={midY - 16}
+                        width={110}
+                        height={32}
                         fill="white"
                         stroke={labelColor}
-                        strokeWidth={1}
-                        cornerRadius={4}
+                        strokeWidth={2}
+                        cornerRadius={6}
                         opacity={0.9}
                       />
                       <Text
-                        x={midX - 40}
-                        y={midY - 8}
-                        width={80}
+                        x={midX - 55}
+                        y={midY - 10}
+                        width={110}
                         text={distanceText}
                         fill={labelColor}
-                        fontSize={14}
+                        fontSize={20}
                         fontStyle="bold"
                         align="center"
                         opacity={0.9}
