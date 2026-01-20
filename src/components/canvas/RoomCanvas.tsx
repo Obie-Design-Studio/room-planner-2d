@@ -1123,7 +1123,7 @@ export default function RoomCanvas({
               const angle = Math.atan2(dy, dx) * (180 / Math.PI);
               
               const isSelected = selectedManualMeasurement === measurement.id;
-              const lineColor = isSelected ? '#ef4444' : '#8b5cf6'; // Red when selected, purple normally
+              const lineColor = isSelected ? '#fca5a5' : '#8b5cf6'; // Light red/pink when selected, purple normally
               
               return (
                 <Group key={measurement.id}>
@@ -1185,11 +1185,11 @@ export default function RoomCanvas({
                     align="center"
                   />
                   
-                  {/* Delete button when selected */}
+                  {/* Delete button when selected - BIGGER */}
                   {isSelected && (
                     <Group
-                      x={endPx.x + 10}
-                      y={endPx.y - 10}
+                      x={endPx.x + 20}
+                      y={endPx.y - 20}
                       onClick={() => {
                         if (onDeleteManualMeasurement) {
                           onDeleteManualMeasurement(measurement.id);
@@ -1208,15 +1208,17 @@ export default function RoomCanvas({
                       <Circle
                         x={0}
                         y={0}
-                        radius={12}
-                        fill="#ef4444"
+                        radius={24}
+                        fill="#dc2626"
+                        stroke="#991b1b"
+                        strokeWidth={2}
                       />
                       <Text
-                        x={-4}
-                        y={-6}
+                        x={-10}
+                        y={-14}
                         text="×"
                         fill="white"
-                        fontSize={14}
+                        fontSize={28}
                         fontStyle="bold"
                       />
                     </Group>
