@@ -1185,11 +1185,11 @@ export default function RoomCanvas({
                     align="center"
                   />
                   
-                  {/* Delete button when selected - BIGGER */}
+                  {/* Delete button when selected - BIGGER and offset from line */}
                   {isSelected && (
                     <Group
-                      x={endPx.x + 20}
-                      y={endPx.y - 20}
+                      x={endPx.x + 40}
+                      y={endPx.y - 40}
                       onClick={() => {
                         if (onDeleteManualMeasurement) {
                           onDeleteManualMeasurement(measurement.id);
