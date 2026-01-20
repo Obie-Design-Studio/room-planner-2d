@@ -862,6 +862,7 @@ export default function RoomCanvas({
                     showLabels={showLabels}
                     hiddenMeasurements={hiddenMeasurements}
                     onToggleMeasurement={onToggleMeasurement}
+                    viewMode={showAllMeasurements ? 'measurements' : 'blueprint'}
                   />
                 );
               }
