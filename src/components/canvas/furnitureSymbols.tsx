@@ -6,6 +6,7 @@ import { PIXELS_PER_CM } from '@/lib/constants';
 export interface FurnitureSymbolProps {
   widthCm: number;
   heightCm: number;
+  color?: string;
 }
 
 function innerRect(widthPx: number, heightPx: number, strokeWidth: number) {
@@ -941,9 +942,11 @@ export const TowelDryerSymbol: React.FC<FurnitureSymbolProps> = ({ widthCm, heig
   );
 };
 
-export const WallSymbol: React.FC<FurnitureSymbolProps> = ({ widthCm, heightCm }) => {
+export const WallSymbol: React.FC<FurnitureSymbolProps> = ({ widthCm, heightCm, color = '#000000' }) => {
   const widthPx = widthCm * PIXELS_PER_CM;
   const heightPx = heightCm * PIXELS_PER_CM;
+
+  console.log('WallSymbol rendering with color:', color);
 
   return (
     <Group>
@@ -953,7 +956,7 @@ export const WallSymbol: React.FC<FurnitureSymbolProps> = ({ widthCm, heightCm }
         y={0}
         width={widthPx}
         height={heightPx}
-        fill="#000000"
+        fill={color}
         strokeEnabled={false}
       />
     </Group>

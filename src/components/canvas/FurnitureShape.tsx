@@ -79,6 +79,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
   const trRef = useRef<any>(null);
   const [isRotateHovered, setIsRotateHovered] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [dragMeasurement, setDragMeasurement] = useState<{ length: number; x: number; y: number; isHorizontal: boolean } | null>(null);
 
   // Door/Window/Wall dimensions
   const isDoor = item.type?.toLowerCase() === 'door';
@@ -1078,16 +1079,16 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
       case 'towel dryer':
         return <TowelDryerSymbol widthCm={item.width} heightCm={item.height} />;
       case 'wall':
-        return <WallSymbol widthCm={item.width} heightCm={item.height} />;
+        return <WallSymbol widthCm={item.width} heightCm={item.height} color={item.color} />;
       default:
-        // Fallback: simple rectangle
+        // Fallback: simple rectangle with custom color
         return (
           <Rect
             width={widthPx}
             height={heightPx}
             x={0}
             y={0}
-            fill="#F5F5F5"
+            fill={item.color || "#F5F5F5"}
             stroke="#333333"
             strokeWidth={2}
           />
@@ -1290,9 +1291,13 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
       
       {/* Draggable endpoints for walls */}
       {isSelected && isDraggable && isWall && (() => {
-        const isHorizontal = item.width > item.height;
+        // Determine orientation by rotation, not by dimensions
+        const rotation = item.rotation || 0;
+        const isHorizontal = rotation === 0 || rotation === 180;
         const centerX = (item.x + item.width / 2) * PIXELS_PER_CM;
         const centerY = (item.y + item.height / 2) * PIXELS_PER_CM;
+        // Wall length is always stored in width, regardless of rotation
+        const wallLength = item.width;
         
         if (isHorizontal) {
           // Horizontal wall - endpoints at left and right
@@ -1311,6 +1316,14 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
                 stroke="#FFFFFF"
                 strokeWidth={2}
                 draggable
+                onDragStart={() => {
+                  setDragMeasurement({
+                    length: wallLength,
+                    x: item.x + item.width / 2,
+                    y: item.y + item.height / 2,
+                    isHorizontal: true
+                  });
+                }}
                 onDragMove={(e) => {
                   const newX = e.target.x();
                   const newXCm = newX / PIXELS_PER_CM;
@@ -1321,9 +1334,18 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
                   
                   if (newWidth >= 10 / PIXELS_PER_CM) {
                     onChange(item.id, { x: clampedXCm, width: newWidth });
+                    setDragMeasurement({
+                      length: newWidth,
+                      x: clampedXCm + newWidth / 2,
+                      y: item.y + item.height / 2,
+                      isHorizontal: true
+                    });
                   }
                   
                   e.target.x(clampedXCm * PIXELS_PER_CM);
+                }}
+                onDragEnd={() => {
+                  setDragMeasurement(null);
                 }}
                 onMouseEnter={(e) => {
                   const stage = e.target.getStage();
@@ -1344,6 +1366,14 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
                 stroke="#FFFFFF"
                 strokeWidth={2}
                 draggable
+                onDragStart={() => {
+                  setDragMeasurement({
+                    length: wallLength,
+                    x: item.x + item.width / 2,
+                    y: item.y + item.height / 2,
+                    isHorizontal: true
+                  });
+                }}
                 onDragMove={(e) => {
                   const newX = e.target.x();
                   const newXCm = newX / PIXELS_PER_CM;
@@ -1354,9 +1384,18 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
                   
                   if (newWidth >= 10 / PIXELS_PER_CM) {
                     onChange(item.id, { width: newWidth });
+                    setDragMeasurement({
+                      length: newWidth,
+                      x: item.x + newWidth / 2,
+                      y: item.y + item.height / 2,
+                      isHorizontal: true
+                    });
                   }
                   
                   e.target.x(clampedXCm * PIXELS_PER_CM);
+                }}
+                onDragEnd={() => {
+                  setDragMeasurement(null);
                 }}
                 onMouseEnter={(e) => {
                   const stage = e.target.getStage();
@@ -1371,9 +1410,11 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
           );
         } else {
           // Vertical wall - endpoints at top and bottom
+          // For vertical walls, item.width stores the length (visual top-to-bottom)
+          // item.x stores the position (which stays fixed for thickness)
           const x = centerX;
           const topY = item.y * PIXELS_PER_CM;
-          const bottomY = (item.y + item.height) * PIXELS_PER_CM;
+          const bottomY = (item.y + item.width) * PIXELS_PER_CM; // Use item.width for length!
           
           return (
             <>
@@ -1386,19 +1427,36 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
                 stroke="#FFFFFF"
                 strokeWidth={2}
                 draggable
+                onDragStart={() => {
+                  setDragMeasurement({
+                    length: wallLength,
+                    x: item.x + item.height / 2, // Use height for visual x-center (thickness)
+                    y: item.y + item.width / 2, // Use width for visual y-center (length)
+                    isHorizontal: false
+                  });
+                }}
                 onDragMove={(e) => {
                   const newY = e.target.y();
                   const newYCm = newY / PIXELS_PER_CM;
                   
                   // Clamp to room bounds
-                  const clampedYCm = Math.max(0, Math.min(newYCm, item.y + item.height - 10 / PIXELS_PER_CM));
-                  const newHeight = (item.y + item.height) - clampedYCm;
+                  const clampedYCm = Math.max(0, Math.min(newYCm, item.y + item.width - 10 / PIXELS_PER_CM));
+                  const newWidth = (item.y + item.width) - clampedYCm; // Change width (length)!
                   
-                  if (newHeight >= 10 / PIXELS_PER_CM) {
-                    onChange(item.id, { y: clampedYCm, height: newHeight });
+                  if (newWidth >= 10 / PIXELS_PER_CM) {
+                    onChange(item.id, { y: clampedYCm, width: newWidth }); // Update width!
+                    setDragMeasurement({
+                      length: newWidth,
+                      x: item.x + item.height / 2,
+                      y: clampedYCm + newWidth / 2,
+                      isHorizontal: false
+                    });
                   }
                   
                   e.target.y(clampedYCm * PIXELS_PER_CM);
+                }}
+                onDragEnd={() => {
+                  setDragMeasurement(null);
                 }}
                 onMouseEnter={(e) => {
                   const stage = e.target.getStage();
@@ -1419,19 +1477,36 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
                 stroke="#FFFFFF"
                 strokeWidth={2}
                 draggable
+                onDragStart={() => {
+                  setDragMeasurement({
+                    length: wallLength,
+                    x: item.x + item.height / 2,
+                    y: item.y + item.width / 2,
+                    isHorizontal: false
+                  });
+                }}
                 onDragMove={(e) => {
                   const newY = e.target.y();
                   const newYCm = newY / PIXELS_PER_CM;
                   
                   // Clamp to room bounds
                   const clampedYCm = Math.max(item.y + 10 / PIXELS_PER_CM, Math.min(newYCm, roomConfig.height));
-                  const newHeight = clampedYCm - item.y;
+                  const newWidth = clampedYCm - item.y; // Change width (length)!
                   
-                  if (newHeight >= 10 / PIXELS_PER_CM) {
-                    onChange(item.id, { height: newHeight });
+                  if (newWidth >= 10 / PIXELS_PER_CM) {
+                    onChange(item.id, { width: newWidth }); // Update width!
+                    setDragMeasurement({
+                      length: newWidth,
+                      x: item.x + item.height / 2,
+                      y: item.y + newWidth / 2,
+                      isHorizontal: false
+                    });
                   }
                   
                   e.target.y(clampedYCm * PIXELS_PER_CM);
+                }}
+                onDragEnd={() => {
+                  setDragMeasurement(null);
                 }}
                 onMouseEnter={(e) => {
                   const stage = e.target.getStage();
@@ -1446,6 +1521,68 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
           );
         }
       })()}
+      
+      {/* Temporary measurement display during wall drag */}
+      {dragMeasurement && (
+        <>
+          {dragMeasurement.isHorizontal ? (
+            // Horizontal wall measurement
+            <>
+              <Line
+                points={[
+                  dragMeasurement.x * PIXELS_PER_CM - (dragMeasurement.length * PIXELS_PER_CM) / 2,
+                  dragMeasurement.y * PIXELS_PER_CM - 30,
+                  dragMeasurement.x * PIXELS_PER_CM + (dragMeasurement.length * PIXELS_PER_CM) / 2,
+                  dragMeasurement.y * PIXELS_PER_CM - 30
+                ]}
+                stroke="#3b82f6"
+                strokeWidth={2}
+                listening={false}
+              />
+              <Text
+                x={dragMeasurement.x * PIXELS_PER_CM}
+                y={dragMeasurement.y * PIXELS_PER_CM - 50}
+                text={`${Math.round(dragMeasurement.length)} cm`}
+                fontSize={16}
+                fontFamily="Inter, system-ui, sans-serif"
+                fontStyle="bold"
+                fill="#3b82f6"
+                align="center"
+                width={100}
+                offsetX={50}
+                listening={false}
+              />
+            </>
+          ) : (
+            // Vertical wall measurement
+            <>
+              <Line
+                points={[
+                  dragMeasurement.x * PIXELS_PER_CM - 30,
+                  dragMeasurement.y * PIXELS_PER_CM - (dragMeasurement.length * PIXELS_PER_CM) / 2,
+                  dragMeasurement.x * PIXELS_PER_CM - 30,
+                  dragMeasurement.y * PIXELS_PER_CM + (dragMeasurement.length * PIXELS_PER_CM) / 2
+                ]}
+                stroke="#3b82f6"
+                strokeWidth={2}
+                listening={false}
+              />
+              <Text
+                x={dragMeasurement.x * PIXELS_PER_CM - 70}
+                y={dragMeasurement.y * PIXELS_PER_CM}
+                text={`${Math.round(dragMeasurement.length)} cm`}
+                fontSize={16}
+                fontFamily="Inter, system-ui, sans-serif"
+                fontStyle="bold"
+                fill="#3b82f6"
+                align="center"
+                offsetY={8}
+                listening={false}
+              />
+            </>
+          )}
+        </>
+      )}
       
       {isSelected && isDraggable && !isWall && (
         <Transformer

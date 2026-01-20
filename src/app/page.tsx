@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
 import type { RoomConfig, FurnitureItem, ManualMeasurement } from "@/types";
 import ColorPicker from "@/components/ui/ColorPicker";
@@ -45,6 +45,12 @@ export default function Home() {
   const [hiddenMeasurements, setHiddenMeasurements] = useState<Set<string>>(new Set());
   const [manualMeasurements, setManualMeasurements] = useState<ManualMeasurement[]>([]);
   const [isDrawingMeasurement, setIsDrawingMeasurement] = useState(false);
+  
+  // Undo/Redo history
+  const [history, setHistory] = useState<FurnitureItem[][]>([[]]);
+  const [historyIndex, setHistoryIndex] = useState(0);
+  const isUndoRedoRef = useRef(false);
+  const lastSavedItemsRef = useRef<string>('');
   
   // Handler to toggle individual measurement visibility
   const handleToggleMeasurement = (measurementId: string) => {
@@ -241,6 +247,85 @@ export default function Home() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isRoomDropdownOpen, roomName]);
 
+
+  // Undo
+  const handleUndo = useCallback(() => {
+    if (historyIndex > 0) {
+      const newIndex = historyIndex - 1;
+      setHistoryIndex(newIndex);
+      isUndoRedoRef.current = true;
+      setItems(JSON.parse(JSON.stringify(history[newIndex])));
+    }
+  }, [historyIndex, history]);
+
+  // Redo
+  const handleRedo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      const newIndex = historyIndex + 1;
+      setHistoryIndex(newIndex);
+      isUndoRedoRef.current = true;
+      setItems(JSON.parse(JSON.stringify(history[newIndex])));
+    }
+  }, [historyIndex, history]);
+
+  // Save to history when items change (but not during undo/redo or initialization)
+  useEffect(() => {
+    // Skip if undo/redo operation
+    if (isUndoRedoRef.current) {
+      isUndoRedoRef.current = false;
+      lastSavedItemsRef.current = JSON.stringify(items);
+      return;
+    }
+    
+    // Skip during initialization
+    if (isInitializing) {
+      return;
+    }
+    
+    // Skip if items haven't actually changed (avoid duplicates)
+    const itemsString = JSON.stringify(items);
+    if (itemsString === lastSavedItemsRef.current) {
+      return;
+    }
+    
+    lastSavedItemsRef.current = itemsString;
+    
+    // Save to history - batch updates together
+    const itemsCopy = JSON.parse(itemsString);
+    let newIndex = historyIndex + 1;
+    
+    setHistory(prevHistory => {
+      const newHistory = prevHistory.slice(0, historyIndex + 1);
+      newHistory.push(itemsCopy);
+      
+      if (newHistory.length > 50) {
+        newHistory.shift();
+        newIndex = newHistory.length - 1;
+      } else {
+        newIndex = newHistory.length - 1;
+      }
+      
+      return newHistory;
+    });
+    
+    setHistoryIndex(newIndex);
+  }, [items, isInitializing, historyIndex]);
+
+  // Keyboard shortcuts for undo/redo
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'Z' || (e.shiftKey && e.key === 'z'))) {
+        e.preventDefault();
+        handleRedo();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleUndo, handleRedo]);
 
   const handleSaveRoom = async () => {
     const roomData = { 
@@ -519,8 +604,16 @@ export default function Home() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId !== null) {
-        handleDeleteItem();
+      // Don't delete if user is typing in an input/textarea
+      const target = e.target as HTMLElement;
+      const isTyping = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+      
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId !== null && !isTyping) {
+        // Additional check: don't delete if modal is open (any input might be focused)
+        const anyModalOpen = document.querySelector('[role="dialog"]') !== null;
+        if (!anyModalOpen) {
+          handleDeleteItem();
+        }
       }
     };
 
@@ -989,7 +1082,7 @@ export default function Home() {
                           <span style={{ fontWeight: 500, textTransform: 'capitalize' }}>{item.type}</span>
                           <span style={{ fontSize: '12px', color: '#999999' }}>
                             {item.type.toLowerCase() === 'wall' 
-                              ? `${Math.round(item.width)} × ${Math.round(item.height)} × ${Math.round(WALL_THICKNESS_CM)} cm` 
+                              ? `${Math.round(item.width)} × ${Math.round(item.height)} × ${Math.round(item.floorDistance || 0)} cm` 
                               : `${Math.round(item.width)} × ${Math.round(item.height)} cm`}
                           </span>
                         </div>

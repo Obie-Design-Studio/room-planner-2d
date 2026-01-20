@@ -410,7 +410,7 @@ export default function RoomCanvas({
     if (ctrlPressed) {
       // Zoom with Ctrl/Cmd + scroll - cursor-anchored (Figma/Miro style)
       // The point under the cursor stays under the cursor
-      const scaleBy = 1.1;
+      const scaleBy = 1.02; // Much slower zoom for precise control
       const direction = e.evt.deltaY > 0 ? -1 : 1;
       
       const oldZoom = userZoom;

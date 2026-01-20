@@ -123,6 +123,8 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
     console.log('[ItemEditModal] wallPosition:', wallPosition);
     console.log('[ItemEditModal] localDistanceFromCorner:', localDistanceFromCorner);
     console.log('[ItemEditModal] item.x:', item?.x, 'item.y:', item?.y);
+    console.log('[ItemEditModal] localColor:', localColor);
+    console.log('[ItemEditModal] item.color before update:', item?.color);
     
     const updates: Partial<FurnitureItem> = {
       type: localType,
@@ -130,6 +132,8 @@ const ItemEditModal: React.FC<ItemEditModalProps> = ({
       rotation: localRotation,
       color: localColor,
     };
+    
+    console.log('[ItemEditModal] updates object:', updates);
 
     // Convert distance from corner back to X/Y coordinates for wall objects
     if (isWallObject && wallPosition) {
