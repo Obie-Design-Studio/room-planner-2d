@@ -300,15 +300,11 @@ export default function RoomCanvas({
   const contentWidth = maxX - minX;
   const contentHeight = maxY - minY;
   
-  // ROOM BOUNDS (for centering - excludes door arcs, only room + labels)
-  // Center the ROOM itself, not the door arcs!
-  const roomMinX = -WALL_THICKNESS_PX / 2 - dimensionLabelSpace;
-  const roomMinY = -WALL_THICKNESS_PX / 2 - dimensionLabelSpace;
-  const roomMaxX = roomPxWidth + WALL_THICKNESS_PX / 2;
-  const roomMaxY = roomPxHeight + WALL_THICKNESS_PX / 2;
-  
-  const roomCenterWidth = roomMaxX - roomMinX;
-  const roomCenterHeight = roomMaxY - roomMinY;
+  // This bounding box represents the "outer perimeter" of all visible content:
+  // - Room walls
+  // - Door/window arcs
+  // - Dimension labels
+  // We use this SAME box for both scale (fit everything) and centering (center everything)
   
   // Adaptive padding based on viewport size only (NOT scaled with zoom)
   // This allows "Fit to View" to calculate optimal zoom levels above 100%
@@ -340,11 +336,11 @@ export default function RoomCanvas({
     effectiveZoom: `${(scale * 100).toFixed(0)}%`
   });
   
-  // Calculate where the ROOM should be positioned to center it
-  // Use room bounds (not content bounds) so the room is centered, not the door arcs
-  // Door arcs extend into padding symmetrically
-  const baseCenterOffsetX = viewportWidth / 2 - (roomCenterWidth / 2 + roomMinX) * scale;
-  const baseCenterOffsetY = viewportHeight / 2 - (roomCenterHeight / 2 + roomMinY) * scale;
+  // Center the OUTER PERIMETER (bounding box of all visible content)
+  // This ensures equal padding around all visible elements
+  // Simple, robust, and handles any future additions automatically
+  const baseCenterOffsetX = viewportWidth / 2 - (contentWidth / 2 + minX) * scale;
+  const baseCenterOffsetY = viewportHeight / 2 - (contentHeight / 2 + minY) * scale;
 
   // Elastic boundary helper - allows ±100px over-pan with resistance
   const ELASTIC_MARGIN = 100;
