@@ -502,11 +502,10 @@ export default function RoomCanvas({
       const rawCmX = canvasX / PIXELS_PER_CM;
       const rawCmY = canvasY / PIXELS_PER_CM;
       
-      // Only allow drawing inside the room bounds (with some margin)
-      const margin = 50; // 50cm margin outside room
-      if (rawCmX < -margin || rawCmX > roomConfig.width + margin ||
-          rawCmY < -margin || rawCmY > roomConfig.height + margin) {
-        return; // Don't draw outside the room area
+      // ONLY allow drawing strictly inside the room (0 to width, 0 to height)
+      if (rawCmX < 0 || rawCmX > roomConfig.width ||
+          rawCmY < 0 || rawCmY > roomConfig.height) {
+        return; // Don't draw outside the room
       }
       
       // Apply snap
@@ -565,6 +564,7 @@ export default function RoomCanvas({
     
     // Update preview while drawing (with snap)
     // Show preview point even BEFORE first click (so user knows where they'll place start)
+    // ONLY show preview when inside the room bounds
     if (isDrawingMeasurement) {
       const pos = stage.getPointerPosition();
       if (pos) {
@@ -573,10 +573,18 @@ export default function RoomCanvas({
         const rawCmX = canvasX / PIXELS_PER_CM;
         const rawCmY = canvasY / PIXELS_PER_CM;
         
-        // Apply snap
-        const snapped = findSnapPoint(rawCmX, rawCmY);
-        setDrawingPreview({ x: snapped.x, y: snapped.y });
-        setIsSnapping(snapped.snapped);
+        // Only show preview inside the room (0 to roomWidth, 0 to roomHeight)
+        if (rawCmX >= 0 && rawCmX <= roomConfig.width &&
+            rawCmY >= 0 && rawCmY <= roomConfig.height) {
+          // Apply snap
+          const snapped = findSnapPoint(rawCmX, rawCmY);
+          setDrawingPreview({ x: snapped.x, y: snapped.y });
+          setIsSnapping(snapped.snapped);
+        } else {
+          // Outside room - hide preview
+          setDrawingPreview(null);
+          setIsSnapping(false);
+        }
       }
     }
 
