@@ -30,10 +30,11 @@ export default function Home() {
   // Loading state to prevent flickering
   const [isInitializing, setIsInitializing] = useState(true);
   
-  // Initialize with saved room data or defaults
+  // Initialize with defaults (server-safe)
   const [roomConfig, setRoomConfig] = useState<RoomConfig>({
     width: 400,
     height: 300,
+    roomType: 'living'
   });
 
   const [items, setItems] = useState<FurnitureItem[]>([]);
