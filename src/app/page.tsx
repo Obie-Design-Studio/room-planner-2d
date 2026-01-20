@@ -197,6 +197,21 @@ export default function Home() {
     }
   }, [items, manualMeasurements, hiddenMeasurements, roomConfig, roomName, ceilingHeight]);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (isRoomDropdownOpen) {
+        const target = event.target as HTMLElement;
+        if (!target.closest('button') || !target.textContent?.includes(roomName)) {
+          setIsRoomDropdownOpen(false);
+        }
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isRoomDropdownOpen, roomName]);
+
 
   const handleSaveRoom = async () => {
     const roomData = { 
@@ -568,12 +583,100 @@ export default function Home() {
           </span>
         </div>
         
-        {/* Right: Action buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {/* Right: Room management and action buttons */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {!isMobile && (
             <>
-              <button onClick={() => setIsLoadModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 12px', backgroundColor: 'transparent', border: '1px solid #E5E5E5', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 500, color: '#0A0A0A' }}><FolderOpen size={16} /> Load</button>
+              {/* Current Room Display with Dropdown */}
+              <div style={{ position: 'relative' }}>
+                <button 
+                  onClick={() => setIsRoomDropdownOpen(!isRoomDropdownOpen)}
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '8px', 
+                    padding: '8px 12px', 
+                    backgroundColor: '#F5F5F5', 
+                    border: '1px solid #E5E5E5', 
+                    borderRadius: '8px', 
+                    cursor: 'pointer', 
+                    fontSize: '13px', 
+                    fontWeight: 600, 
+                    color: '#0A0A0A',
+                    minWidth: '180px',
+                    justifyContent: 'space-between'
+                  }}
+                >
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    📁 {roomName}{hasUnsavedChanges ? ' *' : ''}
+                  </span>
+                  <ChevronDown size={14} />
+                </button>
+                
+                {/* Dropdown Menu */}
+                {isRoomDropdownOpen && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    marginTop: '4px',
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #E5E5E5',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    zIndex: 1000,
+                    minWidth: '220px',
+                    padding: '8px 0'
+                  }}>
+                    <button 
+                      onClick={() => { handleNewRoom(); setIsRoomDropdownOpen(false); }}
+                      style={{
+                        width: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '10px 16px',
+                        border: 'none',
+                        backgroundColor: 'transparent',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        fontWeight: 500,
+                        color: '#0A0A0A',
+                        textAlign: 'left'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F5F5F5'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                      <Plus size={16} /> New Room
+                    </button>
+                    <button 
+                      onClick={() => { setIsLoadModalOpen(true); setIsRoomDropdownOpen(false); }}
+                      style={{
+                        width: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '10px 16px',
+                        border: 'none',
+                        backgroundColor: 'transparent',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        fontWeight: 500,
+                        color: '#0A0A0A',
+                        textAlign: 'left'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F5F5F5'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                      <FolderOpen size={16} /> Browse Rooms...
+                    </button>
+                  </div>
+                )}
+              </div>
+              
+              {/* Action Buttons */}
               <button onClick={handleSaveRoom} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 12px', backgroundColor: 'transparent', border: '1px solid #E5E5E5', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 500, color: '#0A0A0A' }}><Save size={16} /> Save</button>
+              <button onClick={handleSaveAsNew} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 12px', backgroundColor: 'transparent', border: '1px solid #E5E5E5', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 500, color: '#0A0A0A' }}>Save As New</button>
               <button onClick={() => setIsExportModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 12px', backgroundColor: '#0A0A0A', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 500, color: '#FFFFFF' }}><Download size={16} /> Export</button>
             </>
           )}
@@ -1227,8 +1330,28 @@ export default function Home() {
           {/* Mobile Action Buttons - Bottom of Sidebar */}
           {isMobile && (
             <div style={{ padding: '16px 20px', borderTop: '1px solid #EFEFEF', display: 'flex', flexDirection: 'column', gap: '8px', backgroundColor: '#FAFAFA' }}>
-              <button onClick={() => { setIsLoadModalOpen(true); setIsSidebarOpen(false); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', backgroundColor: '#FFFFFF', border: '1px solid #E5E5E5', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 500, color: '#0A0A0A' }}><FolderOpen size={18} /> Load Room</button>
-              <button onClick={() => { handleSaveRoom(); setIsSidebarOpen(false); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', backgroundColor: '#FFFFFF', border: '1px solid #E5E5E5', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 500, color: '#0A0A0A' }}><Save size={18} /> Save Room</button>
+              {/* Current Room Info */}
+              <div style={{ 
+                padding: '12px', 
+                backgroundColor: '#F5F5F5', 
+                borderRadius: '8px', 
+                fontSize: '13px', 
+                fontWeight: 600, 
+                color: '#0A0A0A',
+                textAlign: 'center'
+              }}>
+                📁 {roomName}{hasUnsavedChanges ? ' *' : ''}
+              </div>
+              
+              {/* Room Management */}
+              <button onClick={() => { handleNewRoom(); setIsSidebarOpen(false); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', backgroundColor: '#FFFFFF', border: '1px solid #E5E5E5', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 500, color: '#0A0A0A' }}><Plus size={18} /> New Room</button>
+              <button onClick={() => { setIsLoadModalOpen(true); setIsSidebarOpen(false); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', backgroundColor: '#FFFFFF', border: '1px solid #E5E5E5', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 500, color: '#0A0A0A' }}><FolderOpen size={18} /> Browse Rooms</button>
+              
+              {/* Save Actions */}
+              <button onClick={() => { handleSaveRoom(); setIsSidebarOpen(false); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', backgroundColor: '#FFFFFF', border: '1px solid #E5E5E5', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 500, color: '#0A0A0A' }}><Save size={18} /> Save</button>
+              <button onClick={() => { handleSaveAsNew(); setIsSidebarOpen(false); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', backgroundColor: '#FFFFFF', border: '1px solid #E5E5E5', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 500, color: '#0A0A0A' }}>Save As New</button>
+              
+              {/* Export */}
               <button onClick={() => { setIsExportModalOpen(true); setIsSidebarOpen(false); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', backgroundColor: '#0A0A0A', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 500, color: '#FFFFFF' }}><Download size={18} /> Export</button>
             </div>
           )}
