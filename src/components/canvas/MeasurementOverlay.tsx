@@ -1536,84 +1536,108 @@ const MeasurementOverlay: React.FC<Props> = ({
       )}
       
       {/* Left gap - amber line from wall/obstacle to furniture */}
-      {!showLabels && Math.round((x - leftBound) / PIXELS_PER_CM) >= 5 && (
-        <>
-          <InteractiveMeasurementLine
-            measurementId={`${item.id}-furniture-left`}
-            points={[leftBound, midY, x, midY]}
-            color={COLORS.distance}
-            lineType="spacing"
-          />
-          <InteractiveDimensionLabel
-            measurementId={`${item.id}-furniture-left`}
-            x={adjustLabelX((leftBound + x) / 2, formatMeasurement(Math.round((x - leftBound) / PIXELS_PER_CM), unit).length * fontSize * 0.6)} 
-            y={midY + labelOffset + 5} 
-            text={formatMeasurement(Math.round((x - leftBound) / PIXELS_PER_CM), unit)}
-            color={COLORS.distance}
-            isSecondary={true}
-          />
-        </>
-      )}
+      {!showLabels && Math.round((x - leftBound) / PIXELS_PER_CM) >= 5 && (() => {
+        // For thin items (walls), offset the label vertically to avoid overlap with right measurement
+        const isThinItem = w < 50; // Less than 50px wide (about 12cm)
+        const leftLabelY = isThinItem ? midY - 30 : midY + labelOffset + 5;
+        
+        return (
+          <>
+            <InteractiveMeasurementLine
+              measurementId={`${item.id}-furniture-left`}
+              points={[leftBound, midY, x, midY]}
+              color={COLORS.distance}
+              lineType="spacing"
+            />
+            <InteractiveDimensionLabel
+              measurementId={`${item.id}-furniture-left`}
+              x={adjustLabelX((leftBound + x) / 2, formatMeasurement(Math.round((x - leftBound) / PIXELS_PER_CM), unit).length * fontSize * 0.6)} 
+              y={leftLabelY} 
+              text={formatMeasurement(Math.round((x - leftBound) / PIXELS_PER_CM), unit)}
+              color={COLORS.distance}
+              isSecondary={true}
+            />
+          </>
+        );
+      })()}
 
       {/* Right gap - amber line from furniture to wall/obstacle */}
-      {!showLabels && Math.round((rightBound - (x + w)) / PIXELS_PER_CM) >= 5 && (
-        <>
-          <InteractiveMeasurementLine
-            measurementId={`${item.id}-furniture-right`}
-            points={[x + w, midY, rightBound, midY]}
-            color={COLORS.distance}
-            lineType="spacing"
-          />
-          <InteractiveDimensionLabel
-            measurementId={`${item.id}-furniture-right`}
-            x={adjustLabelX((x + w + rightBound) / 2, formatMeasurement(Math.round((rightBound - (x + w)) / PIXELS_PER_CM), unit).length * fontSize * 0.6)} 
-            y={midY + labelOffset + 5} 
-            text={formatMeasurement(Math.round((rightBound - (x + w)) / PIXELS_PER_CM), unit)}
-            color={COLORS.distance}
-            isSecondary={true}
-          />
-        </>
-      )}
+      {!showLabels && Math.round((rightBound - (x + w)) / PIXELS_PER_CM) >= 5 && (() => {
+        // For thin items (walls), offset the label vertically to avoid overlap with left measurement
+        const isThinItem = w < 50; // Less than 50px wide (about 12cm)
+        const rightLabelY = isThinItem ? midY + 30 : midY + labelOffset + 5;
+        
+        return (
+          <>
+            <InteractiveMeasurementLine
+              measurementId={`${item.id}-furniture-right`}
+              points={[x + w, midY, rightBound, midY]}
+              color={COLORS.distance}
+              lineType="spacing"
+            />
+            <InteractiveDimensionLabel
+              measurementId={`${item.id}-furniture-right`}
+              x={adjustLabelX((x + w + rightBound) / 2, formatMeasurement(Math.round((rightBound - (x + w)) / PIXELS_PER_CM), unit).length * fontSize * 0.6)} 
+              y={rightLabelY} 
+              text={formatMeasurement(Math.round((rightBound - (x + w)) / PIXELS_PER_CM), unit)}
+              color={COLORS.distance}
+              isSecondary={true}
+            />
+          </>
+        );
+      })()}
 
       {/* Top gap - amber line from wall/obstacle to furniture */}
-      {!showLabels && Math.round((y - topBound) / PIXELS_PER_CM) >= 5 && (
-        <>
-          <InteractiveMeasurementLine
-            measurementId={`${item.id}-furniture-top`}
-            points={[midX, topBound, midX, y]}
-            color={COLORS.distance}
-            lineType="spacing"
-          />
-          <InteractiveDimensionLabel
-            measurementId={`${item.id}-furniture-top`}
-            x={midX - labelOffset - 10} 
-            y={adjustLabelY((topBound + y) / 2, fontSize)} 
-            text={formatMeasurement(Math.round((y - topBound) / PIXELS_PER_CM), unit)}
-            color={COLORS.distance}
-            isSecondary={true}
-          />
-        </>
-      )}
+      {!showLabels && Math.round((y - topBound) / PIXELS_PER_CM) >= 5 && (() => {
+        // For thin items (horizontal walls), offset the label horizontally to avoid overlap with bottom measurement
+        const isThinItem = h < 50; // Less than 50px tall (about 12cm)
+        const topLabelX = isThinItem ? midX - labelOffset - 60 : midX - labelOffset - 10;
+        
+        return (
+          <>
+            <InteractiveMeasurementLine
+              measurementId={`${item.id}-furniture-top`}
+              points={[midX, topBound, midX, y]}
+              color={COLORS.distance}
+              lineType="spacing"
+            />
+            <InteractiveDimensionLabel
+              measurementId={`${item.id}-furniture-top`}
+              x={topLabelX} 
+              y={adjustLabelY((topBound + y) / 2, fontSize)} 
+              text={formatMeasurement(Math.round((y - topBound) / PIXELS_PER_CM), unit)}
+              color={COLORS.distance}
+              isSecondary={true}
+            />
+          </>
+        );
+      })()}
 
       {/* Bottom gap - amber line from furniture to wall/obstacle */}
-      {!showLabels && Math.round((bottomBound - (y + h)) / PIXELS_PER_CM) >= 5 && (
-        <>
-          <InteractiveMeasurementLine
-            measurementId={`${item.id}-furniture-bottom`}
-            points={[midX, y + h, midX, bottomBound]}
-            color={COLORS.distance}
-            lineType="spacing"
-          />
-          <InteractiveDimensionLabel
-            measurementId={`${item.id}-furniture-bottom`}
-            x={midX - labelOffset - 10} 
-            y={adjustLabelY((y + h + bottomBound) / 2, fontSize)} 
-            text={formatMeasurement(Math.round((bottomBound - (y + h)) / PIXELS_PER_CM), unit)}
-            color={COLORS.distance}
-            isSecondary={true}
-          />
-        </>
-      )}
+      {!showLabels && Math.round((bottomBound - (y + h)) / PIXELS_PER_CM) >= 5 && (() => {
+        // For thin items (horizontal walls), offset the label horizontally to avoid overlap with top measurement
+        const isThinItem = h < 50; // Less than 50px tall (about 12cm)
+        const bottomLabelX = isThinItem ? midX - labelOffset + 40 : midX - labelOffset - 10;
+        
+        return (
+          <>
+            <InteractiveMeasurementLine
+              measurementId={`${item.id}-furniture-bottom`}
+              points={[midX, y + h, midX, bottomBound]}
+              color={COLORS.distance}
+              lineType="spacing"
+            />
+            <InteractiveDimensionLabel
+              measurementId={`${item.id}-furniture-bottom`}
+              x={bottomLabelX} 
+              y={adjustLabelY((y + h + bottomBound) / 2, fontSize)} 
+              text={formatMeasurement(Math.round((bottomBound - (y + h)) / PIXELS_PER_CM), unit)}
+              color={COLORS.distance}
+              isSecondary={true}
+            />
+          </>
+        );
+      })()}
     </Group>
   );
 };

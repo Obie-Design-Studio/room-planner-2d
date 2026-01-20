@@ -3,6 +3,7 @@ import { Rect, Group, Text, Transformer, Arc, Circle, Path, Line } from 'react-k
 import { FurnitureItem, RoomConfig } from '@/types';
 import { PIXELS_PER_CM, WALL_THICKNESS_PX } from '@/lib/constants';
 import { wouldCollide, getItemBoundingBox } from '@/lib/collisionDetection';
+import { InnerWallZone, rectangleOverlapsZone, getEffectiveRoomBoundaries } from '@/lib/innerWallZones';
 
 // Calculate wall thickness in cm
 const WALL_THICKNESS_CM = WALL_THICKNESS_PX / PIXELS_PER_CM; // 5cm
@@ -55,6 +56,7 @@ interface FurnitureShapeProps {
   onHover?: (itemId: string | null) => void;
   allItems?: FurnitureItem[];
   showLabels?: boolean;
+  innerWallZones?: InnerWallZone[];
 }
 
 const FurnitureShape: React.FC<FurnitureShapeProps> = ({
@@ -71,6 +73,7 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
   onHover,
   allItems = [],
   showLabels = false,
+  innerWallZones = [],
 }) => {
   const shapeRef = useRef<any>(null);
   const trRef = useRef<any>(null);
@@ -278,12 +281,17 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
         const topLeftX = currentCenterX - visualWidthPx / 2;
         const topLeftY = currentCenterY - visualHeightPx / 2;
         
+        // Get effective room boundaries (considering gray zones from spanning inner walls)
+        const effectiveBounds = innerWallZones.length > 0 
+          ? getEffectiveRoomBoundaries(roomConfig, innerWallZones)
+          : { minX: 0, minY: 0, maxX: roomConfig.width, maxY: roomConfig.height };
+        
         // Furniture must stay inside the inner room (grid area), not overlap walls
-        // Inner room starts at WALL_THICKNESS_PX/2 and ends at roomSize - WALL_THICKNESS_PX/2
-        const innerRoomMinX = WALL_THICKNESS_PX / 2;
-        const innerRoomMinY = WALL_THICKNESS_PX / 2;
-        const innerRoomMaxX = roomWidthPx - WALL_THICKNESS_PX / 2;
-        const innerRoomMaxY = roomHeightPx - WALL_THICKNESS_PX / 2;
+        // Also respect gray zones created by spanning inner walls
+        const innerRoomMinX = Math.max(WALL_THICKNESS_PX / 2, effectiveBounds.minX * PIXELS_PER_CM);
+        const innerRoomMinY = Math.max(WALL_THICKNESS_PX / 2, effectiveBounds.minY * PIXELS_PER_CM);
+        const innerRoomMaxX = Math.min(roomWidthPx - WALL_THICKNESS_PX / 2, effectiveBounds.maxX * PIXELS_PER_CM);
+        const innerRoomMaxY = Math.min(roomHeightPx - WALL_THICKNESS_PX / 2, effectiveBounds.maxY * PIXELS_PER_CM);
         
         // Clamp position to keep furniture fully inside inner room (grid area)
         let clampedTopLeftX = Math.max(innerRoomMinX, Math.min(topLeftX, innerRoomMaxX - visualWidthPx));
@@ -398,6 +406,22 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
         e.target.x(prevCenterX);
         e.target.y(prevCenterY);
         return; // Don't call onChange
+      }
+
+      // Check if furniture overlaps with any inner wall gray zone
+      if (innerWallZones.length > 0) {
+        // Use visual dimensions for collision check (account for rotation)
+        const visualWidthCm = visualWidthPx / PIXELS_PER_CM;
+        const visualHeightCm = visualHeightPx / PIXELS_PER_CM;
+        
+        if (rectangleOverlapsZone(finalXCm, finalYCm, visualWidthCm, visualHeightCm, innerWallZones)) {
+          // Overlaps gray zone - revert to previous position
+          const prevCenterX = (prevXCm * PIXELS_PER_CM) + (visualWidthPx / 2);
+          const prevCenterY = (prevYCm * PIXELS_PER_CM) + (visualHeightPx / 2);
+          e.target.x(prevCenterX);
+          e.target.y(prevCenterY);
+          return; // Don't call onChange
+        }
       }
 
       // Sync State
@@ -1174,6 +1198,166 @@ const FurnitureShape: React.FC<FurnitureShapeProps> = ({
           </Group>
         )}
       </Group>
+      
+      {/* Draggable endpoints for walls */}
+      {isSelected && isDraggable && isWall && (() => {
+        const isHorizontal = item.width > item.height;
+        const centerX = (item.x + item.width / 2) * PIXELS_PER_CM;
+        const centerY = (item.y + item.height / 2) * PIXELS_PER_CM;
+        
+        if (isHorizontal) {
+          // Horizontal wall - endpoints at left and right
+          const leftX = item.x * PIXELS_PER_CM;
+          const rightX = (item.x + item.width) * PIXELS_PER_CM;
+          const y = centerY;
+          
+          return (
+            <>
+              {/* Left endpoint */}
+              <Circle
+                x={leftX}
+                y={y}
+                radius={12}
+                fill="#4A90E2"
+                stroke="#FFFFFF"
+                strokeWidth={2}
+                draggable
+                onDragMove={(e) => {
+                  const newX = e.target.x();
+                  const newXCm = newX / PIXELS_PER_CM;
+                  
+                  // Clamp to room bounds
+                  const clampedXCm = Math.max(0, Math.min(newXCm, item.x + item.width - 10 / PIXELS_PER_CM));
+                  const newWidth = (item.x + item.width) - clampedXCm;
+                  
+                  if (newWidth >= 10 / PIXELS_PER_CM) {
+                    onChange(item.id, { x: clampedXCm, width: newWidth });
+                  }
+                  
+                  e.target.x(clampedXCm * PIXELS_PER_CM);
+                }}
+                onMouseEnter={(e) => {
+                  const stage = e.target.getStage();
+                  if (stage) stage.container().style.cursor = 'ew-resize';
+                }}
+                onMouseLeave={(e) => {
+                  const stage = e.target.getStage();
+                  if (stage) stage.container().style.cursor = 'default';
+                }}
+              />
+              
+              {/* Right endpoint */}
+              <Circle
+                x={rightX}
+                y={y}
+                radius={12}
+                fill="#4A90E2"
+                stroke="#FFFFFF"
+                strokeWidth={2}
+                draggable
+                onDragMove={(e) => {
+                  const newX = e.target.x();
+                  const newXCm = newX / PIXELS_PER_CM;
+                  
+                  // Clamp to room bounds
+                  const clampedXCm = Math.max(item.x + 10 / PIXELS_PER_CM, Math.min(newXCm, roomConfig.width));
+                  const newWidth = clampedXCm - item.x;
+                  
+                  if (newWidth >= 10 / PIXELS_PER_CM) {
+                    onChange(item.id, { width: newWidth });
+                  }
+                  
+                  e.target.x(clampedXCm * PIXELS_PER_CM);
+                }}
+                onMouseEnter={(e) => {
+                  const stage = e.target.getStage();
+                  if (stage) stage.container().style.cursor = 'ew-resize';
+                }}
+                onMouseLeave={(e) => {
+                  const stage = e.target.getStage();
+                  if (stage) stage.container().style.cursor = 'default';
+                }}
+              />
+            </>
+          );
+        } else {
+          // Vertical wall - endpoints at top and bottom
+          const x = centerX;
+          const topY = item.y * PIXELS_PER_CM;
+          const bottomY = (item.y + item.height) * PIXELS_PER_CM;
+          
+          return (
+            <>
+              {/* Top endpoint */}
+              <Circle
+                x={x}
+                y={topY}
+                radius={12}
+                fill="#4A90E2"
+                stroke="#FFFFFF"
+                strokeWidth={2}
+                draggable
+                onDragMove={(e) => {
+                  const newY = e.target.y();
+                  const newYCm = newY / PIXELS_PER_CM;
+                  
+                  // Clamp to room bounds
+                  const clampedYCm = Math.max(0, Math.min(newYCm, item.y + item.height - 10 / PIXELS_PER_CM));
+                  const newHeight = (item.y + item.height) - clampedYCm;
+                  
+                  if (newHeight >= 10 / PIXELS_PER_CM) {
+                    onChange(item.id, { y: clampedYCm, height: newHeight });
+                  }
+                  
+                  e.target.y(clampedYCm * PIXELS_PER_CM);
+                }}
+                onMouseEnter={(e) => {
+                  const stage = e.target.getStage();
+                  if (stage) stage.container().style.cursor = 'ns-resize';
+                }}
+                onMouseLeave={(e) => {
+                  const stage = e.target.getStage();
+                  if (stage) stage.container().style.cursor = 'default';
+                }}
+              />
+              
+              {/* Bottom endpoint */}
+              <Circle
+                x={x}
+                y={bottomY}
+                radius={12}
+                fill="#4A90E2"
+                stroke="#FFFFFF"
+                strokeWidth={2}
+                draggable
+                onDragMove={(e) => {
+                  const newY = e.target.y();
+                  const newYCm = newY / PIXELS_PER_CM;
+                  
+                  // Clamp to room bounds
+                  const clampedYCm = Math.max(item.y + 10 / PIXELS_PER_CM, Math.min(newYCm, roomConfig.height));
+                  const newHeight = clampedYCm - item.y;
+                  
+                  if (newHeight >= 10 / PIXELS_PER_CM) {
+                    onChange(item.id, { height: newHeight });
+                  }
+                  
+                  e.target.y(clampedYCm * PIXELS_PER_CM);
+                }}
+                onMouseEnter={(e) => {
+                  const stage = e.target.getStage();
+                  if (stage) stage.container().style.cursor = 'ns-resize';
+                }}
+                onMouseLeave={(e) => {
+                  const stage = e.target.getStage();
+                  if (stage) stage.container().style.cursor = 'default';
+                }}
+              />
+            </>
+          );
+        }
+      })()}
+      
       {isSelected && isDraggable && !isWall && (
         <Transformer
           ref={trRef}

@@ -1,8 +1,9 @@
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useMemo } from "react";
 import { Stage, Layer, Rect, Group, Line, Text, Circle } from "react-konva";
 import { PIXELS_PER_CM, WALL_THICKNESS_PX } from "@/lib/constants";
 import { RoomConfig, FurnitureItem, ManualMeasurement } from "@/types";
 import { type Unit, formatMeasurement } from "@/lib/unitConversion";
+import { getAllInnerWallZones, InnerWallZone } from "@/lib/innerWallZones";
 import FurnitureShape from "./FurnitureShape";
 import MeasurementOverlay from "./MeasurementOverlay";
 import GridBackground from "./GridBackground";
@@ -106,6 +107,11 @@ export default function RoomCanvas({
       }
     }
   }, [isDrawingMeasurement]);
+
+  // Calculate inner wall zones (gray areas created by spanning walls)
+  const innerWallZones = useMemo(() => {
+    return getAllInnerWallZones(items, roomConfig);
+  }, [items, roomConfig]);
 
   // Snap threshold for manual measurement tool (in cm)
   const MEASUREMENT_SNAP_THRESHOLD_CM = 10; // 10cm snap distance
@@ -1011,6 +1017,19 @@ export default function RoomCanvas({
             })()}
             <GridBackground width={roomConfig.width} height={roomConfig.height} />
             
+            {/* Inner Wall Gray Zones - Areas cut off by spanning inner walls */}
+            {innerWallZones.map((zone) => (
+              <Rect
+                key={`zone-${zone.wallId}`}
+                x={zone.x * PIXELS_PER_CM}
+                y={zone.y * PIXELS_PER_CM}
+                width={zone.width * PIXELS_PER_CM}
+                height={zone.height * PIXELS_PER_CM}
+                fill="#4a4a4a"
+                opacity={0.7}
+              />
+            ))}
+            
             {/* Room Dimensions - Always visible on top and left walls */}
             <Group>
               {(() => {
@@ -1083,6 +1102,7 @@ export default function RoomCanvas({
                 roomConfig={roomConfig}
                 allItems={items}
                 showLabels={showLabels}
+                innerWallZones={innerWallZones}
               />
             ))}
             {items.map((item) => {
