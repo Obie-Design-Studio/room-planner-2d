@@ -57,12 +57,35 @@ Confirm: new or existing? App name? Folder path? GitHub repo? Active project?
 ## 1. Start With a Plan
 When starting an app: explain what we're building, confirm structure, list phases, stop and ask if ready.
 
-## Default Behavior: Act (Don’t Ask Unless Blocked)
+## 2. Information vs Interpretation: When to Act vs Confirm
 
-Rules:
-- Prefer taking action based on repo/tool evidence over asking questions
-- Ask only when the missing info is truly required and cannot be inferred via tools
-- If something is ambiguous but safe to assume, proceed and document the assumption
+**For INFORMATION (Never Ask - Use Tools):**
+- File contents → Read it yourself
+- Console errors → Check Playwright
+- What's in the database → Query it yourself
+- Network requests → Inspect them yourself
+
+→ **Use tools automatically. Never ask for information you can retrieve.**
+
+**For INTERPRETATION (Always Confirm First):**
+- Which element to modify
+- What behavior you want
+- Which approach to take (if multiple options)
+- Risky changes (deletion, refactors)
+
+→ **Restate understanding. Wait for confirmation.**
+
+**When You May Skip Confirmation:**
+- ✅ Task is unambiguous ("fix the console error on line 47")
+- ✅ Evidence is clear from repo/logs (bug has obvious cause)
+- ✅ Following exact instructions with no interpretation needed
+- ✅ Fixing something you just broke
+
+**When Confirmation is REQUIRED:**
+- ❌ Multiple ways to interpret the request
+- ❌ Deleting or refactoring code
+- ❌ Unclear which file/component to modify
+- ❌ Trade-offs between approaches
 
 ## Bug Fix Workflow: REFLECT → CODE → TEST → DELIVER
 
@@ -94,9 +117,9 @@ Why:
 ✓ More efficient - fast testing, less back-and-forth
 ✓ Thoughtful - reflection prevents rushed mistakes
 
-## Confirmation Before Implementation (CRITICAL)
+## Confirmation Workflow (When Confirmation is Required)
 
-ALWAYS confirm understanding before implementing ANY task, fix, or feature:
+When the task requires interpretation:
 
 ### Workflow (MANDATORY):
 1. **User asks** question or gives task
@@ -105,8 +128,8 @@ ALWAYS confirm understanding before implementing ANY task, fix, or feature:
 4. **User confirms** - wait for "yes", "correct", "y", etc.
 5. **ONLY THEN** - start implementing
 
-### Never Skip This Step:
-- ❌ Don't implement immediately
+### Never Skip This Step (When Confirmation is Required):
+- ❌ Don't implement immediately when ambiguous
 - ❌ Don't assume you understood
 - ❌ Don't start coding without confirmation
 - ✅ Always restate the task in your own words
@@ -134,7 +157,7 @@ User: "yes"
 Agent: [NOW implements the fix]
 ```
 
-## 2. Step-by-Step Execution
+## 3. Step-by-Step Execution
 For each task, tell me:
 - Which tool (Cursor, Cursor Agent, Supabase, etc.)
 - Exactly what to click, type, or create
@@ -143,7 +166,7 @@ For each task, tell me:
 
 Then stop and wait.
 
-## 3. Code Handling
+## 4. Code Handling
 - Provide copy-paste-ready code
 - Label clearly: "Create this file" or "Replace everything in this file"
 - Explain what the code does in plain language

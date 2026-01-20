@@ -630,10 +630,10 @@ export default function Home() {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
-      {/* Header */}
+      {/* Header - hidden when showing Start Planning button */}
       <header style={{ 
         height: '64px',
-        display: 'flex',
+        display: (items.length === 0 && showStartPlanningButton) ? 'none' : 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: isMobile ? '0 16px' : '0 20px', // Match sidebar padding for alignment
