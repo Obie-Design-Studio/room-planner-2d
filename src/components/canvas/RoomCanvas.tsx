@@ -235,27 +235,43 @@ export default function RoomCanvas({
   items.forEach((item) => {
     const itemType = item.type?.toLowerCase();
     if (itemType === 'door' || itemType === 'window') {
-      const itemY = item.y * PIXELS_PER_CM;
-      const itemX = item.x * PIXELS_PER_CM;
-      const doorLength = item.width * PIXELS_PER_CM;
+      const itemY = item.y;  // Keep in CM for easier comparison
+      const itemX = item.x;  // Keep in CM
+      
+      // Use larger dimension for arc (doors can be rotated)
+      const arcLength = Math.max(item.width, item.height) * PIXELS_PER_CM;
+      
+      // More lenient detection thresholds (within 20cm of wall edge)
+      const threshold = 20; // cm
       
       // Top wall: y is near 0
-      if (itemY < WALL_THICKNESS_PX * 2) {
-        maxDoorOnTop = Math.max(maxDoorOnTop, doorLength);
+      if (itemY < threshold) {
+        maxDoorOnTop = Math.max(maxDoorOnTop, arcLength);
+        console.log('🔵 Door/Window on TOP wall:', item.type, arcLength, 'px');
       }
       // Bottom wall: y is near room height
-      else if (itemY > roomPxHeight - WALL_THICKNESS_PX * 2) {
-        maxDoorOnBottom = Math.max(maxDoorOnBottom, doorLength);
+      else if (itemY > roomConfig.height - threshold) {
+        maxDoorOnBottom = Math.max(maxDoorOnBottom, arcLength);
+        console.log('🔵 Door/Window on BOTTOM wall:', item.type, arcLength, 'px');
       }
       // Left wall: x is near 0
-      else if (itemX < WALL_THICKNESS_PX * 2) {
-        maxDoorOnLeft = Math.max(maxDoorOnLeft, doorLength);
+      if (itemX < threshold) {
+        maxDoorOnLeft = Math.max(maxDoorOnLeft, arcLength);
+        console.log('🔵 Door/Window on LEFT wall:', item.type, arcLength, 'px');
       }
       // Right wall: x is near room width
-      else if (itemX > roomPxWidth - WALL_THICKNESS_PX * 2) {
-        maxDoorOnRight = Math.max(maxDoorOnRight, doorLength);
+      else if (itemX > roomConfig.width - threshold) {
+        maxDoorOnRight = Math.max(maxDoorOnRight, arcLength);
+        console.log('🔵 Door/Window on RIGHT wall:', item.type, arcLength, 'px');
       }
     }
+  });
+  
+  console.log('📏 Content bounds buffers:', {
+    top: maxDoorOnTop,
+    bottom: maxDoorOnBottom,
+    left: maxDoorOnLeft,
+    right: maxDoorOnRight
   });
   
   // Add buffer only on sides that have doors/windows
@@ -287,6 +303,16 @@ export default function RoomCanvas({
   
   // Apply user zoom to base scale
   const scale = baseScale * userZoom;
+  
+  console.log('🔍 Fit-to-view calculation:', {
+    viewport: `${viewportWidth}×${viewportHeight}`,
+    content: `${contentWidth.toFixed(0)}×${contentHeight.toFixed(0)}`,
+    padding: padding.toFixed(0),
+    baseScale: baseScale.toFixed(3),
+    userZoom: userZoom.toFixed(2),
+    finalScale: scale.toFixed(3),
+    effectiveZoom: `${(scale * 100).toFixed(0)}%`
+  });
   
   // Calculate where the content should be positioned to center it
   // These offsets account for: viewport center, content size, and content origin (minX, minY)
