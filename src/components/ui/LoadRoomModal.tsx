@@ -38,6 +38,26 @@ export default function LoadRoomModal({ isOpen, onClose, onLoad }: LoadRoomModal
     }
   };
 
+  const handleDeleteAll = async () => {
+    if (rooms.length === 0) return;
+    
+    if (confirm(`Delete ALL ${rooms.length} rooms? This cannot be undone.`)) {
+      let failedCount = 0;
+      for (const room of rooms) {
+        const result = await deleteRoom(room.id);
+        if (!result.success) {
+          failedCount++;
+        }
+      }
+      
+      if (failedCount > 0) {
+        alert(`Failed to delete ${failedCount} room(s)`);
+      }
+      
+      setRooms([]);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -198,6 +218,40 @@ export default function LoadRoomModal({ isOpen, onClose, onLoad }: LoadRoomModal
                   </button>
                 </div>
               ))}
+              
+              {/* Delete All button */}
+              <div style={{
+                marginTop: '16px',
+                paddingTop: '16px',
+                borderTop: '1px solid #EFEFEF',
+              }}>
+                <button
+                  onClick={handleDeleteAll}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    color: '#999999',
+                    backgroundColor: 'transparent',
+                    border: '1px solid #EFEFEF',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    transition: 'all 150ms',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#FFE5E5';
+                    e.currentTarget.style.color = '#FF4444';
+                    e.currentTarget.style.borderColor = '#FF4444';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.color = '#999999';
+                    e.currentTarget.style.borderColor = '#EFEFEF';
+                  }}
+                >
+                  Delete All Rooms ({rooms.length})
+                </button>
+              </div>
             </div>
           )}
         </div>
